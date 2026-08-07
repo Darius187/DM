@@ -1,0 +1,165 @@
+{
+  "asset": "medieval_camp_cooking_fire_3d_runtime",
+  "label_de": "Kochstelle des Feldlagers",
+  "glb": "medieval_camp_cooking_fire_3d_runtime.glb",
+  "runtime_mode": "static_exterior_prop",
+  "root_node": "COOKING_FIRE_ROTATION_PIVOT",
+  "editable_blend": "C:\\Obsidian\\DM\\Darius187-DM\\assets\\props\\camp\\cooking_fire\\medieval_cooking_fire_1349_rebuilt.blend",
+  "meters_per_blender_unit": 1.0,
+  "placement": {
+    "front_axis": "-Y",
+    "ground_z": 0.0,
+    "continuous_yaw_degrees": "0..360",
+    "no_global_ground_plate": true,
+    "world_placement": "open"
+  },
+  "bounds_m": {
+    "min": [
+      -2.227,
+      -1.104,
+      -0.959
+    ],
+    "max": [
+      1.755,
+      2.092,
+      2.63
+    ],
+    "size": [
+      3.982,
+      3.195,
+      3.589
+    ]
+  },
+  "runtime": {
+    "visible_objects": 9,
+    "triangles": 50596,
+    "embedded_textured_materials": 4,
+    "pbr_materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_FIELD_STONE_PBR",
+      "MAT_FORGED_IRON_PBR",
+      "MAT_LOW_FIRE_FLAME_CARD"
+    ],
+    "active_runtime_cloth_simulations": 0,
+    "lod_policy": "LOD0 authored; Phaser distance culling/LOD integration remains external"
+  },
+  "collision_guide": {
+    "shape": "circle",
+    "radius": 1.48,
+    "center": [
+      0,
+      0
+    ]
+  },
+  "content": {
+    "historical_period": "Central Europe circa 1349",
+    "tripod": 1,
+    "open_cauldron": 1,
+    "forged_chain_links": 12,
+    "irregular_fire_stones": 12,
+    "charred_logs": 5,
+    "flame_cones": 0,
+    "textured_flame_cards": 3,
+    "side_firewood": 6,
+    "small_props": [
+      "wooden spoon",
+      "clay stew pot",
+      "clay cup",
+      "three-legged stool"
+    ]
+  },
+  "interactions": [
+    {
+      "id": "fire_fx_anchor",
+      "position": [
+        0.0,
+        0.0,
+        0.34
+      ]
+    },
+    {
+      "id": "cooking_pot",
+      "position": [
+        0.02,
+        0.02,
+        1.04
+      ]
+    }
+  ],
+  "quality_contract": {
+    "preview": "1536x1536 transparent RGBA, 62 mm perspective camera",
+    "texture_maps": "ambientCG CC0 2K BaseColor/Roughness/NormalGL; Metalness where applicable",
+    "uv_unwrapped": true,
+    "visible_edge_bevels": true,
+    "glb_reimport_required": true
+  },
+  "notes": [
+    "Rebuilt from scratch for a rural Central European field camp circa 1349.",
+    "No global ground plate is included; localized ash belongs to the cooking-fire prop.",
+    "Same GLB and root-node names are retained for Phaser/Claude Code compatibility."
+  ],
+  "reimport_audit": {
+    "status": "passed",
+    "root_ok": true,
+    "mesh_objects": 9,
+    "triangles": 50596,
+    "embedded_images": {
+      "Wood035_aged_dark_oak_2K_Color": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Rock027_field_stone_2K_Color": [
+        2048,
+        1024
+      ],
+      "Rock027_2K-JPG_Roughness": [
+        2048,
+        1024
+      ],
+      "Rock027_2K-JPG_NormalGL": [
+        2048,
+        1024
+      ],
+      "Metal008_forged_iron_2K_Color": [
+        2048,
+        2048
+      ],
+      "Metal008_2K-JPG_Metalness-Metal008_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Metal008_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "camp_fire_flame_rgba": [
+        512,
+        512
+      ]
+    },
+    "materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_CHARCOAL",
+      "MAT_COLD_ASH",
+      "MAT_EMBERS",
+      "MAT_FIELD_STONE_PBR",
+      "MAT_FORGED_IRON_PBR",
+      "MAT_HEMP_ROPE",
+      "MAT_LOW_FIRE_FLAME_CARD",
+      "MAT_UNGLAZED_CERAMIC"
+    ],
+    "missing_uv_objects": [],
+    "active_cloth_modifiers": [],
+    "global_ground_plates": [],
+    "preview_rendered_from_reimported_glb": "medieval_camp_cooking_fire_3d_runtime_preview.png",
+    "errors": []
+  }
+}

@@ -1,0 +1,16 @@
+import { chromium as pwChromium } from 'playwright-core';
+import sparticuz from '@sparticuz/chromium';
+import { pathToFileURL } from 'node:url';
+const out = process.argv[2];
+const execPath = await sparticuz.executablePath();
+const browser = await pwChromium.launch({ executablePath: execPath, args: sparticuz.args });
+const page = await browser.newPage({ viewport: { width: 1386, height: 1219 } });
+const url = pathToFileURL('/home/user/DM/reference/weltkarte-skizze.png').href;
+let lines = '';
+for (let x=0; x<=1386; x+=100) lines += `<div style="position:absolute;left:${x}px;top:0;width:1px;height:1219px;background:rgba(255,0,0,.45)"></div><div style="position:absolute;left:${x+1}px;top:2px;color:red;font:11px monospace">${x}</div>`;
+for (let y=0; y<=1219; y+=100) lines += `<div style="position:absolute;left:0;top:${y}px;height:1px;width:1386px;background:rgba(0,0,255,.45)"></div><div style="position:absolute;left:2px;top:${y+1}px;color:blue;font:11px monospace">${y}</div>`;
+await page.setContent(`<body style="margin:0;position:relative"><img src="${url}" style="display:block;width:1386px">${lines}</body>`);
+await page.waitForTimeout(400);
+await page.screenshot({ path: out });
+await browser.close();
+console.log('grid ok');

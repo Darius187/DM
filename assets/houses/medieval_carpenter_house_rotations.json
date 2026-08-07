@@ -1,0 +1,227 @@
+{
+  "asset": "medieval_carpenter_house_rotations",
+  "source_blend": "medieval_carpenter_house_1400_game_ready.blend",
+  "rotation_ready_blend": "medieval_carpenter_house_1400_rotation_ready.blend",
+  "mode": "eight pre-rendered Blender views; never rotate a baked PNG in screen space",
+  "step_degrees": 45,
+  "supported_degrees": [
+    0,
+    45,
+    90,
+    135,
+    180,
+    225,
+    270,
+    315
+  ],
+  "canvas": {
+    "width": 1400,
+    "height": 1400,
+    "alpha": true,
+    "auto_crop": false
+  },
+  "camera": {
+    "name": "CAMERA_GAME_ORTHO",
+    "type": "ORTHOGRAPHIC",
+    "ortho_scale": 17.799999237060547,
+    "location": [
+      16.450001,
+      -22.450001,
+      30.5
+    ],
+    "rotation_euler": [
+      0.80708516,
+      8e-08,
+      0.63236254
+    ]
+  },
+  "rotation_pivot": {
+    "blender_xyz": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "pixel": [
+      700.0,
+      918.71
+    ],
+    "normalized_origin": [
+      0.5,
+      0.65622143
+    ]
+  },
+  "directions": {
+    "0": {
+      "degrees_clockwise_in_game": 0,
+      "closed_png": "medieval_carpenter_house_rot_000.png",
+      "door_open_png": "medieval_carpenter_house_rot_000_door_open.png",
+      "rotation_pivot_pixel": [
+        700.0,
+        918.71
+      ],
+      "door_spawn_pixel": [
+        700.0,
+        918.71
+      ],
+      "door_spawn_rotated_blender_xyz": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "45": {
+      "degrees_clockwise_in_game": 45,
+      "closed_png": "medieval_carpenter_house_rot_045.png",
+      "door_open_png": "medieval_carpenter_house_rot_045_door_open.png",
+      "rotation_pivot_pixel": [
+        700.0,
+        918.71
+      ],
+      "door_spawn_pixel": [
+        700.0,
+        918.71
+      ],
+      "door_spawn_rotated_blender_xyz": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "90": {
+      "degrees_clockwise_in_game": 90,
+      "closed_png": "medieval_carpenter_house_rot_090.png",
+      "door_open_png": "medieval_carpenter_house_rot_090_door_open.png",
+      "rotation_pivot_pixel": [
+        700.0,
+        918.71
+      ],
+      "door_spawn_pixel": [
+        700.0,
+        918.71
+      ],
+      "door_spawn_rotated_blender_xyz": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "135": {
+      "degrees_clockwise_in_game": 135,
+      "closed_png": "medieval_carpenter_house_rot_135.png",
+      "door_open_png": "medieval_carpenter_house_rot_135_door_open.png",
+      "rotation_pivot_pixel": [
+        700.0,
+        918.71
+      ],
+      "door_spawn_pixel": [
+        700.0,
+        918.71
+      ],
+      "door_spawn_rotated_blender_xyz": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "180": {
+      "degrees_clockwise_in_game": 180,
+      "closed_png": "medieval_carpenter_house_rot_180.png",
+      "door_open_png": "medieval_carpenter_house_rot_180_door_open.png",
+      "rotation_pivot_pixel": [
+        700.0,
+        918.71
+      ],
+      "door_spawn_pixel": [
+        700.0,
+        918.71
+      ],
+      "door_spawn_rotated_blender_xyz": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "225": {
+      "degrees_clockwise_in_game": 225,
+      "closed_png": "medieval_carpenter_house_rot_225.png",
+      "door_open_png": "medieval_carpenter_house_rot_225_door_open.png",
+      "rotation_pivot_pixel": [
+        700.0,
+        918.71
+      ],
+      "door_spawn_pixel": [
+        700.0,
+        918.71
+      ],
+      "door_spawn_rotated_blender_xyz": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "270": {
+      "degrees_clockwise_in_game": 270,
+      "closed_png": "medieval_carpenter_house_rot_270.png",
+      "door_open_png": "medieval_carpenter_house_rot_270_door_open.png",
+      "rotation_pivot_pixel": [
+        700.0,
+        918.71
+      ],
+      "door_spawn_pixel": [
+        700.0,
+        918.71
+      ],
+      "door_spawn_rotated_blender_xyz": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "315": {
+      "degrees_clockwise_in_game": 315,
+      "closed_png": "medieval_carpenter_house_rot_315.png",
+      "door_open_png": "medieval_carpenter_house_rot_315_door_open.png",
+      "rotation_pivot_pixel": [
+        700.0,
+        918.71
+      ],
+      "door_spawn_pixel": [
+        700.0,
+        918.71
+      ],
+      "door_spawn_rotated_blender_xyz": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  },
+  "phaser_rule": {
+    "frame_selection": "round(rotationDegrees / 45) * 45 modulo 360",
+    "set_sprite_angle": false,
+    "set_origin_from_rotation_pivot": true,
+    "rotate_collisions_around_same_world_pivot": true
+  },
+  "continuous_rotation": {
+    "available_with": "medieval_carpenter_house_1400_game_ready.glb in a Three.js scene",
+    "not_available_with": "a single Phaser 2D Image/Sprite texture"
+  },
+  "runtime_atlas": {
+    "png": "medieval_carpenter_house_rotations_atlas.png",
+    "json": "medieval_carpenter_house_rotations_atlas.json",
+    "texture_key": "carpenter_house_rotations",
+    "cell_size": [
+      700,
+      700
+    ],
+    "atlas_size": [
+      2800,
+      2800
+    ],
+    "frame_pattern": "carpenter_{degrees:03d}_{closed|open}",
+    "common_pivot_normalized": [
+      0.5,
+      0.65622143
+    ]
+  }
+}

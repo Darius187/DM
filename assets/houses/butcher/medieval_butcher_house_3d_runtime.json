@@ -1,0 +1,350 @@
+{
+  "asset": "medieval_butcher_house_3d_runtime",
+  "asset_type": "rotatable walkable 3D medieval butcher house",
+  "model": "medieval_butcher_house_3d_runtime.glb",
+  "units": "meters",
+  "root_node": "BUTCHER_HOUSE_ROTATION_PIVOT",
+  "coordinate_conversion": {
+    "blender": "X/Y ground, Z up",
+    "threejs": "X/Z ground, Y up",
+    "point_rule": "[x,y,z] -> [x,z,-y]"
+  },
+  "continuous_controls": {
+    "building_yaw_degrees": {
+      "min": 0,
+      "max": 360,
+      "default": 0
+    },
+    "uniform_scale": {
+      "min": 0.25,
+      "max": 4,
+      "default": 1
+    },
+    "camera_elevation_degrees": {
+      "min": 18,
+      "max": 78,
+      "default": 43
+    },
+    "camera_azimuth_degrees": {
+      "min": 0,
+      "max": 360,
+      "default": 36
+    },
+    "orthographic_zoom": {
+      "min": 0.55,
+      "max": 2.4,
+      "default": 1
+    }
+  },
+  "materials": {
+    "all_visible_materials_have_embedded_basecolor_textures": true,
+    "runtime_tinting_allowed": false,
+    "transparent_windows": true,
+    "texture_count": 15,
+    "used_materials": [
+      "MAT_BUTCHER_AWNING_CLOTH",
+      "MAT_BUTCHER_CURED_MEAT",
+      "MAT_BUTCHER_FORGED_IRON",
+      "MAT_BUTCHER_GLASS_TRANSPARENT",
+      "MAT_BUTCHER_OAK_DARK",
+      "MAT_BUTCHER_OAK_MID",
+      "MAT_BUTCHER_PLASTER_AGED",
+      "MAT_BUTCHER_PLASTER_WORN",
+      "MAT_BUTCHER_SHINGLE_A",
+      "MAT_BUTCHER_SHINGLE_B",
+      "MAT_BUTCHER_SHINGLE_C",
+      "MAT_BUTCHER_SMOKE",
+      "MAT_BUTCHER_SMOKED_MEAT",
+      "MAT_BUTCHER_STONE_DARK",
+      "MAT_BUTCHER_STONE_WARM"
+    ]
+  },
+  "renderer_recipe": {
+    "output_color_space": "SRGBColorSpace",
+    "tone_mapping": "ACESFilmicToneMapping",
+    "exposure": 1.0,
+    "do_not_replace_materials": true
+  },
+  "doors": {
+    "main": {
+      "node": "DOOR_MAIN_HINGE",
+      "closed_frame": 1,
+      "open_frame": 30,
+      "trigger": "TRIGGER_MAIN_DOOR"
+    },
+    "annex": {
+      "node": "DOOR_ANNEX_HINGE",
+      "closed_frame": 1,
+      "open_frame": 30,
+      "trigger": "TRIGGER_ANNEX_DOOR"
+    }
+  },
+  "walkable_interior": {
+    "enabled": false,
+    "replacement": "separate Phaser interior map"
+  },
+  "visibility_controls": {
+    "roof_property": "roof_removable",
+    "cutaway_property": "cutaway_near_wall",
+    "floor_property": "floor_level"
+  },
+  "node_groups": {
+    "transparent_windows": [
+      "WINDOW_DORMER_GLASS",
+      "WINDOW_FRONT_SHOP_GLASS",
+      "WINDOW_FRONT_UPPER_0_GLASS",
+      "WINDOW_FRONT_UPPER_1_GLASS",
+      "WINDOW_FRONT_UPPER_2_GLASS",
+      "WINDOW_REAR_UPPER_LEFT_GLASS",
+      "WINDOW_REAR_UPPER_RIGHT_GLASS",
+      "WINDOW_RIGHT_ATTIC_GLASS",
+      "WINDOW_RIGHT_UPPER_FRONT_GLASS",
+      "WINDOW_RIGHT_UPPER_REAR_GLASS"
+    ],
+    "batched_runtime_meshes": [
+      "RUNTIME_BATCH_000_MAT_BUTCHER_STONE_WARM",
+      "RUNTIME_BATCH_001_MAT_BUTCHER_STONE_DARK",
+      "RUNTIME_BATCH_002_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_003_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_004_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_005_MAT_BUTCHER_OAK_MID",
+      "RUNTIME_BATCH_006_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_007_MAT_BUTCHER_STONE_WARM",
+      "RUNTIME_BATCH_009_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_010_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_011_MAT_BUTCHER_PLASTER_WORN",
+      "RUNTIME_BATCH_012_MAT_BUTCHER_PLASTER_AGED",
+      "RUNTIME_BATCH_013_MAT_BUTCHER_STONE_DARK",
+      "RUNTIME_BATCH_014_MAT_BUTCHER_STONE_WARM",
+      "RUNTIME_BATCH_015_MAT_BUTCHER_STONE_DARK",
+      "RUNTIME_BATCH_016_MAT_BUTCHER_STONE_WARM",
+      "RUNTIME_BATCH_017_MAT_BUTCHER_FORGED_IRON",
+      "RUNTIME_BATCH_018_MAT_BUTCHER_OAK_MID",
+      "RUNTIME_BATCH_019_MAT_BUTCHER_PLASTER_AGED",
+      "RUNTIME_BATCH_020_MAT_BUTCHER_PLASTER_WORN",
+      "RUNTIME_BATCH_021_MAT_BUTCHER_PLASTER_AGED",
+      "RUNTIME_BATCH_022_MAT_BUTCHER_PLASTER_WORN",
+      "RUNTIME_BATCH_023_MAT_BUTCHER_PLASTER_AGED",
+      "RUNTIME_BATCH_024_MAT_BUTCHER_PLASTER_WORN",
+      "RUNTIME_BATCH_025_MAT_BUTCHER_FORGED_IRON",
+      "RUNTIME_BATCH_026_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_027_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_028_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_029_MAT_BUTCHER_SHINGLE_A",
+      "RUNTIME_BATCH_030_MAT_BUTCHER_SHINGLE_C",
+      "RUNTIME_BATCH_031_MAT_BUTCHER_SHINGLE_B",
+      "RUNTIME_BATCH_032_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_033_MAT_BUTCHER_SHINGLE_C",
+      "RUNTIME_BATCH_034_MAT_BUTCHER_SHINGLE_A",
+      "RUNTIME_BATCH_035_MAT_BUTCHER_SHINGLE_B",
+      "RUNTIME_BATCH_036_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_038_MAT_BUTCHER_OAK_MID",
+      "RUNTIME_BATCH_039_MAT_BUTCHER_SMOKED_MEAT",
+      "RUNTIME_BATCH_040_MAT_BUTCHER_STONE_WARM",
+      "RUNTIME_BATCH_041_MAT_BUTCHER_CURED_MEAT",
+      "RUNTIME_BATCH_042_MAT_BUTCHER_OAK_MID",
+      "RUNTIME_BATCH_043_MAT_BUTCHER_FORGED_IRON",
+      "RUNTIME_BATCH_045_MAT_BUTCHER_SMOKE"
+    ],
+    "batched_roof_meshes": [
+      "RUNTIME_BATCH_009_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_010_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_011_MAT_BUTCHER_PLASTER_WORN",
+      "RUNTIME_BATCH_012_MAT_BUTCHER_PLASTER_AGED",
+      "RUNTIME_BATCH_015_MAT_BUTCHER_STONE_DARK",
+      "RUNTIME_BATCH_016_MAT_BUTCHER_STONE_WARM",
+      "RUNTIME_BATCH_017_MAT_BUTCHER_FORGED_IRON",
+      "RUNTIME_BATCH_029_MAT_BUTCHER_SHINGLE_A",
+      "RUNTIME_BATCH_030_MAT_BUTCHER_SHINGLE_C",
+      "RUNTIME_BATCH_031_MAT_BUTCHER_SHINGLE_B",
+      "RUNTIME_BATCH_032_MAT_BUTCHER_OAK_DARK",
+      "RUNTIME_BATCH_033_MAT_BUTCHER_SHINGLE_C",
+      "RUNTIME_BATCH_034_MAT_BUTCHER_SHINGLE_A",
+      "RUNTIME_BATCH_035_MAT_BUTCHER_SHINGLE_B"
+    ]
+  },
+  "animations": [
+    {
+      "name": "DOOR_ANNEX_HINGEAction",
+      "frame_range": [
+        1.0,
+        30.0
+      ]
+    },
+    {
+      "name": "DOOR_MAIN_HINGEAction",
+      "frame_range": [
+        1.0,
+        30.0
+      ]
+    }
+  ],
+  "collision_guides": [
+    {
+      "name": "NAV_MARKET_FRONT",
+      "kind": "walk",
+      "role": "walkable_polygon",
+      "floor": "EXTERIOR",
+      "center_blender_xyz": [
+        -0.6,
+        -4.9,
+        0.12
+      ],
+      "size_blender_xyz": [
+        6.5,
+        1.4,
+        0.06
+      ]
+    },
+    {
+      "name": "COLLISION_DISPLAY_TABLE",
+      "kind": "block",
+      "role": "fixed_furniture",
+      "floor": "EXTERIOR",
+      "center_blender_xyz": [
+        -1.7,
+        -5.0,
+        0.55
+      ],
+      "size_blender_xyz": [
+        2.7,
+        0.85,
+        1.1
+      ]
+    },
+    {
+      "name": "COLLISION_CHOPPING_STUMP",
+      "kind": "block",
+      "role": "fixed_furniture",
+      "floor": "EXTERIOR",
+      "center_blender_xyz": [
+        2.15,
+        -5.28,
+        0.5
+      ],
+      "size_blender_xyz": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "COLLISION_ANNEX_TABLE",
+      "kind": "block",
+      "role": "fixed_furniture",
+      "floor": "EXTERIOR",
+      "center_blender_xyz": [
+        4.85,
+        -2.97,
+        0.5
+      ],
+      "size_blender_xyz": [
+        1.9,
+        0.85,
+        1.0
+      ]
+    },
+    {
+      "name": "TRIGGER_MAIN_DOOR",
+      "kind": "transition",
+      "role": "enter_house",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        1.12,
+        -4.05,
+        1.35
+      ],
+      "size_blender_xyz": [
+        1.15,
+        1.0,
+        2.5
+      ]
+    },
+    {
+      "name": "TRIGGER_ANNEX_DOOR",
+      "kind": "transition",
+      "role": "enter_annex",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        5.2,
+        -2.4,
+        1.35
+      ],
+      "size_blender_xyz": [
+        1.15,
+        1.0,
+        2.5
+      ]
+    },
+    {
+      "name": "COLLISION_EXTERIOR_FOOTPRINT_0",
+      "kind": "block",
+      "role": "solid_building",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        4.915,
+        0.725,
+        1.55
+      ],
+      "size_blender_xyz": [
+        2.37,
+        5.85,
+        3.1
+      ]
+    },
+    {
+      "name": "COLLISION_EXTERIOR_FOOTPRINT_1",
+      "kind": "block",
+      "role": "solid_building",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        0.0,
+        0.0,
+        1.55
+      ],
+      "size_blender_xyz": [
+        6.55,
+        7.55,
+        3.1
+      ]
+    }
+  ],
+  "markers": [
+    {
+      "name": "SPAWN_EXTERIOR_MAIN",
+      "role": "spawn_exterior",
+      "floor": "EXTERIOR",
+      "blender_xyz": [
+        1.12,
+        -4.85,
+        0.08
+      ]
+    }
+  ],
+  "counts": {
+    "runtime_objects": 91,
+    "materials": 15,
+    "windows": 10,
+    "collisions": 8,
+    "main_roof_shingles": 610,
+    "annex_roof_shingles": 275,
+    "removed_interior_objects": 23,
+    "merged_static_objects": 1813
+  },
+  "integration_contract": {
+    "load_with": "Three.js GLTFLoader",
+    "rotate": "BUTCHER_HOUSE_ROTATION_PIVOT around Three.js Y",
+    "collisions": "build from JSON and transform with building",
+    "doors": "play named animations",
+    "forbidden": [
+      "PNG replacement",
+      "material tinting",
+      "visible collision meshes"
+    ]
+  },
+  "runtime_mode": "exterior_only",
+  "construction_contract": {
+    "embedded_interior_fitout": false,
+    "separate_interior_map_ready": true
+  }
+}

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ravensmoor · 3D-Test-Galerie</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #06060a; overflow: hidden; font-family: Georgia, 'Times New Roman', serif; }
+    #app { position: fixed; inset: 0; }
+    #titel { position: fixed; left: 18px; top: 12px; color: #e6c878; font-size: 18px; letter-spacing: 3px; text-shadow: 0 2px 6px #000; pointer-events: none; }
+    .bar { position: fixed; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; max-width: 96vw; }
+    #top { top: 12px; }
+    #ctrl { bottom: 20px; }
+    .bar button { font-family: inherit; font-size: 13px; letter-spacing: 1px; color: #e8dcc0; background: #1a140cdd; border: 1px solid #4a3a24; border-radius: 7px; padding: 7px 13px; cursor: pointer; }
+    .bar button:hover { background: #2a2010; border-color: #c9a227; }
+    .bar button.an { background: #3a2a12; border-color: #f0d060; color: #f6e6a8; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="titel">RAVENSMOOR · 3D-TEST-GALERIE</div>
+  <div id="top" class="bar"></div>
+  <div id="ctrl" class="bar"></div>
+  <script type="module" src="/src/demo3d/demo3dGalerie.ts"></script>
+</body>
+</html>

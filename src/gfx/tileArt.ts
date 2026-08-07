@@ -1,0 +1,1050 @@
+// Programmatische Tiles - portiert aus der Referenz (drawTile), als
+// Texturen-Generator. Variante (0-6) bringt Beschnitt-Abwechslung wie
+// das tileNoise der Referenz.
+
+import { TILE } from './fallbackArt';
+import type { CryptTheme } from '../data/krypta';
+import { fels64, zaun64, acker64, folterbankWide, altar64, wasser64, erzader64 } from './detailArt';
+
+type Ctx = CanvasRenderingContext2D;
+
+// Wasser-Animationsschleife (Runde 40): so viele Phasen-Frames bildet der Fluss,
+// bevor er sich wiederholt - begrenzt zugleich die Zahl gecachter Texturen.
+export const WASSER_FRAMES = 8;
+
+// Detailliertes 64px-Objekt sauber auf die 32px-Kachel herunterrechnen
+// (Runde 40, "den Rest in 64px runterskaliert"). Überlagert vorhandenen Inhalt
+// (z. B. die Bodenplatte) nicht-destruktiv, weil die Quellen auf transparentem
+// Grund zeichnen.
+function detail(ctx: Ctx, draw: (c: Ctx) => void): void {
+  const g = document.createElement('canvas');
+  g.width = 64; g.height = 64;
+  draw(g.getContext('2d')!);
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(g, 0, 0, 64, 64, 0, 0, TILE, TILE);
+  ctx.restore();
+}
+
+// Wie detail(), aber für ein 64-breites x 32-hohes Motiv, das über ZWEI Kacheln
+// reicht (Runde 50, Streckbank): 'l' blittet die linke, 'r' die rechte Hälfte.
+function detailWide(ctx: Ctx, draw: (c: Ctx) => void, half: 'l' | 'r'): void {
+  const g = document.createElement('canvas');
+  g.width = 64; g.height = 32;
+  draw(g.getContext('2d')!);
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(g, half === 'r' ? 32 : 0, 0, 32, 32, 0, 0, TILE, TILE);
+  ctx.restore();
+}
+
+function grasBase(ctx: Ctx, n: number): void {
+  // Einheitliche Grundfarbe (Runde 45): KEINE variantenabhängige Helligkeit
+  // mehr - sonst entsteht ein Schachbrett-Raster zwischen den Kacheln. n streut
+  // nur noch die Halme/Details, damit alles nahtlos zusammenpasst (wie Wasser).
+  ctx.fillStyle = '#37502a';
+  ctx.fillRect(0, 0, TILE, TILE);
+  // sehr feine, AUSGEWOGENE Tonwertflecken (je gleich viel hell wie dunkel, klein
+  // und schwach), damit KEIN Kachel-Raster entsteht - nur leichte Lebendigkeit.
+  ctx.fillStyle = 'rgba(26,40,20,0.18)';
+  for (let i = 0; i < 3; i++) { const x = (i * 11 + n * 7) % 30, y = (i * 19 + n * 5) % 30; ctx.beginPath(); ctx.ellipse(x, y, 4, 3, 0, 0, 6.283); ctx.fill(); }
+  ctx.fillStyle = 'rgba(78,102,56,0.16)';
+  for (let i = 0; i < 3; i++) { const x = (i * 17 + n * 13 + 9) % 30, y = (i * 23 + n * 9 + 7) % 30; ctx.beginPath(); ctx.ellipse(x, y, 4, 3, 0, 0, 6.283); ctx.fill(); }
+  // R134 (Autor "Gras feiner/schaerfer, mehr Variation - wie eine echte Wiese"):
+  // VIELE duenne Halme in vier Gruentoenen (0.8px, leicht gebogen) statt weniger
+  // dicker Striche - die Wiese wird dicht und lebendig, bleibt aber nahtlos.
+  const halme: Array<[string, number]> = [['#2c441f', 9], ['#446329', 8], ['#557a38', 7], ['#6d9448', 5]];
+  for (const [col, anz] of halme) {
+    ctx.strokeStyle = col; ctx.lineWidth = 0.8;
+    for (let i = 0; i < anz; i++) {
+      const x = ((i * 13 + n * 7 + col.length * 5 + anz * 3) % 30) + 1;
+      const y = ((i * 23 + n * 11 + anz * 5) % 24) + 7;
+      const lean = (((i + n) % 5) - 2) * 0.8;
+      const h = 3.5 + ((i + n) % 3);
+      ctx.beginPath(); ctx.moveTo(x, y);
+      ctx.quadraticCurveTo(x + lean * 0.4, y - h * 0.6, x + lean, y - h);   // gebogener Halm
+      ctx.stroke();
+    }
+  }
+  // R134: JEDE Variante bekommt ihr eigenes Wiesen-Detail (Blueten wie auf der
+  // Referenz-Wiese, Steinchen mit Lichtkante, trockene Aestchen) - schaerfer
+  // gezeichnet (Kern + Kontrastpunkt statt matschiger Flaeche).
+  const bluete = (x: number, y: number, farbe: string): void => {
+    ctx.fillStyle = farbe;
+    for (const [dx, dy] of [[0, -1], [-1, 0], [1, 0], [0, 1]]) ctx.fillRect(x + dx, y + dy, 1, 1);
+    ctx.fillStyle = '#e8d86a'; ctx.fillRect(x, y, 1, 1);   // Bluetenmitte
+  };
+  const stein = (x: number, y: number, r: number): void => {
+    ctx.fillStyle = '#6a655a'; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.fill();
+    ctx.fillStyle = '#8a857a'; ctx.fillRect(x - 1, y - r + 1, 2, 1);        // Lichtkante
+    ctx.fillStyle = 'rgba(20,28,14,0.5)'; ctx.fillRect(x - r + 1, y + r - 1, r * 2 - 1, 1); // Bodenschatten
+  };
+  const aestchen = (x: number, y: number): void => {
+    ctx.strokeStyle = '#5a4326'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 6, y + 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + 3, y + 1); ctx.lineTo(x + 4, y - 2); ctx.stroke();   // Astgabel
+    ctx.strokeStyle = '#7a5c38'; ctx.lineWidth = 0.6;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 6, y + 2); ctx.stroke();           // Lichtseite
+  };
+  if (n === 0) { stein(24, 22, 1.8); }
+  if (n === 1) { bluete(8, 10, '#d8c84a'); bluete(21, 22, '#d8c84a'); }        // Hahnenfuss-Gelb
+  if (n === 2) { bluete(9, 9, '#9a78c8'); bluete(22, 18, '#d8c84a'); }         // Storchschnabel-Lila
+  if (n === 3) { aestchen(12, 20); }
+  if (n === 4) {
+    ctx.fillStyle = 'rgba(120,150,80,0.85)';
+    for (const [dx, dy] of [[0, -1], [-1, 1], [1, 1]]) ctx.fillRect(14 + dx, 16 + dy, 2, 2);   // Klee
+    bluete(25, 8, '#e0e0d8');                                                   // Loewenzahn-Puste
+  }
+  if (n === 5) {
+    ctx.strokeStyle = '#9a8a52'; ctx.lineWidth = 0.8;                           // trockene Halme
+    for (const [x, y] of [[6, 24], [8, 25], [7, 23]]) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 1.5, y - 5); ctx.stroke(); }
+  }
+  if (n === 6) { stein(18, 20, 2.4); stein(22, 23, 1.2); }
+}
+
+// Ist Punkt (x,y) Teil des Erdwegs für diese 8-Bit-Verbindungsmaske? (R45/48)
+// Kanten N=1,O=2,S=4,W=8; Diagonalen NO=16,SO=32,SW=64,NW=128. Die Diagonalen
+// füllen die Ecken, damit breite Wegflächen voll Erde sind (kein Gitter).
+function istWegErde(mask: number, x: number, y: number): boolean {
+  const C = 16, BW = 8;
+  if (Math.hypot(x - C, y - C) <= BW + 1.5) return true;      // Nabe
+  if ((mask & 1) && y <= C && Math.abs(x - C) <= BW) return true; // Nord
+  if ((mask & 4) && y >= C && Math.abs(x - C) <= BW) return true; // Süd
+  if ((mask & 8) && x <= C && Math.abs(y - C) <= BW) return true; // West
+  if ((mask & 2) && x >= C && Math.abs(y - C) <= BW) return true; // Ost
+  // Ecken: gefüllt, wenn beide angrenzenden Kanten UND die Diagonale Weg sind
+  if ((mask & 1) && (mask & 2) && (mask & 16) && x >= C && y <= C) return true; // NO
+  if ((mask & 2) && (mask & 4) && (mask & 32) && x >= C && y >= C) return true; // SO
+  if ((mask & 4) && (mask & 8) && (mask & 64) && x <= C && y >= C) return true; // SW
+  if ((mask & 8) && (mask & 1) && (mask & 128) && x <= C && y <= C) return true; // NW
+  return false;
+}
+
+// Erdweg nach 4-Bit-Verbindungsmaske: zeichnet Bänder zu den verbundenen
+// Seiten + Nabe, mit Erdstruktur, Karrenspuren und gefederten Grasrändern.
+function wegKachel(ctx: Ctx, mask: number): void {
+  const C = 16, BW = 8;
+  const dirt = '#79582f', dirtD = '#5a4022', dirtL = '#967046';
+  ctx.fillStyle = dirt;
+  ctx.beginPath(); ctx.arc(C, C, BW, 0, 6.283); ctx.fill();            // Nabe (bündig, kein Wulst)
+  if (mask & 1) ctx.fillRect(C - BW, 0, BW * 2, C);                    // Nord
+  if (mask & 4) ctx.fillRect(C - BW, C, BW * 2, TILE - C);             // Süd
+  if (mask & 8) ctx.fillRect(0, C - BW, C, BW * 2);                    // West
+  if (mask & 2) ctx.fillRect(C, C - BW, TILE - C, BW * 2);             // Ost
+  // Ecken füllen, wenn beide Kanten UND die Diagonale Weg sind -> breite
+  // Wegflächen werden VOLL Erde statt Gitter (Autorbug R48).
+  if ((mask & 1) && (mask & 2) && (mask & 16)) ctx.fillRect(C, 0, TILE - C, C);  // NO
+  if ((mask & 2) && (mask & 4) && (mask & 32)) ctx.fillRect(C, C, TILE - C, TILE - C); // SO
+  if ((mask & 4) && (mask & 8) && (mask & 64)) ctx.fillRect(0, C, C, TILE - C);  // SW
+  if ((mask & 8) && (mask & 1) && (mask & 128)) ctx.fillRect(0, 0, C, C);        // NW
+  // Erdstruktur (dunkle Schollen, helle Kiesel) - nur auf der Erde
+  ctx.fillStyle = dirtD;
+  for (let i = 0; i < 14; i++) { const x = (i * 7 + 3) % TILE, y = (i * 11 + 5) % TILE; if (istWegErde(mask, x, y)) ctx.fillRect(x, y, 2, 1); }
+  ctx.fillStyle = dirtL;
+  for (let i = 0; i < 10; i++) { const x = (i * 13 + 6) % TILE, y = (i * 17 + 2) % TILE; if (istWegErde(mask, x, y)) ctx.fillRect(x, y, 1, 1); }
+  // Karrenspuren NUR auf echten Korridoren (eine Achse durch), NICHT auf
+  // breiten Plätzen/Kreuzungen - sonst entsteht wieder ein Spuren-Gitter (R48).
+  ctx.strokeStyle = 'rgba(0,0,0,0.14)'; ctx.lineWidth = 2;
+  const vert = (mask & 1) && (mask & 4), horiz = (mask & 2) && (mask & 8);
+  if (vert && !horiz) { for (const rx of [C - 4, C + 4]) { ctx.beginPath(); ctx.moveTo(rx, 0); ctx.lineTo(rx, TILE); ctx.stroke(); } }
+  if (horiz && !vert) { for (const ry of [C - 4, C + 4]) { ctx.beginPath(); ctx.moveTo(0, ry); ctx.lineTo(TILE, ry); ctx.stroke(); } }
+  // Grasfederung: ein paar Halme ragen über die Bandränder (bricht harte Kanten)
+  ctx.strokeStyle = '#46682f'; ctx.lineWidth = 1;
+  for (let i = 0; i < 22; i++) {
+    const x = (i * 9 + 2) % TILE, y = (i * 5 + 1) % TILE;
+    // nahe der Grenze: Erde-Nachbar in einer Richtung, aber selbst Gras
+    if (istWegErde(mask, x, y)) continue;
+    if (istWegErde(mask, x + 2, y) || istWegErde(mask, x - 2, y) || istWegErde(mask, x, y + 2) || istWegErde(mask, x, y - 2)) {
+      ctx.beginPath(); ctx.moveTo(x, y + 2); ctx.lineTo(x + ((i % 3) - 1), y - 1); ctx.stroke();
+    }
+  }
+}
+
+function floorBase(ctx: Ctx, n: number, theme?: CryptTheme): void {
+  const f = theme?.floor ?? [27, -3, -6];
+  const g = f[0] + n * 2;
+  ctx.fillStyle = `rgb(${g},${g + f[1]},${g + f[2]})`;
+  ctx.fillRect(0, 0, TILE, TILE);
+  // Eigener Stil ab Ebene 4 (Runde 40): Kerker-Quaderstein bzw. Glut-Boden
+  if (theme?.stil === 'verlies') { floorVerlies(ctx, n, g); return; }
+  if (theme?.stil === 'glut') { floorGlut(ctx, n); return; }
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+  ctx.strokeRect(0.5, 0.5, TILE - 1, TILE - 1);
+  // Plattenfugen + abgenutzte Stellen je Variante
+  ctx.fillStyle = 'rgba(0,0,0,0.14)';
+  if (n % 2 === 0) ctx.fillRect(0, 15 + (n % 3), TILE, 1);
+  else ctx.fillRect(14 + (n % 4), 0, 1, TILE);
+  ctx.fillStyle = 'rgba(255,255,255,0.03)';
+  ctx.fillRect(((n * 11) % 20) + 3, ((n * 7) % 20) + 3, 6, 4);
+  if (n === 4) {
+    // Riss quer über die Platte
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.moveTo(4, 8); ctx.lineTo(13, 14); ctx.lineTo(11, 22); ctx.lineTo(19, 27);
+    ctx.stroke();
+  }
+}
+
+// Verlies (Ebene 4): großer, kalter Quaderstein - tiefe Fuge ringsum, kühle
+// Lichtkante oben, gelegentlich Eisennieten. Sauberer/kälter als das Krypta-
+// Pflaster -> wirkt wie ein anderer Abschnitt (Kerker).
+function floorVerlies(ctx: Ctx, n: number, g: number): void {
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 1.5; ctx.strokeRect(1, 1, TILE - 2, TILE - 2);
+  ctx.fillStyle = `rgba(${g + 24},${g + 30},${g + 42},0.3)`; ctx.fillRect(2, 2, TILE - 4, 2);   // kühle Lichtkante
+  ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.fillRect(2, TILE - 4, TILE - 4, 2);                    // Schattenkante
+  ctx.fillStyle = `rgba(${g + 12},${g + 16},${g + 26},0.1)`; ctx.fillRect(3, 4, TILE - 6, TILE - 8); // Innenglanz
+  if (n % 3 === 0) { ctx.fillStyle = '#2c333f'; for (const [bx, by] of [[4, 4], [TILE - 6, 4], [4, TILE - 6], [TILE - 6, TILE - 6]]) ctx.fillRect(bx, by, 2, 2); }
+  if (n === 5 || n === 1) { ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(8, 6); ctx.lineTo(13, 15); ctx.lineTo(11, 24); ctx.stroke(); }
+  ctx.lineWidth = 1;
+}
+
+// Glutkatakomben (Ebene 5): verkohlter Boden mit glühenden Rissen.
+function floorGlut(ctx: Ctx, n: number): void {
+  ctx.fillStyle = 'rgba(0,0,0,0.32)';
+  for (let i = 0; i < 3; i++) ctx.fillRect(((n * 7 + i * 11) % 24) + 3, ((n * 5 + i * 9) % 24) + 3, 5, 4);
+  const sx = (n % 3) * 8 + 4;
+  ctx.strokeStyle = 'rgba(228,108,40,0.55)'; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(sx, 3); ctx.lineTo(sx + 5, 13); ctx.lineTo(sx + 1, 23); ctx.lineTo(sx + 8, TILE - 1); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,190,100,0.55)'; ctx.lineWidth = 0.6; ctx.stroke();  // heißer Kern
+  ctx.fillStyle = 'rgba(255,150,60,0.6)'; ctx.fillRect(((n * 13) % 26) + 3, ((n * 9) % 26) + 3, 1.5, 1.5);
+  ctx.lineWidth = 1;
+}
+
+export function drawTileArt(ctx: Ctx, name: string, n: number, theme?: CryptTheme): void {
+  switch (name) {
+    case 'gras': grasBase(ctx, n); break;
+    case 'weg':
+      // n ist die 4-Bit-Verbindungsmaske (1=N,2=O,4=S,8=W), gesetzt beim Platzieren.
+      // So entstehen Geraden, Kurven, T-Stücke und Kreuzungen automatisch (R45).
+      grasBase(ctx, 0);
+      wegKachel(ctx, n);
+      break;
+    case 'baum':
+      grasBase(ctx, n);
+      ctx.fillStyle = '#241a10'; ctx.fillRect(13, 18, 6, 10);
+      ctx.fillStyle = '#1c3018'; ctx.beginPath(); ctx.arc(16, 12, 12, 0, 6.283); ctx.fill();
+      ctx.fillStyle = 'rgba(40,70,34,0.8)'; ctx.beginPath(); ctx.arc(12, 9, 7, 0, 6.283); ctx.fill();
+      break;
+    case 'wasser':
+      // Animiert: n trägt die Phase (variant + Frame), Wellen wandern abwärts
+      detail(ctx, (c) => wasser64(c, (((n % WASSER_FRAMES) + WASSER_FRAMES) % WASSER_FRAMES) / WASSER_FRAMES));
+      break;
+    case 'acker':
+      detail(ctx, acker64);
+      break;
+    case 'zaun':
+      grasBase(ctx, n);
+      ctx.fillStyle = '#5c4427';
+      ctx.fillRect(4, 8, 4, 18); ctx.fillRect(24, 8, 4, 18);
+      ctx.fillRect(0, 12, TILE, 4); ctx.fillRect(0, 20, TILE, 4);
+      break;
+    case 'palisade': {
+      // Stadtmauer Stufe 1: angespitzte Holzpfähle, dicht an dicht
+      grasBase(ctx, n);
+      for (let i = 0; i < 4; i++) {
+        const px2 = 1 + i * 8;
+        ctx.fillStyle = i % 2 === (n % 2) ? '#5c4427' : '#4e3a20';
+        ctx.fillRect(px2, 6, 7, 24);
+        ctx.fillStyle = 'rgba(255,255,255,0.07)';
+        ctx.fillRect(px2, 6, 2, 24);
+        // Spitze
+        ctx.fillStyle = '#3a2c16';
+        ctx.beginPath();
+        ctx.moveTo(px2, 6); ctx.lineTo(px2 + 3.5, 0); ctx.lineTo(px2 + 7, 6);
+        ctx.closePath(); ctx.fill();
+      }
+      // Querbalken
+      ctx.fillStyle = 'rgba(42,30,16,0.85)';
+      ctx.fillRect(0, 14, TILE, 3);
+      ctx.fillRect(0, 24, TILE, 3);
+      break;
+    }
+    case 'stadttor': {
+      // Geschlossenes Stadttor: Bohlen quer über dem Weg, Eisenband
+      const g = 72 + n * 2;
+      ctx.fillStyle = `rgb(${g},${g - 10},${g - 26})`;
+      ctx.fillRect(0, 0, TILE, TILE);
+      ctx.fillStyle = '#4e3a20';
+      ctx.fillRect(0, 2, TILE, 28);
+      ctx.fillStyle = '#3a2c16';
+      for (let i = 0; i < 4; i++) ctx.fillRect(0, 2 + i * 7, TILE, 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.06)';
+      ctx.fillRect(0, 2, TILE, 2);
+      ctx.fillStyle = '#6a665e';
+      ctx.fillRect(0, 12, TILE, 3);
+      ctx.fillRect(14, 10, 4, 7); // Schlossplatte
+      ctx.fillStyle = '#1a1410';
+      ctx.fillRect(15, 12, 2, 3);
+      break;
+    }
+    case 'fachwerk_fassade': {
+      ctx.fillStyle = '#8a7a62'; ctx.fillRect(0, 0, TILE, TILE);
+      ctx.fillStyle = '#2a1e12';
+      ctx.fillRect(0, 0, TILE, 3); ctx.fillRect(0, TILE - 3, TILE, 3);
+      ctx.fillRect(0, 0, 3, TILE); ctx.fillRect(TILE - 3, 0, 3, TILE);
+      ctx.fillRect(14, 0, 3, TILE);
+      if (n % 3 === 0) {
+        // Fenster mit warmem Licht
+        ctx.fillStyle = '#2a1e12'; ctx.fillRect(5, 8, 11, 13);
+        ctx.fillStyle = 'rgba(232,168,74,0.95)'; ctx.fillRect(6, 9, 9, 11);
+        ctx.fillStyle = '#2a1e12'; ctx.fillRect(10, 9, 1, 11); ctx.fillRect(6, 14, 9, 1);
+      }
+      break;
+    }
+    case 'fachwerk_dach': {
+      ctx.fillStyle = '#4a2a20'; ctx.fillRect(0, 0, TILE, TILE);
+      ctx.fillStyle = 'rgba(0,0,0,0.28)';
+      for (let i = 0; i < 4; i++) ctx.fillRect(0, (i * 8 + (n % 2) * 4) % TILE, TILE, 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(0, 0, TILE, 4);
+      break;
+    }
+    case 'kirche_fassade': {
+      ctx.fillStyle = '#55524c'; ctx.fillRect(0, 0, TILE, TILE);
+      ctx.fillStyle = 'rgba(0,0,0,0.22)';
+      ctx.fillRect(0, 10, TILE, 2); ctx.fillRect(0, 21, TILE, 2);
+      ctx.fillRect(n % 2 ? 8 : 18, 0, 2, 10); ctx.fillRect(n % 2 ? 20 : 8, 12, 2, 9);
+      if (n % 3 === 1) {
+        // Spitzbogenfenster mit fahlem Schein
+        ctx.fillStyle = '#1c1a18';
+        ctx.beginPath(); ctx.moveTo(11, 22); ctx.lineTo(11, 12);
+        ctx.quadraticCurveTo(16, 4, 21, 12); ctx.lineTo(21, 22); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(140,160,200,0.30)'; ctx.fillRect(13, 12, 6, 9);
+      }
+      break;
+    }
+    case 'kirche_dach': {
+      ctx.fillStyle = '#3a3e46'; ctx.fillRect(0, 0, TILE, TILE);
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      for (let i = 0; i < 4; i++) ctx.fillRect(0, (i * 8 + (n % 2) * 4) % TILE, TILE, 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.04)'; ctx.fillRect(0, 0, TILE, 3);
+      break;
+    }
+    case 'kirchentuer':
+      ctx.fillStyle = '#241a10'; ctx.fillRect(0, 0, TILE, TILE);
+      ctx.fillStyle = '#3a2c1c'; ctx.fillRect(5, 2, TILE - 10, TILE - 2);
+      ctx.strokeStyle = '#c9a227'; ctx.strokeRect(5.5, 2.5, TILE - 11, TILE - 3);
+      ctx.fillStyle = '#c9a227'; ctx.fillRect(TILE - 12, 16, 3, 3);
+      break;
+    case 'grabstein':
+      grasBase(ctx, n);
+      ctx.fillStyle = '#5a564e'; ctx.fillRect(10, 8, 12, 18);
+      ctx.beginPath(); ctx.arc(16, 8, 6, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(13, 13, 6, 2);
+      break;
+    case 'brunnen':
+      grasBase(ctx, n);
+      ctx.fillStyle = '#55504a'; ctx.beginPath(); ctx.arc(16, 16, 13, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#10141c'; ctx.beginPath(); ctx.arc(16, 16, 8, 0, 6.283); ctx.fill();
+      break;
+    case 'brandstelle':
+      ctx.fillStyle = '#1c1814'; ctx.fillRect(0, 0, TILE, TILE);
+      ctx.fillStyle = 'rgba(60,50,40,0.4)'; ctx.fillRect(n * 3, n * 2, 6, 3);
+      break;
+    case 'krypta_boden':
+      floorBase(ctx, n, theme);
+      if (n === 5) { ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(6, 10, 12, 2); ctx.fillRect(14, 12, 2, 8); }
+      break;
+    case 'krypta_wand': {
+      const wt = theme ?? { wallTop: '#0f0c08', wallFace: '#262017' } as CryptTheme;
+      ctx.fillStyle = wt.wallTop; ctx.fillRect(0, 0, TILE, TILE);
+      break;
+    }
+    case 'krypta_wand_front': {
+      const wt = theme ?? { wallTop: '#0f0c08', wallFace: '#262017' } as CryptTheme;
+      ctx.fillStyle = wt.wallTop; ctx.fillRect(0, 0, TILE, TILE);
+      ctx.fillStyle = wt.wallFace; ctx.fillRect(0, TILE - 10, TILE, 10);
+      // Mauerwerk in der Stirnseite: Fugen und Lichtkante
+      ctx.fillStyle = 'rgba(0,0,0,0.30)';
+      ctx.fillRect(0, TILE - 6, TILE, 1);
+      ctx.fillRect((n % 2) * 8 + 5, TILE - 10, 1, 4);
+      ctx.fillRect((n % 2) * 8 + 19, TILE - 6, 1, 6);
+      ctx.fillStyle = 'rgba(255,255,255,0.05)';
+      ctx.fillRect(0, TILE - 10, TILE, 1);
+      // Stil-Akzent ab Ebene 4 (Runde 40)
+      if (wt.stil === 'verlies') {
+        ctx.fillStyle = 'rgba(96,116,150,0.12)'; ctx.fillRect(0, TILE - 10, TILE, 2);   // kühler Glanz
+        ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect((n % 3) * 10 + 3, TILE - 10, 1, 10); // saubere Quaderfuge
+      } else if (wt.stil === 'glut') {
+        ctx.strokeStyle = 'rgba(230,110,40,0.5)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo((n % 4) * 7 + 4, TILE - 9); ctx.lineTo((n % 4) * 7 + 7, TILE - 2); ctx.stroke();
+        ctx.lineWidth = 1;
+      }
+      break;
+    }
+    case 'dungeontuer': {
+      // R118 V9: geschlossene Holztuer im Steinrahmen - Bretter senkrecht,
+      // zwei Eisenbaender, Ring-Griff. Solid + sichtblockend bis E sie oeffnet.
+      const wt2 = theme ?? { wallTop: '#0f0c08', wallFace: '#262017' } as CryptTheme;
+      ctx.fillStyle = wt2.wallTop; ctx.fillRect(0, 0, TILE, TILE);           // Steinrahmen
+      ctx.fillStyle = '#3a2916'; ctx.fillRect(3, 2, TILE - 6, TILE - 4);     // Tuerblatt
+      ctx.fillStyle = '#2c1f10';
+      for (let bx = 6; bx < TILE - 4; bx += 6) ctx.fillRect(bx, 3, 1, TILE - 6);   // Bretterfugen
+      ctx.fillStyle = '#181a1e'; ctx.fillRect(3, 8, TILE - 6, 3); ctx.fillRect(3, TILE - 12, TILE - 6, 3); // Eisenbaender
+      ctx.strokeStyle = '#0d0e11'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(TILE / 2 + 6, TILE / 2 + 2, 3, 0, 6.283); ctx.stroke();  // Ring-Griff
+      ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(3, 2, 2, TILE - 4);   // Schattenkante
+      break;
+    }
+    case 'mauerriss': {
+      // Brüchige Wand (Front) mit deutlichen Rissen - lädt zum Aufbrechen ein
+      const wt = theme ?? { wallTop: '#0f0c08', wallFace: '#262017' } as CryptTheme;
+      ctx.fillStyle = wt.wallTop; ctx.fillRect(0, 0, TILE, TILE);
+      ctx.fillStyle = wt.wallFace; ctx.fillRect(0, TILE - 12, TILE, 12);
+      // dunkle Risse, die von oben nach unten zacken
+      ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(10, 2); ctx.lineTo(14, 11); ctx.lineTo(9, 20); ctx.lineTo(13, TILE - 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(22, 4); ctx.lineTo(18, 13); ctx.lineTo(23, 22); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(14, 11); ctx.lineTo(22, 13); ctx.stroke();
+      // ein paar lose Brocken als Lichtkante
+      ctx.fillStyle = 'rgba(255,255,255,0.06)';
+      ctx.fillRect(8, 14, 3, 2); ctx.fillRect(19, 18, 3, 2); ctx.fillRect(13, 24, 2, 2);
+      ctx.lineWidth = 1;
+      break;
+    }
+    case 'knochen':
+      // Boden-Skelette weglassen (Runde 40, Autorwunsch): nur noch ein dezenter
+      // dunkler Fleck am Boden, KEIN ganzes Skelett mehr auf der Kachel.
+      floorBase(ctx, n, theme);
+      ctx.fillStyle = 'rgba(20,16,12,0.28)';
+      ctx.beginPath(); ctx.ellipse(15 + (n % 4), 16 + (n % 3), 7, 4, 0, 0, 6.283); ctx.fill();
+      break;
+    case 'blut': {
+      // Blutlache (Runde 50: reicher, mit dunklem Kern, Spritzern und Schlieren -
+      // Blut steht jetzt nur noch in Sonderräumen und soll dort wirken)
+      floorBase(ctx, n, theme);
+      const bx = 13 + (n % 5), byy = 13 + (n % 4);
+      ctx.fillStyle = 'rgba(86,10,10,0.6)';
+      ctx.beginPath(); ctx.ellipse(bx, byy, 9, 7, (n % 3) * 0.4, 0, 6.283); ctx.fill();
+      ctx.fillStyle = 'rgba(120,18,18,0.55)';
+      ctx.beginPath(); ctx.ellipse(bx, byy, 6, 4.5, (n % 3) * 0.4, 0, 6.283); ctx.fill();
+      ctx.fillStyle = 'rgba(40,4,6,0.6)'; // dunkler Kern
+      ctx.beginPath(); ctx.arc(bx - 1, byy, 2.5, 0, 6.283); ctx.fill();
+      // Spritzer ringsum
+      ctx.fillStyle = 'rgba(96,12,12,0.5)';
+      ctx.beginPath(); ctx.arc(24, 22, 2.8, 0, 6.283); ctx.fill();
+      ctx.beginPath(); ctx.arc(7, 24, 2, 0, 6.283); ctx.fill();
+      ctx.fillRect(20 + (n % 3), 6, 2, 1.5); ctx.fillRect(5, 9 + (n % 3), 1.5, 1.5);
+      // Glanzlicht (frisch/feucht)
+      ctx.fillStyle = 'rgba(220,120,120,0.18)';
+      ctx.beginPath(); ctx.ellipse(bx - 2, byy - 2, 2.5, 1.4, 0.5, 0, 6.283); ctx.fill();
+      break;
+    }
+    case 'rune': {
+      floorBase(ctx, n, theme);
+      const rc = theme?.rune ?? '#c03030';
+      ctx.globalAlpha = 0.55;
+      ctx.strokeStyle = rc;
+      ctx.beginPath(); ctx.arc(16, 16, 9, 0, 6.283); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(16, 7); ctx.lineTo(24, 21); ctx.lineTo(8, 21); ctx.closePath(); ctx.stroke();
+      ctx.globalAlpha = 1;
+      break;
+    }
+    case 'altar':
+      // Opferaltar (Runde 40, Batch 2): Stein, Blutrinne, Schädel, Kerzen
+      floorBase(ctx, n, theme);
+      detail(ctx, altar64);
+      break;
+    case 'abgrund': {
+      // Bodenloser Schacht (Brücken-Prototyp ab Ebene 4): oben ein fahler
+      // Felssaum, der nach unten in pures Schwarz abfällt - Blick in die Tiefe.
+      const g2 = ctx.createLinearGradient(0, 0, 0, TILE);
+      g2.addColorStop(0, '#1b1612'); g2.addColorStop(0.22, '#0a0809'); g2.addColorStop(1, '#000000');
+      ctx.fillStyle = g2; ctx.fillRect(0, 0, TILE, TILE);
+      ctx.fillStyle = 'rgba(120,108,92,0.18)'; ctx.fillRect(0, 0, TILE, 1);   // Lichtkante der Schachtmauer
+      ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, 3, TILE, 2);          // Schattenkante darunter
+      ctx.fillStyle = 'rgba(90,80,68,0.16)';                                   // ferne Felsbrocken tief unten
+      ctx.fillRect(((n * 13) % 22) + 5, ((n * 7) % 10) + 18, 2, 1);
+      ctx.fillRect(((n * 19) % 20) + 6, ((n * 11) % 8) + 22, 1, 1);
+      break;
+    }
+    case 'bruecke': {
+      // Holzsteg über den Abgrund: Planken quer, dunkle Spalten (die Tiefe
+      // schimmert durch), seitliche Trägerbalken, Eisennägel.
+      ctx.fillStyle = '#0a0809'; ctx.fillRect(0, 0, TILE, TILE);
+      for (let i = 0; i < 5; i++) {
+        const y = i * 6 + 1;
+        ctx.fillStyle = i % 2 ? '#5a4228' : '#624a2e'; ctx.fillRect(0, y, TILE, 5);
+        ctx.fillStyle = 'rgba(255,236,196,0.08)'; ctx.fillRect(0, y, TILE, 1);   // Lichtkante
+        ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0, y + 5, TILE, 1);      // Spalt
+        ctx.fillStyle = 'rgba(40,28,16,0.4)'; ctx.fillRect(((i * 11) % 24) + 3, y + 1, 1, 3); // Maserung
+      }
+      ctx.fillStyle = '#3a2a18'; ctx.fillRect(0, 0, 2, TILE); ctx.fillRect(TILE - 2, 0, 2, TILE); // Trägerbalken
+      ctx.fillStyle = '#2a2620';
+      for (const yy of [3, 15, 27]) { ctx.fillRect(3, yy, 1.6, 1.6); ctx.fillRect(TILE - 4, yy, 1.6, 1.6); }
+      break;
+    }
+    case 'regal': case 'regal_geleert': case 'regal_leer': {
+      // Bücherregal in drei Zuständen (Runde 50): voll / durchsucht / leer.
+      // Holzkorpus mit zwei Fächern; je nach Zustand stehen Bücher, ein paar
+      // Reste mit Lücken, oder nur Staub und ein Spinnennetz.
+      ctx.fillStyle = '#2e2114'; ctx.fillRect(0, 0, TILE, TILE);
+      // Korpus-Rahmen + Maserung
+      ctx.fillStyle = '#3c2c18'; ctx.fillRect(1, 1, TILE - 2, 2); ctx.fillRect(1, 1, 2, TILE - 2); ctx.fillRect(TILE - 3, 1, 2, TILE - 2); ctx.fillRect(1, TILE - 3, TILE - 2, 2);
+      ctx.fillStyle = 'rgba(255,236,196,0.06)'; ctx.fillRect(2, 2, TILE - 4, 1);
+      // zwei Fachböden (dunkle Nischen)
+      ctx.fillStyle = '#160e06'; ctx.fillRect(3, 4, TILE - 6, 9); ctx.fillRect(3, 18, TILE - 6, 9);
+      ctx.fillStyle = '#231708'; ctx.fillRect(3, 12, TILE - 6, 1.5); ctx.fillRect(3, 26, TILE - 6, 1.5); // Bretter
+      if (name === 'regal') {
+        // VOLL: dicht stehende, farbige Buchrücken
+        const bc = ['#7a3030', '#3a5a7a', '#6a6a3a', '#5a3a6a', '#7a5a2a', '#46603a'];
+        for (let i = 0; i < 5; i++) { ctx.fillStyle = bc[(i + n) % 6]; ctx.fillRect(4 + i * 5, 5, 3.6, 7); ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(4 + i * 5, 5, 3.6, 1); }
+        for (let i = 0; i < 5; i++) { ctx.fillStyle = bc[(i + n + 3) % 6]; ctx.fillRect(4 + i * 5, 19, 3.6, 7); ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(4 + i * 5, 19, 3.6, 1); }
+      } else if (name === 'regal_geleert') {
+        // DURCHSUCHT: nur noch ein paar schief stehende/liegende Bücher, Lücken
+        const bc = ['#6a3030', '#3a4a6a', '#5a5a30'];
+        // oberes Fach: zwei aufrechte Reste links, Rest leer
+        ctx.fillStyle = bc[n % 3]; ctx.fillRect(4, 5, 3.4, 7);
+        ctx.fillStyle = bc[(n + 1) % 3]; ctx.fillRect(8, 6, 3, 6); // leicht gekippt wirkend (kürzer)
+        // ein liegendes Buch quer
+        ctx.fillStyle = bc[(n + 2) % 3]; ctx.fillRect(15, 10, 9, 2.4);
+        // unteres Fach: ein einzelnes Buch + umgekipptes
+        ctx.fillStyle = bc[(n + 1) % 3]; ctx.fillRect(22, 19, 3.4, 7);
+        ctx.fillStyle = bc[n % 3]; ctx.fillRect(5, 24, 8, 2.4);
+        // Staub
+        ctx.fillStyle = 'rgba(120,108,84,0.12)'; ctx.fillRect(3, 11, TILE - 6, 1.5); ctx.fillRect(3, 25, TILE - 6, 1.5);
+      } else {
+        // LEER: nackte Fächer, etwas Staub und ein Spinnennetz in der Ecke
+        ctx.fillStyle = 'rgba(120,108,84,0.10)'; ctx.fillRect(3, 11, TILE - 6, 1.5); ctx.fillRect(3, 25, TILE - 6, 1.5);
+        ctx.strokeStyle = 'rgba(200,196,180,0.18)'; ctx.lineWidth = 0.6;
+        ctx.beginPath(); ctx.moveTo(TILE - 4, 4); ctx.lineTo(TILE - 11, 4); ctx.moveTo(TILE - 4, 4); ctx.lineTo(TILE - 4, 11);
+        ctx.moveTo(TILE - 4, 4); ctx.lineTo(TILE - 9, 9); ctx.moveTo(TILE - 9, 4.5); ctx.lineTo(TILE - 4.5, 9); ctx.stroke();
+        ctx.lineWidth = 1;
+      }
+      break;
+    }
+    case 'treppe_ab': case 'treppe_auf': {
+      // Treppe von OBEN (Draufsicht, Runde 53, Autorwunsch): die Tritte als
+      // waagerechte Stufen, dazu seitliche Wangen/Geländer. Bewusst NAHTLOS in
+      // 8px-Bändern und an den Rändern - so liest sich auch ein 1x4-Lauf als EINE
+      // durchgehende Treppe. "ab" = Lichtkante unten (Stufen sinken nach Norden),
+      // "auf" = Lichtkante oben (Stufen steigen nach Norden). Farbe unterscheidet.
+      // R87 (Autor "keine Leiter - eine ordentliche Treppe mit Tiefe"): breite
+      // STEIN-Stufen mit Trittfläche + dunkler Setzstufe, jeder Tritt hat einen
+      // eigenen Helligkeitsverlauf (vorne hell, hinten im Schatten) und die
+      // Wangen sind Mauerstein. Den Verlauf ÜBER den ganzen Lauf (unten immer
+      // dunkler = es geht hinab) legt zeichneKachel per Tint darüber.
+      const ab = name === 'treppe_ab';
+      ctx.fillStyle = '#0e0c08'; ctx.fillRect(0, 0, TILE, TILE);
+      const band = 8;
+      const stein = ab ? [96, 88, 70] : [104, 110, 120];
+      for (let y = 0; y < TILE; y += band) {
+        // Trittfläche mit Verlauf: vorne (Süden) hell, hinten dunkler
+        for (let i = 0; i < band - 2; i++) {
+          const f = ab ? 0.55 + 0.45 * (i / (band - 2)) : 1 - 0.45 * (i / (band - 2));
+          ctx.fillStyle = `rgb(${Math.round(stein[0] * f)},${Math.round(stein[1] * f)},${Math.round(stein[2] * f)})`;
+          ctx.fillRect(3, y + 1 + i, TILE - 6, 1);
+        }
+        ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(3, ab ? y : y + band - 1, TILE - 6, 1);          // Setzstufe (tiefer Schatten)
+        ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fillRect(3, ab ? y + band - 2 : y + 1, TILE - 6, 1); // Trittkante fängt Licht
+        // leichte Abnutzungs-Kerbe in der Trittmitte
+        ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(10 + (n % 3) * 3, y + 3, 8, 1);
+      }
+      // steinerne WANGEN mit Fugen (statt der dünnen "Leiter"-Holme)
+      for (const wx of [0, TILE - 3]) {
+        ctx.fillStyle = ab ? '#3a3226' : '#3c434e'; ctx.fillRect(wx, 0, 3, TILE);
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        for (let y = 5 + (n % 2) * 4; y < TILE; y += 11) ctx.fillRect(wx, y, 3, 1);
+        ctx.fillStyle = 'rgba(255,255,255,0.10)'; ctx.fillRect(wx + (wx === 0 ? 2 : 0), 0, 1, TILE);
+      }
+      break;
+    }
+    case 'wendeltreppe': {
+      // Wendeltreppe von oben: runde, sich nach innen windende Stufen, dunkles
+      // Zentrum (der Abstieg). (Runde 41)
+      ctx.fillStyle = '#0a0805'; ctx.fillRect(0, 0, TILE, TILE);
+      const cx = 16, cy = 16;
+      for (let i = 0; i < 9; i++) {
+        const a0 = i * 0.72, a1 = a0 + 0.9, r = 14 - i * 1.4;
+        ctx.fillStyle = i % 2 ? '#3a342a' : '#4a4434';
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, Math.max(2, r), a0, a1); ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = '#050403'; ctx.beginPath(); ctx.arc(cx, cy, 2.6, 0, 6.283); ctx.fill();
+      ctx.strokeStyle = '#c9a227'; ctx.lineWidth = 1; ctx.strokeRect(3.5, 3.5, TILE - 7, TILE - 7);
+      break;
+    }
+    case 'erzader':
+      floorBase(ctx, n, theme);
+      detail(ctx, erzader64);
+      break;
+    case 'fels':
+      grasBase(ctx, n);
+      ctx.fillStyle = '#6a665e';
+      ctx.beginPath(); ctx.moveTo(5, 24); ctx.lineTo(8, 10); ctx.lineTo(20, 7); ctx.lineTo(27, 16); ctx.lineTo(23, 25); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(10, 10, 8, 3);
+      break;
+    case 'streckbank':
+      // Folterbank, LINKE Hälfte (Runde 50: jetzt über zwei Kacheln, ein langes
+      // Folterbett statt eines gestauchten Einzeltiles)
+      floorBase(ctx, n, theme);
+      detailWide(ctx, folterbankWide, 'l');
+      break;
+    case 'streckbank_r':
+      // Folterbank, RECHTE Hälfte
+      floorBase(ctx, n, theme);
+      detailWide(ctx, folterbankWide, 'r');
+      break;
+    case 'kaefig':
+      // Eisenkäfig (Runde 50: runde Stäbe mit Lichtkante + Schatten = 3D, oben
+      // und unten ein Querband, Knochenrest am Boden statt flachem Strich)
+      floorBase(ctx, n, theme);
+      // Schatten der Stäbe
+      ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 2.4;
+      for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(7 + i * 5, 4); ctx.lineTo(7 + i * 5, 28); ctx.stroke(); }
+      // Eisenstäbe
+      ctx.strokeStyle = '#5a554e'; ctx.lineWidth = 1.8;
+      for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(6 + i * 5, 4); ctx.lineTo(6 + i * 5, 28); ctx.stroke(); }
+      // Lichtkante auf den Stäben
+      ctx.strokeStyle = 'rgba(170,164,150,0.7)'; ctx.lineWidth = 0.6;
+      for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(5.3 + i * 5, 5); ctx.lineTo(5.3 + i * 5, 27); ctx.stroke(); }
+      // Querbänder + Rahmen
+      ctx.strokeStyle = '#43403a'; ctx.lineWidth = 2;
+      ctx.strokeRect(4.5, 3.5, 23, 25);
+      ctx.beginPath(); ctx.moveTo(5, 9); ctx.lineTo(27, 9); ctx.moveTo(5, 23); ctx.lineTo(27, 23); ctx.stroke();
+      ctx.lineWidth = 1;
+      if (n % 2 === 0) {
+        // Knochenrest am Boden des Käfigs
+        ctx.fillStyle = '#cfc4a8';
+        ctx.beginPath(); ctx.arc(16, 24, 2.6, 0, 6.283); ctx.fill();   // Schädel
+        ctx.fillRect(11, 25, 9, 1.8);                                   // Rippe/Knochen
+        ctx.fillStyle = '#2a2620'; ctx.fillRect(14.5, 23.4, 1, 1); ctx.fillRect(17, 23.4, 1, 1); // Augenhöhlen
+      }
+      break;
+    case 'eiserne_jungfrau': {
+      // Eiserne Jungfrau (Runde 50): aufrechter Stachelsarg, einen Spalt offen -
+      // im Inneren Stacheln, am Fuß eine Blutlache. Klassisches Folterinstrument.
+      floorBase(ctx, n, theme);
+      ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(16, 28, 11, 3.5, 0, 0, 6.283); ctx.fill();
+      // Korpus (Sarg-Silhouette: oben gerundet, zum Fuß verjüngt)
+      ctx.fillStyle = '#3a3832';
+      ctx.beginPath();
+      ctx.moveTo(16, 2); ctx.quadraticCurveTo(25, 3, 24, 12); ctx.lineTo(21, 28); ctx.lineTo(11, 28); ctx.lineTo(8, 12); ctx.quadraticCurveTo(7, 3, 16, 2);
+      ctx.closePath(); ctx.fill();
+      // Lichtkante links, Schatten rechts (Metall)
+      ctx.fillStyle = 'rgba(180,176,162,0.35)'; ctx.fillRect(9, 6, 1.5, 20);
+      ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(21.5, 6, 1.5, 20);
+      // geöffneter Türspalt (dunkles Inneres) mit Stacheln
+      ctx.fillStyle = '#0c0a08';
+      ctx.beginPath(); ctx.moveTo(16, 4); ctx.lineTo(20, 6); ctx.lineTo(18, 26); ctx.lineTo(16, 26); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#9a948a'; ctx.lineWidth = 0.7;
+      for (let i = 0; i < 5; i++) { const yy = 7 + i * 4; ctx.beginPath(); ctx.moveTo(19.5, yy); ctx.lineTo(16.5, yy + 1.5); ctx.stroke(); }
+      ctx.lineWidth = 1;
+      // Nietenreihen
+      ctx.fillStyle = '#1c1a16';
+      for (const yy of [8, 14, 20]) { ctx.fillRect(11, yy, 1.4, 1.4); ctx.fillRect(20, yy, 1.4, 1.4); }
+      // Gesichtsmaske-Andeutung am Kopf
+      ctx.fillStyle = '#2a2824'; ctx.fillRect(13, 6, 6, 4);
+      ctx.fillStyle = '#0c0a08'; ctx.fillRect(14, 7, 1.4, 1.4); ctx.fillRect(17, 7, 1.4, 1.4);
+      // Blut am Fuß
+      ctx.fillStyle = 'rgba(96,12,12,0.6)'; ctx.beginPath(); ctx.ellipse(16, 27, 7, 2.6, 0, 0, 6.283); ctx.fill();
+      break;
+    }
+    case 'kohlebecken': {
+      // Kohlebecken mit glühenden Brandeisen (Runde 50): eiserne Schale auf
+      // Dreifuß, glühende Kohlen, zwei eingesteckte Brandeisen. Wärmequelle.
+      floorBase(ctx, n, theme);
+      ctx.fillStyle = 'rgba(208,96,40,0.12)'; ctx.beginPath(); ctx.arc(16, 16, 14, 0, 6.283); ctx.fill(); // Glutschein
+      // Dreifuß-Beine
+      ctx.strokeStyle = '#2a2620'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(16, 20); ctx.lineTo(9, 29); ctx.moveTo(16, 20); ctx.lineTo(23, 29); ctx.moveTo(16, 20); ctx.lineTo(16, 30); ctx.stroke();
+      // Schale
+      ctx.fillStyle = '#3a352c'; ctx.beginPath(); ctx.ellipse(16, 17, 11, 5.5, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#1c1812'; ctx.beginPath(); ctx.ellipse(16, 16, 9, 4.2, 0, 0, 6.283); ctx.fill();
+      // glühende Kohlen
+      ctx.fillStyle = '#d85a28'; for (const [cx, cy] of [[12, 16], [16, 15], [19, 17], [14, 18]]) { ctx.beginPath(); ctx.arc(cx, cy, 1.8, 0, 6.283); ctx.fill(); }
+      ctx.fillStyle = '#f8c050'; for (const [cx, cy] of [[15, 16], [18, 16]]) { ctx.beginPath(); ctx.arc(cx, cy, 1, 0, 6.283); ctx.fill(); }
+      // zwei eingesteckte Brandeisen mit glühender Spitze
+      ctx.strokeStyle = '#1c1814'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(13, 15); ctx.lineTo(5, 6); ctx.moveTo(19, 15); ctx.lineTo(27, 7); ctx.stroke();
+      ctx.fillStyle = '#e87838'; ctx.beginPath(); ctx.arc(13, 15, 1.4, 0, 6.283); ctx.fill(); ctx.beginPath(); ctx.arc(19, 15, 1.4, 0, 6.283); ctx.fill();
+      // Henkel/Griffe der Eisen
+      ctx.fillStyle = '#3a2c1a'; ctx.fillRect(4, 4, 3, 2); ctx.fillRect(26, 5, 3, 2);
+      ctx.lineWidth = 1;
+      break;
+    }
+    case 'zellentor':
+      // Offenes Zellentor (Runde 50): BEGEHBARE Schwelle - der Boden ist frei,
+      // links/rechts die Türpfosten mit Angeln, das Gittertor steht zur Seite
+      // aufgeschwungen (man geht hindurch, kein solides Hindernis).
+      floorBase(ctx, n, theme);
+      // Türpfosten links und rechts
+      ctx.fillStyle = '#43403a'; ctx.fillRect(1, 2, 3, 28); ctx.fillRect(28, 2, 3, 28);
+      ctx.fillStyle = 'rgba(170,164,150,0.5)'; ctx.fillRect(1, 2, 1, 28); ctx.fillRect(28, 2, 1, 28);
+      // Angeln/Scharniere
+      ctx.fillStyle = '#2a2620'; ctx.fillRect(3, 6, 2, 2); ctx.fillRect(3, 22, 2, 2);
+      // das aufgeschwungene Gittertor (steht schräg an der linken Wand)
+      ctx.save();
+      ctx.translate(5, 4); ctx.rotate(-0.5);
+      ctx.strokeStyle = '#5a554e'; ctx.lineWidth = 1.6;
+      for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(i * 3.5, 0); ctx.lineTo(i * 3.5, 22); ctx.stroke(); }
+      ctx.strokeStyle = '#43403a'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(0, 4); ctx.lineTo(11, 4); ctx.moveTo(0, 18); ctx.lineTo(11, 18); ctx.stroke();
+      ctx.restore();
+      ctx.lineWidth = 1;
+      // dunkle Schwelle am Boden (Eintritt)
+      ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.fillRect(5, 27, 22, 3);
+      break;
+    case 'kerzenschrein':
+      // Kerzenschrein (Runde 50: massiver Steinsockel mit Lichtkante, mehr Kerzen
+      // unterschiedlicher Höhe, geschmolzenes Wachs und ein warmer Lichtschein)
+      floorBase(ctx, n, theme);
+      // warmer Lichtschein hinter den Kerzen
+      ctx.fillStyle = 'rgba(248,200,120,0.10)';
+      ctx.beginPath(); ctx.arc(16, 9, 13, 0, 6.283); ctx.fill();
+      // Steinsockel
+      ctx.fillStyle = '#34302a'; ctx.fillRect(5, 15, 22, 12);
+      ctx.fillStyle = 'rgba(180,170,150,0.18)'; ctx.fillRect(5, 15, 22, 2); // Lichtkante oben
+      ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(5, 25, 22, 2);        // Schatten unten
+      // geschmolzenes Wachs am Sockelrand
+      ctx.fillStyle = '#d8cba0';
+      ctx.fillRect(8, 26, 2, 2); ctx.fillRect(17, 27, 2, 1.5); ctx.fillRect(23, 26, 2, 2);
+      // Kerzen unterschiedlicher Höhe
+      ctx.fillStyle = '#e8e0c8';
+      ctx.fillRect(8, 9, 3, 7); ctx.fillRect(13, 4, 3, 12); ctx.fillRect(18, 7, 3, 9); ctx.fillRect(23, 10, 3, 6);
+      ctx.fillStyle = 'rgba(160,150,130,0.6)'; // Wachsschatten an den Kerzen
+      ctx.fillRect(10, 9, 1, 7); ctx.fillRect(15, 4, 1, 12); ctx.fillRect(20, 7, 1, 9); ctx.fillRect(25, 10, 1, 6);
+      // Dochte
+      ctx.fillStyle = '#2a2018';
+      ctx.fillRect(9, 8, 1, 1.5); ctx.fillRect(14, 3, 1, 1.5); ctx.fillRect(19, 6, 1, 1.5); ctx.fillRect(24, 9, 1, 1.5);
+      // Flammen
+      ctx.fillStyle = '#f8d878';
+      ctx.beginPath(); ctx.ellipse(9.5, 6.5, 1.5, 2.6, 0, 0, 6.283); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(14.5, 1.5, 1.6, 2.8, 0, 0, 6.283); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(19.5, 4.5, 1.5, 2.6, 0, 0, 6.283); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(24.5, 7.5, 1.4, 2.3, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#fff4d0'; // heller Kern
+      ctx.beginPath(); ctx.arc(14.5, 2, 0.9, 0, 6.283); ctx.fill();
+      break;
+    // --- Innenräume (Feedback-Runde 9): warm und wohnlich ---
+    case 'holzboden': {
+      const g = 74 + (n % 3) * 4;
+      ctx.fillStyle = `rgb(${g},${g - 22},${g - 42})`;
+      ctx.fillRect(0, 0, TILE, TILE);
+      // Dielenbretter mit versetzten Stößen
+      ctx.fillStyle = 'rgba(30,18,8,0.5)';
+      for (let i = 0; i < 4; i++) ctx.fillRect(0, i * 8, TILE, 1);
+      ctx.fillRect(((n * 11) % 24) + 4, 1, 1, 7);
+      ctx.fillRect(((n * 17) % 24) + 4, 17, 1, 7);
+      ctx.fillStyle = 'rgba(255,220,160,0.05)';
+      ctx.fillRect(0, 0, TILE, 8);
+      break;
+    }
+    case 'teppich':
+      drawTileArt(ctx, 'holzboden', n);
+      ctx.fillStyle = '#6a2a28'; ctx.fillRect(2, 2, TILE - 4, TILE - 4);
+      ctx.strokeStyle = '#c9a227'; ctx.strokeRect(4.5, 4.5, TILE - 9, TILE - 9);
+      ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(2, TILE - 5, TILE - 4, 3);
+      break;
+    case 'haustuer':
+      ctx.fillStyle = '#8a7a62'; ctx.fillRect(0, 0, TILE, TILE);
+      ctx.fillStyle = '#2a1e12'; ctx.fillRect(0, 0, TILE, 3); ctx.fillRect(0, 0, 3, TILE); ctx.fillRect(TILE - 3, 0, 3, TILE);
+      ctx.fillStyle = '#4e3a20'; ctx.fillRect(6, 4, TILE - 12, TILE - 4);
+      ctx.fillStyle = '#3a2c16';
+      for (let i = 0; i < 3; i++) ctx.fillRect(8 + i * 6, 4, 2, TILE - 4);
+      ctx.fillStyle = '#c9a227'; ctx.fillRect(TILE - 12, 17, 3, 3);
+      break;
+    default:
+      // Unbekanntes Tile sichtbar machen statt still zu scheitern
+      ctx.fillStyle = '#3a1a3a'; ctx.fillRect(0, 0, TILE, TILE);
+      ctx.fillStyle = '#c0c0c0'; ctx.fillText('?', 13, 20);
+  }
+}
+
+// Stehende Objekte (Baum, Fels, Grabstein ...) als transparente Sprites für
+// die Y-Sortierung: der Boden liegt separat darunter (Masterprompt 5.1).
+export const STANDING_OBJECTS = new Set([
+  'baum', 'fels', 'grabstein', 'brunnen', 'brunnen_blut', 'zaun', 'erzader', 'altar',
+  'regal', 'regal_geleert', 'regal_leer', 'kerzenschrein', 'streckbank', 'streckbank_r', 'kaefig',
+  'eiserne_jungfrau', 'kohlebecken', 'palisade',
+  'bett', 'tisch', 'stuhl', 'kamin', 'tresen',
+  'kerze', 'wandfackel', 'brennholz', 'kessel',
+]);
+
+export function drawObjectArt(ctx: Ctx, name: string, n: number, theme?: CryptTheme): void {
+  ctx.clearRect(0, 0, TILE, TILE);
+  switch (name) {
+    case 'baum':
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath(); ctx.ellipse(16, 28, 9, 3.5, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#241a10'; ctx.fillRect(13, 18, 6, 10);
+      ctx.fillStyle = '#2e2014'; ctx.fillRect(13, 18, 2, 10);
+      // Krone: dunkler Rand, Grundton, zwei Lichtballen, Tiefenflecken
+      ctx.fillStyle = '#10200e'; ctx.beginPath(); ctx.arc(16, 12, 13, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#1c3018'; ctx.beginPath(); ctx.arc(16, 12, 11.5, 0, 6.283); ctx.fill();
+      ctx.fillStyle = 'rgba(40,70,34,0.85)'; ctx.beginPath(); ctx.arc(12, 9, 7, 0, 6.283); ctx.fill();
+      ctx.fillStyle = 'rgba(58,94,46,0.6)'; ctx.beginPath(); ctx.arc(10, 7, 3.5, 0, 6.283); ctx.fill();
+      ctx.fillStyle = 'rgba(8,18,6,0.5)';
+      ctx.beginPath(); ctx.arc(21, 16, 3.5, 0, 6.283); ctx.fill();
+      ctx.beginPath(); ctx.arc(14, 17, 2.5, 0, 6.283); ctx.fill();
+      break;
+    case 'fels':
+      // Felsbrocken (Runde 40, Batch 2): facettierter Granitblock mit Moos
+      detail(ctx, fels64);
+      break;
+    case 'saeule': {
+      // Steinpfeiler (Runde 40, Säulenhalle): Sockel, kannelierter Schaft,
+      // Kapitell - ragt über die Kachel hinaus für Höhenwirkung.
+      ctx.fillStyle = 'rgba(0,0,0,0.32)'; ctx.beginPath(); ctx.ellipse(16, 28, 10, 3.5, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#3a352c'; ctx.fillRect(8, 25, 16, 4);                 // Sockel
+      ctx.fillStyle = '#4e483c'; ctx.fillRect(10, 6, 12, 20);               // Schaft
+      ctx.fillStyle = 'rgba(255,246,210,0.12)'; ctx.fillRect(10, 6, 3, 20); // Lichtkante
+      ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.fillRect(19, 6, 3, 20);       // Schattenkante
+      ctx.fillStyle = 'rgba(0,0,0,0.22)';                                    // Kanneluren
+      for (const cxk of [13, 16, 19]) ctx.fillRect(cxk, 7, 1, 18);
+      ctx.fillStyle = '#56503f'; ctx.fillRect(7, 2, 18, 5);                  // Kapitell
+      ctx.fillStyle = 'rgba(255,246,210,0.14)'; ctx.fillRect(7, 2, 18, 1.5);
+      ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(7, 6, 18, 1.5);
+      // Risse
+      ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(14, 9); ctx.lineTo(16, 16); ctx.lineTo(13, 23); ctx.stroke();
+      break;
+    }
+    case 'grabstein':
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath(); ctx.ellipse(16, 27, 8, 3, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#5a564e'; ctx.fillRect(10, 8, 12, 18);
+      ctx.beginPath(); ctx.arc(16, 8, 6, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(13, 13, 6, 2);
+      break;
+    case 'brunnen': case 'brunnen_blut': {
+      // Dorfbrunnen (Runde 51 überarbeitet + Blut-Variante): runder Steinkranz
+      // mit Fugen, Wasser mit Glanz, Holzdach mit Winde/Eimer. brunnen_blut =
+      // verseucht (rotes "Wasser", Blut am Rand) bei Monster-Einfällen.
+      const blut = name === 'brunnen_blut';
+      ctx.fillStyle = 'rgba(0,0,0,0.32)'; ctx.beginPath(); ctx.ellipse(16, 30, 14, 4, 0, 0, 6.283); ctx.fill();
+      // Steinkranz
+      ctx.fillStyle = '#6a655c'; ctx.beginPath(); ctx.arc(16, 19, 14, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#7e786d'; ctx.beginPath(); ctx.arc(16, 19, 14, Math.PI, 0); ctx.fill();
+      ctx.strokeStyle = '#3a352e'; ctx.lineWidth = 1;
+      for (let a = 0; a < 8; a++) { const an = a * Math.PI / 4; ctx.beginPath(); ctx.moveTo(16 + Math.cos(an) * 10.5, 19 + Math.sin(an) * 10.5); ctx.lineTo(16 + Math.cos(an) * 14, 19 + Math.sin(an) * 14); ctx.stroke(); }
+      ctx.fillStyle = '#48443d'; ctx.beginPath(); ctx.arc(16, 19, 10.5, 0, 6.283); ctx.fill();
+      // Wasser (oder Blut)
+      ctx.fillStyle = blut ? '#5a0c0c' : '#1a3a4a'; ctx.beginPath(); ctx.arc(16, 19, 8.5, 0, 6.283); ctx.fill();
+      ctx.fillStyle = blut ? 'rgba(150,20,20,0.5)' : 'rgba(150,200,220,0.32)';
+      ctx.beginPath(); ctx.ellipse(13, 16, 3, 1.6, 0.5, 0, 6.283); ctx.fill();
+      if (blut) { // Blut quillt über den Rand
+        ctx.fillStyle = 'rgba(110,12,12,0.7)';
+        ctx.beginPath(); ctx.ellipse(16, 27, 9, 3, 0, 0, 6.283); ctx.fill();
+        ctx.fillRect(9, 19, 2.5, 8); ctx.fillRect(21, 20, 2.5, 7);
+      }
+      // Holzdach + Winde
+      ctx.strokeStyle = '#3a2c1c'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(5, 19); ctx.lineTo(5, 5); ctx.moveTo(27, 19); ctx.lineTo(27, 5); ctx.stroke();
+      ctx.fillStyle = '#5a3a26';
+      ctx.beginPath(); ctx.moveTo(2, 6); ctx.lineTo(16, 0); ctx.lineTo(30, 6); ctx.lineTo(28, 8); ctx.lineTo(16, 3); ctx.lineTo(4, 8); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#2a2018'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(5, 11); ctx.lineTo(27, 11); ctx.stroke();
+      ctx.fillStyle = '#4a3826'; ctx.fillRect(14, 11, 5, 4); // Eimer
+      break;
+    }
+    case 'wald':
+      // Dichter Wald (Fallback): wie der Baum, nur dunkler und voller
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath(); ctx.ellipse(16, 28, 10, 3.5, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#0c180a'; ctx.beginPath(); ctx.arc(16, 13, 14, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#15240f'; ctx.beginPath(); ctx.arc(16, 13, 12.5, 0, 6.283); ctx.fill();
+      ctx.fillStyle = 'rgba(34,56,28,0.85)'; ctx.beginPath(); ctx.arc(12, 10, 7, 0, 6.283); ctx.fill();
+      ctx.fillStyle = 'rgba(6,12,4,0.6)';
+      ctx.beginPath(); ctx.arc(21, 17, 4, 0, 6.283); ctx.fill();
+      break;
+    case 'baumstumpf':
+      // Frisch gefällter Stumpf mit Jahresringen
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath(); ctx.ellipse(16, 22, 8, 3, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#3a2c16'; ctx.fillRect(10, 14, 12, 7);
+      ctx.fillStyle = '#8a6a42'; ctx.beginPath(); ctx.ellipse(16, 14, 6.5, 4, 0, 0, 6.283); ctx.fill();
+      ctx.strokeStyle = '#6a4c28';
+      ctx.beginPath(); ctx.ellipse(16, 14, 4, 2.4, 0, 0, 6.283); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(16, 14, 1.8, 1, 0, 0, 6.283); ctx.stroke();
+      break;
+    case 'zaun':
+      // Zaun (Runde 40, Batch 2): verwitterte Latten mit Maserung und Nägeln
+      detail(ctx, zaun64);
+      break;
+    case 'palisade': case 'palisade_seite':
+      for (let i = 0; i < 4; i++) {
+        const px2 = 1 + i * 8;
+        ctx.fillStyle = i % 2 === (n % 2) ? '#5c4427' : '#4e3a20';
+        ctx.fillRect(px2, 6, 7, 24);
+        ctx.fillStyle = 'rgba(255,255,255,0.07)';
+        ctx.fillRect(px2, 6, 2, 24);
+        ctx.fillStyle = '#3a2c16';
+        ctx.beginPath();
+        ctx.moveTo(px2, 6); ctx.lineTo(px2 + 3.5, 0); ctx.lineTo(px2 + 7, 6);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(42,30,16,0.85)';
+      ctx.fillRect(0, 14, TILE, 3);
+      ctx.fillRect(0, 24, TILE, 3);
+      break;
+    case 'bett':
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath(); ctx.ellipse(16, 27, 12, 3.5, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#4e3a20'; ctx.fillRect(4, 6, 24, 21); // Rahmen
+      ctx.fillStyle = '#7a3030'; ctx.fillRect(6, 12, 20, 13); // Decke
+      ctx.fillStyle = 'rgba(255,255,255,0.10)'; ctx.fillRect(6, 12, 20, 3);
+      ctx.fillStyle = '#e8e0c8'; ctx.fillRect(8, 7, 16, 5); // Kissen
+      ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect(8, 10, 16, 2);
+      break;
+    case 'tisch':
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath(); ctx.ellipse(16, 27, 12, 3.5, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#3a2c16'; ctx.fillRect(6, 20, 3, 7); ctx.fillRect(23, 20, 3, 7); // Beine
+      ctx.fillStyle = '#6a4c28'; ctx.fillRect(3, 9, 26, 12); // Platte
+      ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(3, 9, 26, 3);
+      ctx.fillStyle = '#e8e0c8'; ctx.beginPath(); ctx.arc(12, 14, 3, 0, 6.283); ctx.fill(); // Teller
+      ctx.fillStyle = '#f8d878'; ctx.beginPath(); ctx.ellipse(21, 12, 1.4, 2.4, 0, 0, 6.283); ctx.fill(); // Kerze
+      break;
+    case 'stuhl':
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.beginPath(); ctx.ellipse(16, 26, 7, 2.5, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#5a4427'; ctx.fillRect(10, 8, 12, 4);  // Lehne
+      ctx.fillRect(10, 14, 12, 7); // Sitz
+      ctx.fillStyle = '#3a2c16'; ctx.fillRect(10, 21, 2, 5); ctx.fillRect(20, 21, 2, 5);
+      break;
+    case 'kamin':
+      ctx.fillStyle = '#55504a'; ctx.fillRect(3, 2, 26, 26); // Steinrahmen
+      ctx.fillStyle = '#3a362e'; ctx.fillRect(3, 2, 26, 5);
+      ctx.fillStyle = '#16100a'; ctx.fillRect(7, 9, 18, 17);  // Feuerraum
+      ctx.fillStyle = '#d8842a'; // Flammen
+      ctx.beginPath(); ctx.moveTo(10, 25); ctx.quadraticCurveTo(13, 14, 16, 25); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(15, 25); ctx.quadraticCurveTo(19, 12, 22, 25); ctx.fill();
+      ctx.fillStyle = '#f8d878';
+      ctx.beginPath(); ctx.moveTo(13, 25); ctx.quadraticCurveTo(16, 18, 19, 25); ctx.fill();
+      ctx.fillStyle = '#2a1e12'; ctx.fillRect(7, 24, 18, 3); // Glutbett
+      break;
+    case 'tresen':
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath(); ctx.ellipse(16, 27, 13, 3.5, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#4e3a20'; ctx.fillRect(2, 12, 28, 14); // Korpus
+      ctx.fillStyle = '#6a4c28'; ctx.fillRect(1, 8, 30, 6);   // Platte
+      ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(1, 8, 30, 2);
+      ctx.fillStyle = '#8a6a4a'; ctx.beginPath(); ctx.ellipse(9, 9, 2.4, 3, 0, 0, 6.283); ctx.fill(); // Krug
+      ctx.fillStyle = '#b8bcc4'; ctx.beginPath(); ctx.arc(22, 10, 2, 0, 6.283); ctx.fill(); // Becher
+      break;
+    case 'kerze':
+      // Kerzenständer (Kandelaber): Fuß, Schaft, Kerze - Flamme kommt als Overlay
+      ctx.fillStyle = 'rgba(0,0,0,0.28)';
+      ctx.beginPath(); ctx.ellipse(16, 27, 6, 2.4, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#3a3026'; ctx.fillRect(14, 24, 4, 3);     // Fuß
+      ctx.fillStyle = '#6a5a3a'; ctx.fillRect(15, 14, 2, 11);    // Schaft (Messing)
+      ctx.fillStyle = '#8a7448'; ctx.fillRect(15, 14, 1, 11);
+      ctx.fillStyle = '#7a6a48'; ctx.fillRect(12, 22, 8, 2);     // Teller
+      ctx.fillStyle = '#e8e0c8'; ctx.fillRect(14, 8, 4, 7);      // Kerze (Wachs)
+      ctx.fillStyle = '#fff8e0'; ctx.fillRect(14, 8, 1, 7);
+      ctx.fillStyle = '#2a2018'; ctx.fillRect(15, 7, 1, 2);      // Docht
+      break;
+    case 'wandfackel':
+      // Wandfackel: Eisenhalter + Fackelkopf - Flamme kommt als Overlay
+      ctx.fillStyle = '#2a2620'; ctx.fillRect(14, 10, 4, 16);    // Stiel
+      ctx.fillStyle = '#3a3630'; ctx.fillRect(14, 10, 1, 16);
+      ctx.fillStyle = '#4a4036'; ctx.fillRect(11, 16, 10, 3);    // Wandhalterung
+      ctx.fillStyle = '#5a4e40'; ctx.fillRect(11, 16, 10, 1);
+      ctx.fillStyle = '#241c12'; ctx.beginPath(); ctx.ellipse(16, 9, 4, 3, 0, 0, 6.283); ctx.fill(); // Pechkopf
+      break;
+    case 'brennholz':
+      // Brennholzstapel neben dem Kamin
+      ctx.fillStyle = 'rgba(0,0,0,0.28)';
+      ctx.beginPath(); ctx.ellipse(16, 26, 12, 3, 0, 0, 6.283); ctx.fill();
+      for (const [ly, lx0] of [[20, 5], [20, 13], [20, 21], [15, 9], [15, 17], [11, 13]] as Array<[number, number]>) {
+        ctx.fillStyle = '#5a4026'; ctx.fillRect(lx0, ly, 7, 5);
+        ctx.fillStyle = '#cdb98a'; ctx.beginPath(); ctx.ellipse(lx0 + 0.5, ly + 2.5, 1.6, 2.2, 0, 0, 6.283); ctx.fill(); // Schnittfläche
+        ctx.fillStyle = '#9a7a4a'; ctx.beginPath(); ctx.ellipse(lx0 + 0.5, ly + 2.5, 0.8, 1.3, 0, 0, 6.283); ctx.fill();
+      }
+      break;
+    case 'kessel':
+      // Kessel über dem Feuer (Dreifuß + schwarzer Topf)
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath(); ctx.ellipse(16, 27, 9, 3, 0, 0, 6.283); ctx.fill();
+      ctx.strokeStyle = '#2a2620'; ctx.lineWidth = 2;            // Dreifuß
+      ctx.beginPath(); ctx.moveTo(9, 26); ctx.lineTo(13, 16); ctx.moveTo(23, 26); ctx.lineTo(19, 16); ctx.moveTo(16, 27); ctx.lineTo(16, 18); ctx.stroke();
+      ctx.fillStyle = '#1c1a18'; ctx.beginPath(); ctx.ellipse(16, 16, 9, 8, 0, 0, 6.283); ctx.fill(); // Topf
+      ctx.fillStyle = '#2e2a26'; ctx.beginPath(); ctx.ellipse(16, 11, 8, 3, 0, 0, 6.283); ctx.fill(); // Rand
+      ctx.fillStyle = '#0e0c0a'; ctx.beginPath(); ctx.ellipse(16, 11, 6.5, 2.2, 0, 0, 6.283); ctx.fill(); // Öffnung
+      ctx.strokeStyle = '#3a3630'; ctx.lineWidth = 1.4;          // Henkel
+      ctx.beginPath(); ctx.arc(16, 11, 8, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+      break;
+    default:
+      drawTileArt(ctx, name, n, theme);
+  }
+}
+
+// Zerstörbare Objekte als eigenständige Sprites (über dem Boden)
+// Detaillierte 64px-Variante (Runde 40, Autorwunsch "maximale Details in
+// 64x64 runterskaliert"). Objekte mittig (Zentrum ~y30), Bodenschatten unten.
+export function drawBreakable(ctx: Ctx, kind: string): void {
+  const cx = 32;
+  ctx.clearRect(0, 0, 64, 64);
+  ctx.fillStyle = 'rgba(0,0,0,0.26)'; ctx.beginPath(); ctx.ellipse(cx, 50, 16, 4.5, 0, 0, 6.283); ctx.fill();
+  switch (kind) {
+    case 'fass': {
+      const cy = 30, rx = 15, ry = 19;
+      const body = () => { ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, 6.283); };
+      ctx.fillStyle = '#684a28'; body(); ctx.fill();
+      ctx.save(); body(); ctx.clip();
+      ctx.fillStyle = 'rgba(255,238,205,0.13)'; ctx.fillRect(cx - rx, cy - ry, 9, ry * 2);  // Lichtseite
+      ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(cx + 6, cy - ry, 11, ry * 2);          // Schattenseite
+      ctx.strokeStyle = 'rgba(38,28,18,0.45)'; ctx.lineWidth = 1;
+      for (const dx of [-10, -4, 2, 8]) { ctx.beginPath(); ctx.moveTo(cx + dx, cy - ry); ctx.lineTo(cx + dx, cy + ry); ctx.stroke(); }
+      ctx.fillStyle = '#322820'; for (const yy of [cy - ry + 5, cy, cy + ry - 6]) ctx.fillRect(cx - rx, yy, rx * 2, 3);   // Reifen
+      ctx.fillStyle = 'rgba(210,200,180,0.3)'; for (const yy of [cy - ry + 5, cy, cy + ry - 6]) ctx.fillRect(cx - rx, yy, rx * 2, 1);
+      ctx.restore();
+      ctx.fillStyle = '#5a3f22'; ctx.beginPath(); ctx.ellipse(cx, cy - ry, rx - 1, 4.4, 0, 0, 6.283); ctx.fill();        // Deckel
+      ctx.fillStyle = '#73512c'; ctx.beginPath(); ctx.ellipse(cx, cy - ry, rx - 4, 2.6, 0, 0, 6.283); ctx.fill();
+      break;
+    }
+    case 'kiste': {
+      const x0 = 12, y0 = 12, w = 40, h = 38;
+      ctx.fillStyle = '#7a5c34'; ctx.fillRect(x0, y0, w, h);
+      ctx.fillStyle = 'rgba(255,230,190,0.07)'; for (let px = x0 + 4; px < x0 + w; px += 8) ctx.fillRect(px, y0, 1, h);   // Maserung
+      ctx.fillStyle = 'rgba(38,26,14,0.42)'; for (let py = y0 + 10; py < y0 + h; py += 10) ctx.fillRect(x0, py, w, 1.6); // Planken
+      ctx.fillStyle = '#8a6a3e'; ctx.fillRect(x0, y0, w, 8); ctx.fillStyle = 'rgba(38,26,14,0.42)'; ctx.fillRect(x0, y0 + 8, w, 1.6); // Deckel
+      ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(x0 + w - 6, y0, 6, h); ctx.fillRect(x0, y0 + h - 5, w, 5);        // Schatten
+      ctx.fillStyle = '#3a3026'; for (const [bx, by] of [[x0, y0], [x0 + w - 6, y0], [x0, y0 + h - 6], [x0 + w - 6, y0 + h - 6]]) ctx.fillRect(bx, by, 6, 6); // Eckbeschläge
+      ctx.fillStyle = '#5a5048'; for (const [bx, by] of [[x0 + 3, y0 + 3], [x0 + w - 3, y0 + 3], [x0 + 3, y0 + h - 3], [x0 + w - 3, y0 + h - 3]]) { ctx.beginPath(); ctx.arc(bx, by, 1.1, 0, 6.283); ctx.fill(); }
+      ctx.strokeStyle = '#4a3a20'; ctx.lineWidth = 1; ctx.strokeRect(x0 + 0.5, y0 + 0.5, w - 1, h - 1);
+      break;
+    }
+    case 'krug': {
+      const cy = 32;
+      ctx.fillStyle = '#9a6a44'; ctx.beginPath(); ctx.ellipse(cx, cy + 6, 13, 15, 0, 0, 6.283); ctx.fill();             // Bauch
+      ctx.fillStyle = '#8a5e3a'; ctx.fillRect(cx - 5, cy - 12, 10, 13);                                                 // Hals
+      ctx.strokeStyle = '#8a5e3a'; ctx.lineWidth = 3.4; ctx.beginPath(); ctx.arc(cx + 12, cy - 1, 6, -1.2, 1.2); ctx.stroke(); ctx.lineWidth = 1; // Henkel
+      ctx.fillStyle = '#7a5230'; ctx.beginPath(); ctx.ellipse(cx, cy - 12, 6, 2.6, 0, 0, 6.283); ctx.fill();            // Mündung
+      ctx.fillStyle = '#5a3c22'; ctx.beginPath(); ctx.ellipse(cx, cy - 12, 4, 1.6, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = 'rgba(255,240,210,0.18)'; ctx.beginPath(); ctx.ellipse(cx - 5, cy + 3, 3.2, 7, 0, 0, 6.283); ctx.fill(); // Glasur
+      ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.ellipse(cx + 7, cy + 8, 3.4, 9, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#6a4226'; ctx.fillRect(cx - 13, cy + 1, 26, 2);                                                  // Zierband
+      break;
+    }
+    case 'knochenhaufen': {
+      const cy = 34;
+      ctx.strokeStyle = '#cfc4a8'; ctx.lineWidth = 3.4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(cx - 13, cy + 6); ctx.lineTo(cx + 13, cy - 3); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx - 11, cy - 5); ctx.lineTo(cx + 11, cy + 9); ctx.stroke();
+      ctx.lineCap = 'butt'; ctx.lineWidth = 1;
+      ctx.fillStyle = '#e0d6ba'; ctx.beginPath(); ctx.arc(cx, cy - 5, 8, 0, 6.283); ctx.fill();                         // Schädel
+      ctx.fillStyle = '#cfc4a8'; ctx.fillRect(cx - 5, cy + 1, 10, 5);                                                   // Kiefer
+      ctx.fillStyle = '#1a1410'; ctx.beginPath(); ctx.arc(cx - 3, cy - 6, 2.2, 0, 6.283); ctx.arc(cx + 3, cy - 6, 2.2, 0, 6.283); ctx.fill();
+      ctx.fillRect(cx - 1, cy - 2, 2, 2.4);                                                                              // Nase
+      ctx.strokeStyle = '#9a8e70'; for (let i = -3; i <= 3; i += 2) { ctx.beginPath(); ctx.moveTo(cx + i, cy + 1); ctx.lineTo(cx + i, cy + 5); ctx.stroke(); }
+      break;
+    }
+    case 'spinnwebe': {
+      ctx.strokeStyle = 'rgba(220,224,230,0.42)'; ctx.lineWidth = 0.8;
+      for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.moveTo(4, 4); ctx.lineTo(4 + Math.cos(i * 0.28) * 56, 4 + Math.sin(i * 0.28) * 56); ctx.stroke(); }
+      for (let r = 12; r <= 52; r += 10) { ctx.beginPath(); ctx.arc(4, 4, r, 0, 1.55); ctx.stroke(); }
+      ctx.lineWidth = 1;
+      break;
+    }
+    case 'heuhaufen': {
+      const cy = 36;
+      ctx.fillStyle = '#b89a4e'; ctx.beginPath(); ctx.ellipse(cx, cy, 20, 14, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#a8893e'; ctx.beginPath(); ctx.ellipse(cx, cy + 3, 20, 11, 0, 0, 6.283); ctx.fill();
+      ctx.strokeStyle = '#8a7038'; ctx.lineWidth = 1;
+      for (let i = 0; i < 24; i++) { const a = (i * 2.39) % 6.283; const r1 = 5 + (i * 7 % 13); const ex = cx + Math.cos(a) * r1, ey = cy + Math.sin(a) * r1 * 0.7; ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex + Math.cos(a) * 4, ey + Math.sin(a) * 3); ctx.stroke(); }
+      ctx.fillStyle = 'rgba(255,240,180,0.22)'; ctx.beginPath(); ctx.ellipse(cx - 3, cy - 5, 10, 4, 0, 0, 6.283); ctx.fill();
+      break;
+    }
+  }
+}

@@ -1,0 +1,2240 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Ravensmoor - Der Preis der Unsterblichkeit</title>
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@600;800&display=swap" rel="stylesheet">
+<style>
+  :root{ --blood:#8c1a1a; --bone:#d8cfb8; --gold:#c9a227; --mana:#3a5a9c; --panel:#171108; --line:#4a3a26; }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;background:#0a0806;overflow:hidden;font-family:'IM Fell English',serif;color:var(--bone);touch-action:none;overscroll-behavior:none}
+  #wrap{position:relative;width:100vw;height:100vh}
+  canvas{display:block;width:100%;height:100%;cursor:crosshair}
+  .cz{font-family:'Cinzel',serif}
+
+  /* ---------- HUD ---------- */
+  #hud{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:flex-end;justify-content:space-between;padding:10px 16px;pointer-events:none}
+  .orb{width:86px;height:86px;border-radius:50%;position:relative;overflow:hidden;border:3px solid #3a2f24;
+       box-shadow:0 0 18px rgba(0,0,0,.8), inset 0 0 16px rgba(0,0,0,.9);background:#120505}
+  .orb .fill{position:absolute;left:0;right:0;bottom:0;height:100%;transition:height .12s ease}
+  #hpfill{background:radial-gradient(circle at 35% 30%, #e04a3a 0%, #8c1a1a 55%, #470c0c 100%)}
+  #mpfill{background:radial-gradient(circle at 35% 30%, #6a8ad8 0%, #2c4884 55%, #101c3a 100%)}
+  .orb .label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+       font-family:'Cinzel',serif;font-size:15px;font-weight:800;color:#f3e6c8;text-shadow:0 1px 3px #000}
+  #center{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;margin:0 14px}
+  #msglog{display:flex;flex-direction:column-reverse;align-items:center;height:62px;gap:1px;justify-content:flex-start}
+  .msg{font-size:15px;color:#cdbf9d;text-shadow:0 1px 2px #000}
+  .msg.gold{color:var(--gold)} .msg.bad{color:#d96b5a} .msg.magic{color:#8aa6e8}
+  #skillbar{display:flex;gap:6px}
+  .skill{width:46px;height:46px;border:1px solid var(--line);background:#100b06;position:relative;display:flex;align-items:center;justify-content:center}
+  .skill .ico{font-size:20px}
+  .skill .key{position:absolute;left:3px;top:1px;font-size:11px;color:#8a7a5a;font-family:'Cinzel',serif}
+  .skill .cost{position:absolute;right:3px;bottom:1px;font-size:11px;color:#6a8ad8}
+  .skill.locked{opacity:.32}
+  .skill .cd{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.72)}
+  #xpbar{width:min(420px,46vw);height:7px;border:1px solid var(--line);background:#0e0a06;overflow:hidden}
+  #xpfill{height:100%;width:0%;background:linear-gradient(90deg,#5a4a8c,#8c7ad0)}
+  #stats{display:flex;gap:16px;font-family:'Cinzel',serif;font-size:12px;letter-spacing:1px;color:#bfa86f;text-shadow:0 1px 2px #000}
+  #belt{display:flex;flex-direction:column;align-items:center;gap:4px}
+  .beltrow{display:flex;gap:6px;align-items:center;font-size:13px}
+  .flask{width:20px;height:26px;border-radius:3px 3px 7px 7px;border:1px solid var(--line)}
+  .flask.hp{background:radial-gradient(circle at 35% 30%, #e85a4a, #6a0f0f)}
+  .flask.mp{background:radial-gradient(circle at 35% 30%, #5a7ae0, #14245a)}
+  #hint{position:absolute;left:50%;top:64%;transform:translateX(-50%);font-size:17px;color:#e8dcb8;
+        text-shadow:0 1px 3px #000;pointer-events:none;background:rgba(10,7,4,.55);padding:3px 14px;border:1px solid rgba(90,74,50,.5)}
+
+  /* ---------- Panels ---------- */
+  .panel{position:absolute;background:linear-gradient(#1a1209,#120c06);border:1px solid var(--line);
+         box-shadow:0 0 30px rgba(0,0,0,.85);z-index:6}
+  .panel h2{font-family:'Cinzel',serif;font-size:16px;letter-spacing:2px;color:var(--gold);
+            border-bottom:1px solid var(--line);padding:9px 14px}
+  #inv{right:14px;top:14px;bottom:120px;width:320px;display:none;flex-direction:column}
+  #invStats{padding:9px 14px;font-size:14px;line-height:1.55;border-bottom:1px solid var(--line);color:#c8b890}
+  #invList{flex:1;overflow-y:auto;padding:6px}
+  .item{padding:7px 8px;border:1px solid transparent;margin-bottom:3px;cursor:pointer}
+  .item:hover{border-color:var(--line);background:rgba(255,255,255,.03)}
+  .item .nm{font-size:15px}
+  .item .st{font-size:12.5px;color:#9a8c6e}
+  .item .eq{float:right;font-size:11px;color:var(--gold);font-family:'Cinzel',serif}
+  .r0{color:#d8cfb8}.r1{color:#8aa6e8}.r2{color:#e0b53a;text-shadow:0 0 5px rgba(224,181,58,.35)}
+  .r3{color:#b048e8;text-shadow:0 0 7px rgba(176,72,232,.6)}
+  .item{border-left:3px solid transparent}
+  .ir1{border-left-color:#8aa6e8}.ir2{border-left-color:#e0b53a}
+  .ir3{border-left-color:#b048e8;background:linear-gradient(90deg,rgba(176,72,232,.08),transparent)}
+  #dlg{left:50%;transform:translateX(-50%);bottom:130px;width:min(620px,92vw);display:none}
+  #dlgName{font-family:'Cinzel',serif;color:var(--gold);font-size:15px;letter-spacing:1px;padding:8px 16px 0}
+  #dlgText{padding:8px 16px 12px;font-size:17px;line-height:1.55;font-style:italic;color:#e0d4b4}
+  #dlgBtns{display:flex;gap:8px;padding:0 16px 12px;flex-wrap:wrap}
+  .btn{font-family:'Cinzel',serif;font-size:13px;letter-spacing:1px;padding:7px 16px;background:#221808;
+       color:var(--bone);border:1px solid var(--line);cursor:pointer}
+  .btn:hover{border-color:var(--gold);color:var(--gold)}
+  #shop{left:50%;top:50%;transform:translate(-50%,-50%);width:min(440px,92vw);display:none}
+  #shopList{padding:8px}
+  .soffer{display:flex;justify-content:space-between;align-items:center;padding:7px 8px;border-bottom:1px solid rgba(74,58,38,.4)}
+  .soffer .pr{color:var(--gold);margin-right:10px;white-space:nowrap}
+  #shopFoot{padding:8px 14px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line)}
+
+  /* ---------- Overlays ---------- */
+  .overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+       background:radial-gradient(ellipse at center,rgba(8,5,3,.82),rgba(0,0,0,.97));text-align:center;gap:14px;z-index:10;padding:20px}
+  .overlay h1{font-family:'Cinzel',serif;font-size:clamp(28px,5.5vw,58px);font-weight:800;letter-spacing:5px;color:#d8cfb8;
+       text-shadow:0 0 26px rgba(201,162,39,.25),0 2px 0 #000}
+  .overlay h1 span{color:var(--blood)}
+  .overlay p{font-size:18px;color:#a89878;max-width:640px;line-height:1.6;font-style:italic}
+  .overlay .keys{font-style:normal;font-size:14.5px;color:#8a7a5a;line-height:1.9}
+  .overlay button{font-family:'Cinzel',serif;font-size:17px;letter-spacing:3px;padding:12px 34px;background:#1c1410;
+       color:#d8cfb8;border:1px solid #5a4a32;cursor:pointer;margin-top:6px}
+  .overlay button:hover{background:#2a1e14;border-color:var(--gold);color:var(--gold)}
+  #death h1{color:var(--blood)}
+  .hidden{display:none !important}
+  /* ---------- Touch-Steuerung ---------- */
+  #touch{position:absolute;inset:0;pointer-events:none;z-index:4}
+  #joyZone{position:absolute;left:0;top:0;bottom:0;width:45%;pointer-events:auto;touch-action:none}
+  #joyBase{position:absolute;left:60px;bottom:130px;width:120px;height:120px;border-radius:50%;
+    border:2px solid rgba(216,207,184,.35);background:rgba(20,14,8,.35);opacity:.55}
+  #joyStick{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;
+    background:rgba(216,207,184,.5);border:2px solid rgba(216,207,184,.6)}
+  #btns{position:absolute;right:12px;bottom:120px;display:flex;flex-direction:column;gap:10px;
+    align-items:flex-end;pointer-events:auto}
+  .brow{display:flex;gap:10px;justify-content:flex-end}
+  .tb{width:60px;height:60px;border-radius:50%;border:2px solid #5a4a32;background:rgba(28,20,12,.78);
+    color:#d8cfb8;font-size:22px;touch-action:none;pointer-events:auto;font-family:'Cinzel',serif}
+  .tb:active{background:rgba(90,74,50,.85);border-color:var(--gold)}
+  #tbAtk{width:86px;height:86px;font-size:34px}
+  #tbE{position:absolute;left:50%;transform:translateX(-50%);bottom:200px;width:72px;height:72px;
+    font-size:28px;border-color:#c9a227;color:#c9a227;pointer-events:auto}
+  #tbInv{position:absolute;right:12px;top:12px;width:52px;height:52px;font-size:22px;pointer-events:auto}
+  @media (pointer:coarse){
+    #skillbar{display:none}
+    .orb{width:60px !important;height:60px !important}
+    .orb .label{font-size:12px !important}
+    #hint{top:18%;font-size:15px}
+    #stats{font-size:10px;gap:8px}
+    #msglog{height:46px}
+    #inv{right:8px;top:8px;bottom:8px;width:min(320px,86vw)}
+  }
+  /* ---------- Hauptmenü & Einstellungen ---------- */
+  .menuCol{display:flex;flex-direction:column;gap:10px;align-items:center;margin-top:6px}
+  .menuRow{display:flex;gap:12px;margin-top:10px}
+  .overlay button:disabled{opacity:.35;cursor:default;pointer-events:none}
+  #settings{justify-content:flex-start;padding-top:5vh}
+  #setBody{width:min(540px,92vw);max-height:58vh;overflow-y:auto;text-align:left;margin:8px 0;padding-right:8px}
+  .setSec{font-family:'Cinzel',serif;letter-spacing:2px;color:#c9a227;font-size:13px;margin:16px 0 6px;border-bottom:1px solid var(--line);padding-bottom:3px}
+  .setRow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0;font-size:15px}
+  .setRow input[type=range]{flex:1;max-width:190px;accent-color:#c9a227}
+  .setVal{width:48px;text-align:right;color:#c9a227;font-size:13px}
+  .setTgl,.setKey{font-family:'Cinzel',serif;border:1px solid var(--line);background:rgba(28,20,12,.8);color:#d8cfb8;padding:5px 14px;cursor:pointer;font-size:12px;letter-spacing:1px;min-width:104px}
+  .setTgl.on{color:#c9a227;border-color:#c9a227}
+  .setKey{min-width:136px}
+  .setTgl:hover,.setKey:hover{border-color:#c9a227}
+  body.lefty #joyZone{left:auto;right:0}
+  body.lefty #joyBase{left:auto;right:60px}
+  body.lefty #btns{right:auto;left:12px;align-items:flex-start}
+  body.lefty .brow{justify-content:flex-start}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game"></canvas>
+  <div id="hint" class="hidden"></div>
+
+  <div id="hud">
+    <div class="orb"><div class="fill" id="hpfill"></div><div class="label" id="hptext"></div></div>
+    <div id="center">
+      <div id="msglog"></div>
+      <div id="skillbar"></div>
+      <div id="xpbar"><div id="xpfill"></div></div>
+      <div id="stats">
+        <span id="st-level">STUFE 1</span><span id="st-area"></span><span id="st-gold">0 GOLD</span><span>I - INVENTAR</span>
+      </div>
+    </div>
+    <div id="belt">
+      <div class="beltrow"><div class="flask hp"></div><span id="potCount">x0</span><span style="color:#8a7a5a">Q</span></div>
+      <div class="beltrow"><div class="flask mp"></div><span id="mpotCount">x0</span><span style="color:#8a7a5a">F</span></div>
+      <div class="orb" style="width:70px;height:70px"><div class="fill" id="mpfill"></div><div class="label" id="mptext"></div></div>
+    </div>
+  </div>
+
+  <div class="panel" id="inv">
+    <h2>INVENTAR</h2>
+    <div id="invStats"></div>
+    <div id="invList"></div>
+  </div>
+
+  <div class="panel" id="dlg">
+    <div id="dlgName"></div>
+    <div id="dlgText"></div>
+    <div id="dlgBtns"></div>
+  </div>
+
+  <div class="panel" id="shop">
+    <h2 id="shopTitle">HANDEL</h2>
+    <div id="shopList"></div>
+    <div id="shopFoot"><span id="shopGold"></span><button class="btn" id="shopClose">Schließen</button></div>
+  </div>
+
+  <div id="touch" class="hidden">
+    <div id="joyZone"><div id="joyBase"><div id="joyStick"></div></div></div>
+    <div id="btns">
+      <div class="brow"><button class="tb" id="tbS1">✦</button><button class="tb" id="tbS2">☩</button><button class="tb" id="tbS3">❧</button></div>
+      <div class="brow"><button class="tb" id="tbPot">🧪</button><button class="tb" id="tbRoll">⟳</button><button class="tb" id="tbBlk">🛡</button></div>
+      <div class="brow"><button class="tb" id="tbAtk">⚔</button></div>
+    </div>
+    <button class="tb hidden" id="tbE">E</button>
+    <button class="tb" id="tbInv">🎒</button>
+  </div>
+
+  <div class="overlay" id="title">
+    <h1>RAVENSMOOR</h1>
+    <p style="font-family:'Cinzel',serif;font-style:normal;letter-spacing:3px;font-size:15px;color:#c9a227">DER PREIS DER UNSTERBLICHKEIT</p>
+    <p>Anno Domini 1635. Der Krieg wütet seit siebzehn Jahren, die Pest hat das Land geleert, und die Schweden haben das Kirchensilber geraubt. Seitdem, so flüstern die Leute von Ravensmoor, ruhen die Toten unter der Kirche nicht mehr. Du wurdest entsandt, der Sache auf den Grund zu gehen.</p>
+    <div class="menuCol">
+      <button id="btnStart">NEUES SPIEL</button>
+      <button id="btnLoad">LADEN</button>
+      <button id="btnSettings">EINSTELLUNGEN</button>
+    </div>
+    <p class="keys">Steuerung &amp; Tastenbelegung unter EINSTELLUNGEN · am Handy: Joystick + Tasten</p>
+  </div>
+
+  <div class="overlay hidden" id="settings">
+    <h1 style="font-size:32px">EINSTELLUNGEN</h1>
+    <div id="setBody">
+      <div class="setSec">AUDIO</div>
+      <div class="setRow"><span>Lautstärke</span><input type="range" id="setVol" min="0" max="100" step="5"><span class="setVal" id="setVolV"></span></div>
+      <div class="setSec">GRAFIK &amp; EFFEKTE</div>
+      <div class="setRow"><span>Helligkeit</span><input type="range" id="setBright" min="70" max="140" step="5"><span class="setVal" id="setBrightV"></span></div>
+      <div class="setRow"><span>Bildschirmwackeln bei Treffern</span><button class="setTgl" id="setShake"></button></div>
+      <div class="setRow"><span>Schadenszahlen</span><button class="setTgl" id="setDmg"></button></div>
+      <div class="setRow"><span>Blut &amp; Überreste</span><button class="setTgl" id="setBlood"></button></div>
+      <div class="setSec">TASTATURBELEGUNG (PC)</div>
+      <div id="setKeys"></div>
+      <div class="setSec">HANDY</div>
+      <div class="setRow"><span>Linkshänder-Modus (Joystick rechts)</span><button class="setTgl" id="setLefty"></button></div>
+    </div>
+    <div class="menuRow">
+      <button id="btnSetReset">STANDARD</button>
+      <button id="btnSetBack">ZURÜCK</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="death">
+    <h1>DU BIST GEFALLEN</h1>
+    <p id="deathText"></p>
+    <button id="btnRetry">IN RAVENSMOOR ERWACHEN</button>
+  </div>
+
+  <div class="overlay hidden" id="ending">
+    <h1 id="endTitle"></h1>
+    <p id="endText"></p>
+    <button id="btnContinue">WEITERSPIELEN</button>
+  </div>
+
+  <div class="overlay hidden" id="pause"><h1>PAUSE</h1><p class="keys">P - Weiter</p></div>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+/* ============================================================
+   GRUNDLAGEN
+============================================================ */
+const TILE = 32;
+const cv = document.getElementById('game');
+const ctx = cv.getContext('2d');
+const lightCv = document.createElement('canvas');
+const lctx = lightCv.getContext('2d');
+function cutLight(x,y,r){
+  const g = lctx.createRadialGradient(x,y,r*0.2,x,y,r);
+  g.addColorStop(0,'rgba(0,0,0,1)');
+  g.addColorStop(0.55,'rgba(0,0,0,0.6)');
+  g.addColorStop(1,'rgba(0,0,0,0)');
+  lctx.fillStyle=g;
+  lctx.beginPath(); lctx.arc(x,y,r,0,6.283); lctx.fill();
+}
+let W = 0, H = 0;
+function resize(){ W = cv.width = innerWidth; H = cv.height = innerHeight; }
+addEventListener('resize', resize); resize();
+
+const rnd = (a,b) => a + Math.random()*(b-a);
+const ri  = (a,b) => Math.floor(rnd(a,b+1));
+const pick = arr => arr[ri(0,arr.length-1)];
+const dist = (a,b) => Math.hypot(a.x-b.x, a.y-b.y);
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const $ = id => document.getElementById(id);
+
+const DEF_SETTINGS={vol:60,bright:100,shake:true,dmgNums:true,blood:true,lefty:false,
+  kb:{roll:' ',interact:'e',inv:'i',pot:'q',mpot:'f',s1:'1',s2:'2',s3:'3',pause:'p'}};
+let SETTINGS=JSON.parse(JSON.stringify(DEF_SETTINGS));
+try{
+  const _s=JSON.parse(localStorage.getItem('ravensmoor_settings_v1'));
+  if(_s){ Object.assign(SETTINGS,_s); SETTINGS.kb=Object.assign({},DEF_SETTINGS.kb,_s.kb||{}); }
+}catch(err){}
+function saveSettings(){ try{ localStorage.setItem('ravensmoor_settings_v1',JSON.stringify(SETTINGS)); }catch(err){} }
+function KB(){ return SETTINGS.kb; }
+function keyLabel(k){ return k===' ' ? 'LEERTASTE' : k.toUpperCase(); }
+function IK(){ return keyLabel(SETTINGS.kb.interact); }
+
+let AC = null;
+function beep(freq, dur, type, vol){
+  try{
+    const v=(vol||0.05)*(SETTINGS.vol/100)*1.6;
+    if(v<=0.0008) return;
+    if(!AC) AC = new (window.AudioContext||window.webkitAudioContext)();
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type||'square'; o.frequency.value = freq;
+    g.gain.setValueAtTime(v, AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + dur);
+    o.connect(g); g.connect(AC.destination);
+    o.start(); o.stop(AC.currentTime + dur);
+  }catch(e){}
+}
+
+/* ============================================================
+   TILES
+============================================================ */
+const T = { HWALL:0, GRASS:1, PATH:2, TREE:3, CWALL:5, CDOOR:6, FLOOR:7, STAIR:8, WALL:9,
+            STAIRUP:12, GRAVE:13, BURNT:14, WELL:15,
+            ALTAR:16, SHELF:17, BONES:18, BLOOD:19, RUNE:21 };
+const SOLID = new Set([T.HWALL, T.TREE, T.CWALL, T.WALL, T.GRAVE, T.WELL, T.ALTAR, T.SHELF]);
+
+/* ============================================================
+   ZUSTAND
+============================================================ */
+let player, areas, cur, particles, projectiles, swings, telegraphs;
+let floats = [];                 // schwebende Schadenszahlen
+let hitstop = 0;                 // kurzer Zeitlupen-Moment bei Treffern
+let state = 'title';          // title | play | dead | ending
+let uiMode = null;            // null | dialog | inv | shop
+let camX=0, camY=0, shake=0, time=0;
+let bossDead=false, relicChoice=null, flags={};
+const keys = {}; let mouse = {x:0,y:0,down:false};
+const touchMode = ('ontouchstart' in window) || (window.matchMedia && matchMedia('(pointer:coarse)').matches);
+const joy = {x:0, y:0};
+const touchBtn = {atk:false};
+
+/* ============================================================
+   ITEMS
+============================================================ */
+const WEAPONS = [["Rostige Klinge",5],["Kurzschwert",8],["Streitkolben",11],["Langschwert",14],["Streitaxt",16],["Reiterdegen",18],["Hellebarde",20],["Kriegshammer",22]];
+const ARMORS  = [["Lumpen",1],["Lederwams",3],["Gambeson",5],["Kettenhemd",8],["Kürass",11]];
+const RINGS   = [["Knochenring"],["Siegelring"],["Silberring"],["Eisenring"]];
+const PREFIX  = ["Grimmiger","Geweihter","Blutiger","Eiserner","Uralter"];
+const SUFFIX  = ["der Pest","des Raben","der Asche","des Kreuzes","der Nacht","des Salzes"];
+const BONI = [
+  () => ({k:'dmg',  v:ri(2,5),  t:'+# Schaden'}),
+  () => ({k:'armor',v:ri(1,4),  t:'+# Rüstung'}),
+  () => ({k:'hp',   v:ri(8,25), t:'+# Leben'}),
+  () => ({k:'mana', v:ri(6,18), t:'+# Mana'}),
+  () => ({k:'leech',v:ri(1,3),  t:'+# Lebensraub'}),
+];
+const RBONI = BONI.concat([() => ({k:'licht', v:ri(25,50), t:'+# Lichtradius'})]);
+const GEMS=[
+  {elem:'feuer',    name:'Feueropal',     col:'#e8842a', rgb:'232,132,42'},
+  {elem:'eis',      name:'Frostsplitter', col:'#5ac8e8', rgb:'90,200,232'},
+  {elem:'schatten', name:'Schattenperle', col:'#b06ae8', rgb:'176,106,232'},
+];
+function rollGem(depth){
+  const g=pick(GEMS);
+  return {kind:'gem', elem:g.elem, name:g.name, col:g.col, rgb:g.rgb, power:ri(2,4)+depth, rarity:2};
+}
+function weaponGem(){ const w=player&&player.weapon; return (w&&w.sock&&w.sock.gem)||null; }
+const NOTES=[null,
+ '»...wir schafften das Silber in die Gruft, ehe die Schweden kamen. Doch Anna sagt, sie hört nachts Stimmen unter dem Boden. Ich habe ihr verboten, je wieder hinabzusteigen.« - Heinrich K., Anno 1632',
+ '»Das Beinhaus war voll, lange bevor die Pest kam. Wer hat all diese Toten hierher geschafft? Die Knochen sind angeordnet. Wie Zeichen.« - Bruder Anselm, Küster',
+ '»Der Ritter sprach im Schlaf, heißt es. Auf Latein - und in einer Sprache aus dem Osten. Sie begruben ihn lebendig, doch das Flüstern hörte nie auf.« - aus dem Kirchenbuch von St. Marien',
+];
+function rollBoni(n, pool){
+  const out = [], used = new Set();
+  while(out.length < n){
+    const b = pick(pool||BONI)();
+    if(used.has(b.k)) continue;
+    used.add(b.k); out.push(b);
+  }
+  return out;
+}
+function rollGear(depth, forceKind){
+  let kind = forceKind;
+  if(!kind){ const k = Math.random(); kind = k<0.42 ? 'weapon' : (k<0.78 ? 'armor' : 'ring'); }
+  const r = Math.random();
+  let rarity = r < 0.025+depth*0.012 ? 3 : (r < 0.12+depth*0.02 ? 2 : (r < 0.45 ? 1 : 0));
+  if(kind === 'ring'){
+    rarity = Math.max(1, rarity);
+    const base = pick(RINGS);
+    const boni = rollBoni(rarity, RBONI);
+    let name = pick(PREFIX) + " " + base[0];
+    if(rarity >= 2) name = name + " " + pick(SUFFIX);
+    return { kind, name, rarity, val: 0, boni };
+  }
+  const bases = kind === 'weapon' ? WEAPONS : ARMORS;
+  const maxIdx = clamp(Math.floor(depth*1.2)+1, 1, bases.length-1);
+  const base = bases[ri(Math.max(0,maxIdx-2), maxIdx)];
+  const boni = rollBoni(Math.min(3,rarity));
+  let name = base[0];
+  if(rarity >= 1) name = pick(PREFIX) + " " + name;
+  if(rarity >= 2) name = name + " " + pick(SUFFIX);
+  const sock = (kind==='weapon' && (rarity>=2 || Math.random()<0.2)) ? {gem:null} : null;
+  return { kind, name, rarity, val: base[1] + (rarity>=2 ? ri(1,3)+rarity-2 : 0), boni, sock };
+}
+function itemStatLine(it){
+  if(it.kind === 'potion')  return 'Stellt 45% Leben wieder her';
+  if(it.kind === 'mpotion') return 'Stellt 60% Mana wieder her';
+  if(it.kind === 'elixir')  return '+10 maximales Leben (dauerhaft)';
+  if(it.kind==='gem') return '+'+it.power+' '+({feuer:'Feuerschaden',eis:'Eisschaden (verlangsamt)',schatten:'Schattenschaden (heilt dich)'}[it.elem])+' · antippen: in Waffe fassen';
+  if(it.kind==='ring') return it.boni.map(b=>b.t.replace('#',b.v)).join(' · ');
+  let s = (it.kind==='weapon' ? it.val + ' Schaden' : it.val + ' Rüstung');
+  for(const b of it.boni) s += ' · ' + b.t.replace('#', b.v);
+  if(it.sock) s += it.sock.gem ? ' · ◆ '+it.sock.gem.name : ' · ◇ Leere Fassung';
+  return s;
+}
+
+/* ============================================================
+   SPIELERWERTE
+============================================================ */
+function calc(){
+  const p = player;
+  let dmg = 4, armor = 0, hp = 90 + 14*(p.level-1) + p.elixirs*10, mana = 40 + 8*(p.level-1), leech = 0, licht = 0;
+  for(const it of [p.weapon, p.armorIt, p.ring]){
+    if(!it) continue;
+    if(it.kind === 'weapon') dmg += it.val; else if(it.kind === 'armor') armor += it.val;
+    for(const b of it.boni){
+      if(b.k==='dmg') dmg += b.v; if(b.k==='armor') armor += b.v;
+      if(b.k==='hp') hp += b.v;   if(b.k==='mana') mana += b.v;
+      if(b.k==='leech') leech += b.v; if(b.k==='licht') licht += b.v;
+    }
+  }
+  p.dmg = dmg; p.armor = armor; p.leech = leech; p.licht = licht;
+  p.maxhp = hp; p.maxmana = mana;
+  p.hp = clamp(p.hp, 0, p.maxhp); p.mana = clamp(p.mana, 0, p.maxmana);
+}
+
+const SKILLS = [
+  {name:'Feuerball',      ico:'✦', mana:12, unlock:2, cd:0.55},
+  {name:'Heiliges Licht', ico:'☩', mana:22, unlock:3, cd:4.5},
+  {name:'Heilung',        ico:'❧', mana:26, unlock:5, cd:7},
+];
+
+/* ============================================================
+   KARTEN
+============================================================ */
+function blank(w,h,fill){ return { w, h, map: Array.from({length:h},()=>new Array(w).fill(fill)) }; }
+function carveRect(a,x0,y0,x1,y1,id){ for(let y=y0;y<=y1;y++) for(let x=x0;x<=x1;x++) if(x>=0&&y>=0&&x<a.w&&y<a.h) a.map[y][x]=id; }
+
+function buildVillage(){
+  const a = blank(46,30,T.GRASS);
+  a.id='village'; a.name='Ravensmoor'; a.dark=false;
+  a.enemies=[]; a.pickups=[]; a.labels=[]; a.npcs=[]; a.decals=[];
+  a.chimney={x:13*TILE+6, y:10*TILE+2};
+  // Baumrand + Streubäume
+  for(let x=0;x<a.w;x++){ a.map[0][x]=T.TREE; a.map[1][x]=Math.random()<.7?T.TREE:T.GRASS;
+                          a.map[a.h-1][x]=T.TREE; a.map[a.h-2][x]=Math.random()<.7?T.TREE:T.GRASS; }
+  for(let y=0;y<a.h;y++){ a.map[y][0]=T.TREE; a.map[y][1]=Math.random()<.7?T.TREE:T.GRASS;
+                          a.map[y][a.w-1]=T.TREE; a.map[y][a.w-2]=Math.random()<.7?T.TREE:T.GRASS; }
+  for(let i=0;i<26;i++){ const x=ri(2,a.w-3), y=ri(2,a.h-3); if(a.map[y][x]===T.GRASS && Math.random()<.6) a.map[y][x]=T.TREE; }
+  // Wege
+  carveRect(a,2,18,a.w-3,19,T.PATH);
+  carveRect(a,21,5,22,a.h-3,T.PATH);
+  // Taverne "Zum Schwarzen Raben"
+  carveRect(a,6,10,15,15,T.HWALL);
+  carveRect(a,10,16,11,17,T.PATH);
+  a.labels.push({x:11*TILE, y:9.2*TILE, t:'Zum Schwarzen Raben'});
+  // Kirche
+  carveRect(a,26,4,37,11,T.CWALL);
+  a.map[11][31]=T.CDOOR;
+  carveRect(a,31,12,31,17,T.PATH);
+  a.labels.push({x:32*TILE, y:3.2*TILE, t:'Kirche St. Marien'});
+  // Friedhof
+  for(let i=0;i<8;i++){ const x=ri(39,43), y=ri(5,11); if(a.map[y][x]===T.GRASS) a.map[y][x]=T.GRAVE; }
+  // Magdalenas Hütte am Waldrand
+  carveRect(a,4,22,8,26,T.HWALL);
+  for(let i=0;i<10;i++){ const x=ri(2,12), y=ri(20,27); if(a.map[y][x]===T.GRASS) a.map[y][x]=T.TREE; }
+  a.labels.push({x:6.5*TILE, y:21.2*TILE, t:'Magdalenas Hütte'});
+  // Niedergebranntes Gehöft (Kriegsspuren)
+  carveRect(a,30,21,36,25,T.BURNT);
+  a.map[21][30]=T.HWALL; a.map[21][31]=T.HWALL; a.map[22][30]=T.HWALL;
+  a.map[25][36]=T.HWALL; a.map[24][36]=T.HWALL; a.map[21][36]=T.HWALL;
+  a.labels.push({x:33.5*TILE, y:20.2*TILE, t:'Niedergebranntes Gehöft'});
+  // Brunnen
+  a.map[24][21]=T.WELL;
+  // NPCs
+  a.npcs.push({name:'Heinrich Kramer', x:11*TILE+16, y:17.6*TILE, col:'#7a4a2a', dlg:'heinrich'});
+  a.npcs.push({name:'Pater Johannes',  x:31*TILE+16, y:13.5*TILE, col:'#3a3a44', dlg:'johannes'});
+  a.npcs.push({name:'Magdalena',       x:10*TILE,    y:24*TILE+16, col:'#4a6a3a', dlg:'magdalena'});
+  a.spawn = {x:21.5*TILE, y:21*TILE};
+  a.downPos = {x:31*TILE+16, y:13*TILE};   // vor der Kirchentür
+  return a;
+}
+
+const CRYPT_THEMES = {
+  1:{name:'Krypta - Gruft',        floor:[27,-3,-6],  wallTop:'#0f0c08', wallFace:'#262017', bones:0.030, blood:0.015, rune:'#7a3aa0', torchMod:4},
+  2:{name:'Krypta - Beinhaus',     floor:[31,3,-2],   wallTop:'#0b0d0a', wallFace:'#222818', bones:0.110, blood:0.030, rune:'#7a3aa0', torchMod:5},
+  3:{name:'Die alte Kultstätte',   floor:[26,-7,-9],  wallTop:'#130808', wallFace:'#321a12', bones:0.045, blood:0.095, rune:'#c03030', torchMod:3},
+  4:{name:'Grab des Kreuzritters', floor:[24,-5,-7],  wallTop:'#130808', wallFace:'#321a12', bones:0.040, blood:0.060, rune:'#c03030', torchMod:3},
+};
+function buildCrypt(n){
+  const th = CRYPT_THEMES[n];
+  const a = blank(44,44,T.WALL);
+  a.id='crypt'+n; a.name=th.name; a.dark=true; a.depth=n; a.theme=th;
+  a.enemies=[]; a.pickups=[]; a.labels=[]; a.npcs=[]; a.torches=[]; a.altars=[]; a.decals=[];
+  a.seen = Array.from({length:a.h},()=>new Array(a.w).fill(false));
+  const rooms=[];
+  for(let i=0;i<10+n;i++){
+    const w=ri(4,9), h=ri(4,8), x=ri(1,a.w-w-2), y=ri(1,a.h-h-2);
+    rooms.push({x,y,w,h,cx:x+(w>>1),cy:y+(h>>1)});
+    carveRect(a,x,y,x+w-1,y+h-1,T.FLOOR);
+  }
+  for(let i=1;i<rooms.length;i++){
+    let A=rooms[i-1], B=rooms[i], x=A.cx, y=A.cy;
+    while(x!==B.cx){ a.map[y][x]=T.FLOOR; if(y+1<a.h) a.map[y+1][x]=T.FLOOR; x+=Math.sign(B.cx-x); }
+    while(y!==B.cy){ a.map[y][x]=T.FLOOR; if(x+1<a.w) a.map[y][x+1]=T.FLOOR; y+=Math.sign(B.cy-y); }
+  }
+  const start = rooms[0];
+  let far = rooms[1], fd = 0;
+  for(const r of rooms){ const d=Math.hypot(r.cx-start.cx,r.cy-start.cy); if(d>fd){fd=d;far=r;} }
+  a.map[start.cy][start.cx]=T.STAIRUP;
+  a.map[far.cy][far.cx]=T.STAIR;
+  a.spawn = {x:(start.cx+1)*TILE+16, y:start.cy*TILE+16};
+  a.upPos = {x:start.cx*TILE+16, y:start.cy*TILE+16};
+  a.downPos = {x:far.cx*TILE+16, y:far.cy*TILE+16};
+  // Spezialräume
+  const mid = rooms.filter(r=>r!==start && r!==far && r.w>=5 && r.h>=5);
+  // Opferaltar (auf der Kultstätte garantiert zwei)
+  const altarCount = n>=3 ? 2 : 1;
+  for(let k=0;k<altarCount && mid.length;k++){
+    const r = mid.splice(ri(0,mid.length-1),1)[0];
+    a.map[r.cy][r.cx]=T.ALTAR;
+    a.altars.push({x:r.cx*TILE+16, y:r.cy*TILE+16, used:false});
+    a.torches.push({x:r.cx*TILE+16, y:r.cy*TILE+8, ph:rnd(0,6.28), glow:true});
+    for(let i=0;i<7;i++){
+      const bx=r.cx+ri(-2,2), by=r.cy+ri(-2,2);
+      if(a.map[by] && a.map[by][bx]===T.FLOOR) a.map[by][bx]=(n>=3 ? T.RUNE : T.BLOOD);
+    }
+  }
+  // Bibliothek mit vergilbtem Folianten
+  if(mid.length){
+    const r = mid.splice(ri(0,mid.length-1),1)[0];
+    for(let x=r.x; x<r.x+r.w; x++){
+      if(x%2===0 && a.map[r.y][x]===T.FLOOR) a.map[r.y][x]=T.SHELF;
+    }
+    a.pickups.push({kind:'folio', x:r.cx*TILE+16, y:(r.cy+1)*TILE, bob:rnd(0,6)});
+  }
+  // Truhen
+  a.chests=[];
+  const chestRooms = rooms.slice(1).filter(r=>r.w>=4&&r.h>=4);
+  for(let i=0;i<2 && chestRooms.length;i++){
+    const r = chestRooms.splice(ri(0,chestRooms.length-1),1)[0];
+    a.chests.push({x:(r.x+rnd(1,r.w-1))*TILE, y:(r.y+rnd(1,r.h-1))*TILE, open:false});
+  }
+  // Blutbrunnen (ab Ebene 2)
+  a.wells=[];
+  if(n>=2 && mid.length){
+    const r = mid.splice(ri(0,mid.length-1),1)[0];
+    a.wells.push({x:r.cx*TILE+16, y:r.cy*TILE+16, used:false});
+    for(let i=0;i<5;i++){
+      const bx=r.cx+ri(-2,2), by=r.cy+ri(-2,2);
+      if(a.map[by] && a.map[by][bx]===T.FLOOR) a.map[by][bx]=T.BLOOD;
+    }
+  }
+  // Zerknitterte Notiz (Lore)
+  {
+    const r = pick(rooms.slice(1));
+    a.pickups.push({kind:'note', idx:Math.min(n,3), x:(r.x+rnd(1,r.w-1))*TILE, y:(r.y+rnd(1,r.h-1))*TILE, bob:rnd(0,6)});
+  }
+  // Knochen und Blut verstreuen
+  for(let ty=1;ty<a.h-1;ty++) for(let tx=1;tx<a.w-1;tx++){
+    if(a.map[ty][tx]!==T.FLOOR) continue;
+    const r2=Math.random();
+    if(r2<th.bones) a.map[ty][tx]=T.BONES;
+    else if(r2<th.bones+th.blood) a.map[ty][tx]=T.BLOOD;
+  }
+  // Fackeln an Südwänden
+  for(let ty=1;ty<a.h-1;ty++) for(let tx=1;tx<a.w-1;tx++){
+    if(a.map[ty][tx]===T.WALL && !SOLID.has(a.map[ty+1][tx]) && (tx*7+ty*13)%th.torchMod===0)
+      a.torches.push({x:tx*TILE+16, y:ty*TILE+24, ph:rnd(0,6.28)});
+  }
+  // Gegner
+  const types = ['pest','pest','skelett','skelett'];
+  if(n>=2) types.push('schuetze','schuetze');
+  if(n>=3) types.push('schatten','schuetze');
+  for(const r of rooms){
+    if(r===start) continue;
+    const count = ri(1,2)+Math.min(3,Math.ceil(n/1.5));
+    for(let i=0;i<count;i++){
+      let ex, ey, tries=0;
+      do{ ex=(r.x+rnd(0.5,r.w-0.5))*TILE; ey=(r.y+rnd(0.5,r.h-0.5))*TILE; tries++; }
+      while(tries<8 && SOLID.has(a.map[Math.floor(ey/TILE)][Math.floor(ex/TILE)]));
+      const en2=makeEnemy(pick(types), n, ex, ey);
+      if(Math.random()<0.10) makeElite(en2);
+      a.enemies.push(en2);
+    }
+  }
+  // Bodenbeute
+  for(let i=0;i<2;i++){
+    const r = pick(rooms.slice(1));
+    a.pickups.push({kind:'gear', item:rollGear(n), x:(r.x+rnd(1,r.w-1))*TILE, y:(r.y+rnd(1,r.h-1))*TILE, bob:rnd(0,6)});
+  }
+  return a;
+}
+
+function buildBoss(){
+  const a = blank(34,24,T.WALL);
+  a.id='boss'; a.name='Grab des Kreuzritters'; a.dark=true; a.depth=4; a.theme=CRYPT_THEMES[4];
+  a.enemies=[]; a.pickups=[]; a.labels=[]; a.npcs=[]; a.torches=[]; a.altars=[]; a.decals=[];
+  a.seen = Array.from({length:a.h},()=>new Array(a.w).fill(false));
+  carveRect(a,3,3,30,20,T.FLOOR);
+  for(const [px,py] of [[8,7],[8,15],[24,7],[24,15]]) carveRect(a,px,py,px+1,py+1,T.WALL);
+  // Runenkreis um das Grab, Blut und Knochen
+  for(const [rx,ry] of [[14,5],[16,4],[18,5],[19,7],[18,9],[16,10],[14,9],[13,7]]) a.map[ry][rx]=T.RUNE;
+  for(let i=0;i<10;i++){ const bx=ri(5,28), by=ri(5,18);
+    if(a.map[by][bx]===T.FLOOR) a.map[by][bx]=(Math.random()<0.5?T.BLOOD:T.BONES); }
+  // Fackeln entlang der Wände und an den Pfeilern
+  for(let x=4;x<=29;x+=3) a.torches.push({x:x*TILE+16, y:2*TILE+24, ph:rnd(0,6.28)});
+  for(const [tx,ty] of [[8,8],[9,8],[24,8],[25,8],[8,16],[9,16],[24,16],[25,16]])
+    a.torches.push({x:tx*TILE+16, y:ty*TILE+24, ph:rnd(0,6.28)});
+  a.map[20][16]=T.STAIRUP;
+  a.spawn = {x:16.5*TILE, y:19*TILE};
+  a.upPos = {x:16.5*TILE, y:20*TILE+16};
+  if(!bossDead){
+    const b = makeEnemy('templer', 4, 16.5*TILE, 6.5*TILE);
+    a.enemies.push(b);
+  }
+  return a;
+}
+
+/* ============================================================
+   GEGNER
+============================================================ */
+function makeEnemy(type, d, x, y){
+  const base = {
+    pest:     {name:'Pestopfer',        hp:34+12*d, dmg:8+3*d,  speed:rnd(36,50),  r:13, col:'#5a7a3a', xp:12+4*d, aggro:210},
+    skelett:  {name:'Skelett',          hp:18+7*d,  dmg:5+2*d,  speed:rnd(82,102), r:10, col:'#cfc4a8', xp:9+3*d,  aggro:250},
+    schuetze: {name:'Skelett-Schütze',  hp:14+6*d,  dmg:7+3*d,  speed:rnd(55,70),  r:10, col:'#b8a888', xp:14+4*d, aggro:330, ranged:true},
+    schatten: {name:'Grabschatten',     hp:26+9*d,  dmg:11+4*d, speed:rnd(125,145),r:11, col:'#3a3450', xp:18+5*d, aggro:300},
+    templer:  {name:'Der Tempelritter', hp:340+70*d,dmg:17+4*d, speed:66,          r:20, col:'#6a6258', xp:300,    aggro:900, boss:true},
+  }[type];
+  return Object.assign({type, x, y, maxhp:base.hp, atkCd:rnd(0,1), shootCd:rnd(0,1.5),
+                        hitFlash:0, wobble:rnd(0,6.28), slamCd:5, fanCd:3.5, summoned:[]}, base);
+}
+
+/* ============================================================
+   NEUES SPIEL / GEBIETSWECHSEL
+============================================================ */
+const SAVE_KEY='ravensmoor_save_v2';
+function saveGame(){
+  try{
+    const p=player; if(!p) return;
+    localStorage.setItem(SAVE_KEY, JSON.stringify({
+      v:2,
+      player:{level:p.level,xp:p.xp,xpNext:p.xpNext,gold:p.gold,pot:p.pot,mpot:p.mpot,
+        elixirs:p.elixirs,hasKey:p.hasKey,hp:p.hp,mana:p.mana,
+        inv:p.inv, wI:p.inv.indexOf(p.weapon), aI:p.inv.indexOf(p.armorIt), rI:p.inv.indexOf(p.ring)},
+      flags, bossDead, relicChoice
+    }));
+  }catch(err){}
+}
+function hasSave(){ try{ return !!localStorage.getItem(SAVE_KEY); }catch(err){ return false; } }
+function loadGame(){
+  try{
+    const data=JSON.parse(localStorage.getItem(SAVE_KEY));
+    if(!data || !data.player) return false;
+    newGame();
+    closeDialog();
+    const s=data.player, p=player;
+    p.level=s.level; p.xp=s.xp; p.xpNext=s.xpNext; p.gold=s.gold;
+    p.pot=s.pot; p.mpot=s.mpot; p.elixirs=s.elixirs; p.hasKey=s.hasKey;
+    p.inv=s.inv||[];
+    p.weapon = s.wI>=0 ? p.inv[s.wI] : null;
+    p.armorIt= s.aI>=0 ? p.inv[s.aI] : null;
+    p.ring   = s.rI>=0 ? p.inv[s.rI] : null;
+    flags=data.flags||{}; bossDead=!!data.bossDead; relicChoice=data.relicChoice||null;
+    calc();
+    p.hp=Math.min(p.maxhp, s.hp||p.maxhp);
+    p.mana=Math.min(p.maxmana, s.mana||p.maxmana);
+    log('Spielstand geladen - willkommen zurück in Ravensmoor','gold');
+    saveGame();
+    return true;
+  }catch(err){ return false; }
+}
+
+function makeElite(e){
+  e.elite=true;
+  e.affix=pick(['Schnell','Vampirisch']);
+  e.r=Math.round(e.r*1.25);
+  e.hp=Math.round(e.hp*1.8); e.maxhp=e.hp;
+  e.dmg=Math.round(e.dmg*1.3);
+  e.xp=Math.round(e.xp*2.2);
+  if(e.affix==='Schnell') e.speed*=1.35;
+  e.name=e.name+' · '+e.affix;
+  return e;
+}
+
+function newGame(){
+  player = { x:0,y:0,r:11,speed:178, hp:1,mana:1, level:1, xp:0, xpNext:45,
+             gold:25, pot:2, mpot:1, elixirs:0,
+             weapon:null, armorIt:null, ring:null, inv:[], cds:[0,0,0], buffT:0,
+             atkCd:0, hitFlash:0, dir:0, hasKey:false, triggerLock:true,
+             combo:0, comboT:0, blocking:false, blockT:0, riposteT:0,
+             dashT:0, dashCd:0, dashVx:0, dashVy:0, smokeT:0 };
+  const startWeapon = {kind:'weapon', name:'Rostige Klinge', rarity:0, val:5, boni:[]};
+  player.inv.push(startWeapon); player.weapon = startWeapon;
+  calc(); player.hp = player.maxhp; player.mana = player.maxmana;
+  areas = {}; bossDead = false; relicChoice = null; flags = {};
+  particles=[]; projectiles=[]; swings=[]; telegraphs=[];
+  goArea('village', null);
+  state = 'play';
+  log('Ravensmoor liegt im Nebel. Sprich mit den Dorfbewohnern (E).','');
+  openDialog('Aus meinen Aufzeichnungen', [
+    'Ich wusste nicht, was mich erwartete, als ich den Auftrag annahm, nach Ravensmoor zu reisen. Die Geschichten, die man sich über dieses abgelegene Dorf erzählte, hielt ich für Ammenmärchen - Schauergeschichten für lange Winterabende.',
+    'Doch als ich ankam, umhüllten dichter Nebel und eine seltsame Dunkelheit das Dorf. Die wenigen Häuser duckten sich wie ängstliche Tiere um die alte Steinkirche, deren verwitterter Turm sich drohend gegen den bleiernen Himmel reckte. Die Bewohner sprachen nur im Flüsterton.',
+  ]);
+}
+
+function getArea(id){
+  if(areas[id]) return areas[id];
+  let a;
+  if(id==='village') a = buildVillage();
+  else if(id==='boss') a = buildBoss();
+  else a = buildCrypt(parseInt(id.replace('crypt','')));
+  areas[id] = a; return a;
+}
+function goArea(id, spawnAt){
+  cur = getArea(id);
+  const s = spawnAt || cur.spawn;
+  player.x = s.x; player.y = s.y;
+  player.triggerLock = true;
+  projectiles=[]; swings=[]; telegraphs=[];
+  $('st-area').textContent = cur.name.toUpperCase();
+  if(id!=='village') log(cur.name, '');
+  beep(170,0.25,'triangle',0.05);
+  saveGame();
+  if(id==='crypt1' && !flags.nCrypt){
+    flags.nCrypt = true;
+    openDialog('Aus meinen Aufzeichnungen', [
+      'Als ich die modrigen Stufen hinabstieg, kroch die Kälte durch meine Kleidung. Der Fackelschein warf tanzende Schatten an die feuchten Wände - und irgendwo unter mir bewegte sich etwas.',
+      'Was ich in den Gewölben fand, spottete jeder Beschreibung: leichenblasse Gestalten, deren Haut wie vergilbtes Pergament wirkte. Ihre Bewegungen waren zu schnell, zu abgehackt für menschliche Wesen.',
+    ]);
+  }
+  if(id==='boss' && !flags.nBoss){
+    flags.nBoss = true;
+    openDialog('Aus meinen Aufzeichnungen', [
+      '»Erlöse mich von meiner ewigen Qual - und ich werde...« Die Stimme kam aus der tiefsten Ecke des Grabes, ein Flüstern wie raschelndes Laub.',
+      'Ich wusste nicht, was zu tun war. Aber ich wusste: Dieser Wahnsinn musste enden - und wenn das Opfer ich selbst sein sollte.',
+    ]);
+  }
+}
+
+/* ============================================================
+   UI: NACHRICHTEN, DIALOG, SHOP, INVENTAR
+============================================================ */
+const msglog = $('msglog');
+function log(text, cls){
+  const el = document.createElement('div');
+  el.className='msg '+(cls||''); el.textContent=text;
+  msglog.prepend(el);
+  while(msglog.children.length>3) msglog.lastChild.remove();
+  setTimeout(()=>{el.style.transition='opacity 1s';el.style.opacity='0';},3000);
+  setTimeout(()=>el.remove(),4200);
+}
+
+let dlgQueue=[], dlgChoices=null;
+function openDialog(name, pages){
+  uiMode='dialog'; dlgQueue=pages.slice(); dlgChoices=null;
+  $('dlgName').textContent=name; $('dlg').style.display='block';
+  nextDialog();
+}
+function nextDialog(){
+  if(dlgQueue.length===0){ closeDialog(); return; }
+  const page = dlgQueue.shift();
+  const txt = typeof page==='string' ? page : page.text;
+  $('dlgText').textContent = txt;
+  const btns = $('dlgBtns'); btns.innerHTML='';
+  if(typeof page!=='string' && page.choices){
+    for(const c of page.choices){
+      const b=document.createElement('button'); b.className='btn'; b.textContent=c.label;
+      b.onclick=()=>{ if(c.fn) c.fn(); else closeDialog(); };
+      btns.appendChild(b);
+    }
+  } else {
+    const b=document.createElement('button'); b.className='btn';
+    const narr = $('dlgName').textContent.startsWith('Aus ');
+    b.textContent = dlgQueue.length? 'Weiter' : (narr? 'Schließen' : 'Lebt wohl');
+    b.onclick=nextDialog; btns.appendChild(b);
+    if(typeof page!=='string' && page.fn) page.fn();
+  }
+}
+function closeDialog(){ $('dlg').style.display='none'; if(uiMode==='dialog') uiMode=null; }
+
+const STOCKS = {};
+function shopStock(id){
+  if(STOCKS[id]) return STOCKS[id];
+  let s;
+  if(id==='heinrich') s=[ {kind:'potion',name:'Heiltrank',price:30,inf:true},
+                          {kind:'mpotion',name:'Manatrank',price:40,inf:true},
+                          {kind:'gear',item:rollGear(2,'weapon')},
+                          {kind:'gear',item:rollGear(2,'armor')} ];
+  else s=[ {kind:'potion',name:'Heiltrank',price:24,inf:true},
+           {kind:'mpotion',name:'Manatrank',price:32,inf:true},
+           {kind:'gear',item:rollGear(2,'ring')},
+           {kind:'elixir',name:'Elixier der Kräuterfrau',price:150,limit:3} ];
+  STOCKS[id]=s; return s;
+}
+function gearPrice(it){ return (it.val*9 + it.boni.length*35 + it.rarity*25 + (it.kind==='ring'?45:0)); }
+function openShop(id, title){
+  uiMode='shop'; closeDialog();
+  $('shopTitle').textContent = title;
+  $('shop').style.display='block';
+  renderShop(id);
+}
+function renderShop(id){
+  const list = $('shopList'); list.innerHTML='';
+  const stock = shopStock(id);
+  for(const off of stock){
+    if(off.limit!==undefined && off.limit<=0) continue;
+    const row=document.createElement('div'); row.className='soffer';
+    const price = off.price!==undefined ? off.price : gearPrice(off.item);
+    const nameHtml = off.kind==='gear'
+      ? `<span class="r${off.item.rarity}">${off.item.name}</span><div class="st">${itemStatLine(off.item)}</div>`
+      : `<span>${off.name}</span><div class="st">${itemStatLine(off)}</div>`;
+    row.innerHTML = `<div style="flex:1">${nameHtml}</div><span class="pr">${price} G</span>`;
+    const b=document.createElement('button'); b.className='btn'; b.textContent='Kaufen';
+    b.onclick=()=>{
+      if(player.gold<price){ log('Nicht genug Gold','bad'); beep(110,0.12,'square',0.05); return; }
+      player.gold-=price;
+      if(off.kind==='potion') player.pot++;
+      else if(off.kind==='mpotion') player.mpot++;
+      else if(off.kind==='elixir'){ player.elixirs++; off.limit--; calc(); log('+10 maximales Leben','gold'); }
+      else { player.inv.push(off.item);
+             const k = off.item.kind;
+             off.item = rollGear(2 + (bossDead?2:0), k); }
+      beep(760,0.07,'sine',0.05);
+      renderShop(id); $('shopGold').textContent = player.gold+' Gold';
+    };
+    row.appendChild(b); list.appendChild(row);
+  }
+  $('shopGold').textContent = player.gold+' Gold';
+}
+$('shopClose').onclick=()=>{ $('shop').style.display='none'; uiMode=null; };
+
+function toggleInv(){
+  if(uiMode==='inv'){ $('inv').style.display='none'; uiMode=null; return; }
+  if(uiMode) return;
+  uiMode='inv'; $('inv').style.display='flex'; renderInv();
+}
+function renderInv(){
+  const p=player;
+  $('invStats').innerHTML =
+    `Schaden: <b>${p.dmg}</b> &nbsp; Rüstung: <b>${p.armor}</b><br>`+
+    `Leben: <b>${Math.ceil(p.hp)}/${p.maxhp}</b> &nbsp; Mana: <b>${Math.ceil(p.mana)}/${p.maxmana}</b>`+
+    (p.leech?`<br>Lebensraub: <b>${p.leech}</b> je Treffer`:'')+
+    (p.licht?`<br>Lichtradius: <b>+${p.licht}</b>`:'')+
+    (p.buffT>0?`<br><span style="color:#c9a227">Segen der Stärke: ${Math.ceil(p.buffT)}s</span>`:'')+
+    (p.hasKey?`<br><span style="color:#c9a227">Kryptaschlüssel</span>`:'');
+  const list=$('invList'); list.innerHTML='';
+  if(p.inv.length===0) list.innerHTML='<div style="padding:10px;color:#8a7a5a;font-style:italic">Leer wie ein Pestdorf.</div>';
+  for(const it of p.inv){
+    const el=document.createElement('div'); el.className='item ir'+(it.rarity||0);
+    const eq = (it===p.weapon||it===p.armorIt||it===p.ring) ? '<span class="eq">ANGELEGT</span>' : '';
+    el.innerHTML = `${eq}<div class="nm r${it.rarity}">${it.name}</div><div class="st">${itemStatLine(it)}</div>`;
+    el.onclick=()=>{
+      if(it.kind==='gem'){
+        if(p.weapon && p.weapon.sock && !p.weapon.sock.gem){
+          p.weapon.sock.gem=it;
+          p.inv=p.inv.filter(x=>x!==it);
+          log(it.name+' in '+p.weapon.name+' gefasst','gold');
+          beep(880,0.1,'sine',0.06); beep(1320,0.12,'sine',0.05);
+        } else {
+          log(p.weapon? 'Keine freie Fassung in der Waffe':'Keine Waffe angelegt','bad');
+        }
+      }
+      else if(it.kind==='weapon'){ p.weapon = (p.weapon===it? null : it); }
+      else if(it.kind==='ring'){ p.ring = (p.ring===it? null : it); }
+      else { p.armorIt = (p.armorIt===it? null : it); }
+      calc(); beep(500,0.05,'sine',0.04); renderInv();
+    };
+    list.appendChild(el);
+  }
+}
+
+/* ============================================================
+   DIALOGE (NPCs)
+============================================================ */
+function talkTo(npc){
+  if(npc.dlg==='johannes'){
+    if(!player.hasKey){
+      openDialog('Pater Johannes', [
+        'Ihr seid es also, den man geschickt hat... Hört ihr sie nicht? Die Stimmen aus der Krypta. Seit die Soldaten die Kirche geplündert haben, schweigen sie nicht mehr.',
+        'Tief unter dem Gewölbe liegt ein Kreuzritter begraben. Er kehrte einst mit einem Relikt aus dem Heiligen Land zurück - einem "Geschenk", sagte er. Es verwandelte Menschen in etwas Anderes. Man begrub ihn bei lebendigem Leib.',
+        {text:'Nehmt den Schlüssel zur Krypta. Und betet, dass Gott euch dort unten noch hört.', fn:()=>{
+          player.hasKey=true; log('Kryptaschlüssel erhalten','gold'); beep(660,0.15,'triangle',0.06);
+        }},
+      ]);
+    } else if(bossDead){
+      openDialog('Pater Johannes',['Die Stimmen... sie sind verstummt. Was immer ihr dort unten getan habt - möge es der Herr richten, nicht ich.']);
+    } else {
+      openDialog('Pater Johannes',['Die Kirchentür ist offen für euch. Steigt hinab, wenn ihr den Mut habt - aber wisst: Was dort unten "lebt", war einmal Mensch.']);
+    }
+  }
+  if(npc.dlg==='heinrich'){
+    const pages = [];
+    if(!flags.heinrich1){
+      flags.heinrich1=true;
+      pages.push('Willkommen im Schwarzen Raben, Fremder. Verschlagenes Bier, aber das Einzige weit und breit. Seit die Schweden das Kirchensilber gestohlen haben, ruhen die Toten nicht mehr - das sage ich jedem, der es hören will.');
+      pages.push('Meine Anna... sie suchte damals, als die Pest kam, Schutz in der Krypta. Was sie dort fand, war keine Rettung. Fragt nicht weiter.');
+    }
+    pages.push({text:'Braucht ihr etwas für den Weg nach unten?', choices:[
+      {label:'Handel', fn:()=>openShop('heinrich','ZUM SCHWARZEN RABEN')},
+      {label:'Lebt wohl'},
+    ]});
+    openDialog('Heinrich Kramer', pages);
+  }
+  if(npc.dlg==='magdalena'){
+    const pages = [];
+    if(!flags.magda1){
+      flags.magda1=true;
+      pages.push('Die Sterne stehen schlecht, Fremder. Unter der Krypta liegt mehr als nur der Ritter - eine alte Kultstätte, älter als das Kreuz. Der Krieg hat den Boden bereitet, und nun erwacht es.');
+      pages.push({text:'Nehmt dies. Gegen die Schatten.', fn:()=>{
+        player.pot+=2; log('2 Heiltränke erhalten','gold'); beep(620,0.1,'sine',0.05);
+      }});
+    } else {
+      pages.push('Hütet euch vor dem "Geschenk" des Ritters. Was ewig lebt, hat aufgehört, Mensch zu sein.');
+    }
+    pages.push({text:'Meine Kräuter sind nicht umsonst, aber ehrlich.', choices:[
+      {label:'Handel', fn:()=>openShop('magdalena','MAGDALENAS HÜTTE')},
+      {label:'Lebt wohl'},
+    ]});
+    openDialog('Magdalena', pages);
+  }
+}
+
+/* ============================================================
+   KAMPF
+============================================================ */
+function isSolidAt(px,py){
+  const tx=Math.floor(px/TILE), ty=Math.floor(py/TILE);
+  if(tx<0||ty<0||tx>=cur.w||ty>=cur.h) return true;
+  return SOLID.has(cur.map[ty][tx]);
+}
+function moveBody(e,dx,dy){
+  const r=e.r;
+  const nx=e.x+dx;
+  if(!isSolidAt(nx-r,e.y-r)&&!isSolidAt(nx+r,e.y-r)&&!isSolidAt(nx-r,e.y+r)&&!isSolidAt(nx+r,e.y+r)) e.x=nx;
+  const ny=e.y+dy;
+  if(!isSolidAt(e.x-r,ny-r)&&!isSolidAt(e.x+r,ny-r)&&!isSolidAt(e.x-r,ny+r)&&!isSolidAt(e.x+r,ny+r)) e.y=ny;
+}
+function los(a,b){
+  const steps=14;
+  for(let i=1;i<steps;i++){
+    const t=i/steps;
+    if(isSolidAt(a.x+(b.x-a.x)*t, a.y+(b.y-a.y)*t)) return false;
+  }
+  return true;
+}
+function burst(x,y,col,n,spd){
+  for(let i=0;i<n;i++){
+    const a=rnd(0,6.283), s=rnd(spd*0.3,spd);
+    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rnd(0.25,0.6),col,sz:rnd(1.5,3.5)});
+  }
+}
+function gainXP(n){
+  player.xp += n;
+  while(player.xp>=player.xpNext){
+    player.xp-=player.xpNext; player.level++;
+    player.xpNext=Math.round(45*Math.pow(player.level,1.45));
+    calc();
+    player.hp=Math.min(player.maxhp,player.hp+Math.round(player.maxhp*0.5));
+    player.mana=player.maxmana;
+    log('Stufe '+player.level+' erreicht!','gold');
+    const sk = SKILLS.find(s=>s.unlock===player.level);
+    if(sk) log('Neuer Zauber: '+sk.name,'magic');
+    beep(440,0.15,'triangle',0.06); beep(660,0.22,'triangle',0.05);
+    burst(player.x,player.y,'#c9a227',22,150);
+  }
+}
+function damageEnemy(e,dmg,kx,ky,col){
+  e.hp-=dmg; e.hitFlash=0.12;
+  addFloat(e.x+rnd(-6,6), e.y-e.r-8, ''+dmg, col||'#e8dcc0');
+  if(kx||ky) moveBody(e, kx||0, ky||0);
+  burst(e.x,e.y,'#a82020',6,120);
+  if(player.leech){ player.hp=Math.min(player.maxhp, player.hp+player.leech); }
+  if(e.hp<=0) killEnemy(e);
+}
+function killEnemy(e){
+  cur.enemies = cur.enemies.filter(x=>x!==e);
+  burst(e.x,e.y,e.col,16,170);
+  cur.decals = cur.decals||[];
+  if(SETTINGS.blood) cur.decals.push({x:e.x,y:e.y,r:rnd(7,12),bone:(e.type==='skelett'||e.type==='schuetze'),a:rnd(0,6.283)});
+  if(cur.decals.length>90) cur.decals.shift();
+  beep(90,0.12,'sawtooth',0.05);
+  if(e.boss){ bossDead=true; onBossDead(e); }
+  else{
+    const g = ri(2,7)+ (cur.depth||1)*2;
+    cur.pickups.push({kind:'gold',amt:g,x:e.x+rnd(-8,8),y:e.y+rnd(-8,8),bob:rnd(0,6)});
+    if(Math.random()<0.10) cur.pickups.push({kind:'potion',x:e.x+rnd(-12,12),y:e.y+rnd(-12,12),bob:rnd(0,6)});
+    if(Math.random()<0.07) cur.pickups.push({kind:'mpotion',x:e.x+rnd(-12,12),y:e.y+rnd(-12,12),bob:rnd(0,6)});
+    if(Math.random()<0.11) cur.pickups.push({kind:'gear',item:rollGear(cur.depth||1),x:e.x,y:e.y,bob:rnd(0,6)});
+    if(e.elite) cur.pickups.push({kind:'gear',item:rollGear((cur.depth||1)+1),x:e.x,y:e.y+12,bob:rnd(0,6)});
+    if(Math.random()<0.05) cur.pickups.push({kind:'gem',item:rollGem(cur.depth||1),x:e.x+rnd(-10,10),y:e.y+rnd(-10,10),bob:rnd(0,6)});
+  }
+  gainXP(e.xp);
+}
+function onBossDead(e){
+  log('Der Tempelritter ist gefallen','gold');
+  const blade = {kind:'weapon', name:'Templerklinge des Ostens', rarity:2, val:24,
+                 boni:[{k:'dmg',v:4,t:'+# Schaden'},{k:'leech',v:3,t:'+# Lebensraub'}]};
+  cur.pickups.push({kind:'gear',item:blade,x:e.x-20,y:e.y,bob:0});
+  cur.pickups.push({kind:'relic',x:e.x+20,y:e.y,bob:0});
+  cur.pickups.push({kind:'gold',amt:120,x:e.x,y:e.y+24,bob:0});
+}
+
+function aimAngle(){
+  if(touchMode){
+    let best=null, bd=160;
+    for(const e of cur.enemies){
+      const d=dist(player,e);
+      if(d<bd){ bd=d; best=e; }
+    }
+    if(best) return Math.atan2(best.y-player.y, best.x-player.x);
+    return player.dir;
+  }
+  return Math.atan2(mouse.y+camY-player.y, mouse.x+camX-player.x);
+}
+function swingStyle(){
+  const w = player.weapon;
+  const g = weaponGem();
+  if(g){
+    if(g.elem==='feuer')    return {col:'rgba(240,150,70,',  w:5, glow:'rgba(232,132,42,',  spark:'#e8842a'};
+    if(g.elem==='eis')      return {col:'rgba(170,225,245,', w:5, glow:'rgba(90,200,232,',  spark:'#aee0f0'};
+    if(g.elem==='schatten') return {col:'rgba(200,140,245,', w:5, glow:'rgba(176,106,232,', spark:'#b06ae8'};
+  }
+  if(!w) return {col:'rgba(185,178,160,', w:3};
+  if(w.name.includes('Templerklinge')) return {col:'rgba(255,238,180,', w:6, glow:'rgba(201,162,39,', spark:'#f0d878'};
+  if(w.rarity===2) return {col:'rgba(240,210,120,', w:5, glow:'rgba(201,162,39,', spark:'#e0b53a'};
+  if(w.val>=14) return {col:'rgba(190,216,242,', w:5, glow:'rgba(110,150,210,'};
+  if(w.val>=9)  return {col:'rgba(235,228,205,', w:4};
+  return {col:'rgba(185,178,160,', w:3};
+}
+function playerAttack(){
+  const p=player;
+  if(p.atkCd>0 || p.blocking) return;
+  if(p.comboT>0) p.combo=(p.combo+1)%3; else p.combo=0;
+  const fin = p.combo===2;
+  p.comboT=0.9;
+  p.atkCd= fin?0.52:0.34;
+  const ang=aimAngle();
+  p.dir=ang;
+  const st = swingStyle();
+  const sweep = p.combo===1 ? -1 : 1;
+  swings.push({x:p.x,y:p.y,ang,life:fin?0.2:0.15,maxLife:fin?0.2:0.15,
+               col:st.col,w:(st.w||4)+(fin?2:0),glow:st.glow,sweep,fin});
+  if(st.spark||fin) for(let i=0;i<(fin?7:4);i++){
+    const a2=ang+rnd(-0.9,0.9);
+    particles.push({x:p.x+Math.cos(a2)*46, y:p.y+Math.sin(a2)*46,
+      vx:Math.cos(a2)*rnd(40,140), vy:Math.sin(a2)*rnd(40,140), life:rnd(0.2,0.4),
+      col:st.spark||'#d8cfb8', sz:rnd(1.5,3)});
+  }
+  beep(fin?170:220,0.08,'sawtooth',0.045);
+  const RANGE=fin?68:58, ARC=fin?1.5:1.15;
+  let mult=(p.buffT>0?1.3:1)*(fin?1.45:1);
+  let riposte=false;
+  if(p.riposteT>0){ mult*=1.5; riposte=true; p.riposteT=0; }
+  const baseDmg=p.dmg*mult;
+  let hitAny=false;
+  for(const e of cur.enemies.slice()){
+    const d=dist(p,e);
+    if(d<RANGE+e.r){
+      let da=Math.atan2(e.y-p.y,e.x-p.x)-ang;
+      da=Math.atan2(Math.sin(da),Math.cos(da));
+      if(Math.abs(da)<ARC){
+        const kb=fin?12:6;
+        const gm=weaponGem();
+        const dmgOut=Math.round(baseDmg*rnd(0.85,1.2)) + (gm?gm.power:0);
+        damageEnemy(e, dmgOut, Math.cos(ang)*kb, Math.sin(ang)*kb, riposte?'#f0d878':(gm?gm.col:null));
+        if(gm){
+          burst(e.x,e.y,gm.col,6,130);
+          if(gm.elem==='eis') e.slowT=1.2;
+          if(gm.elem==='schatten') player.hp=Math.min(player.maxhp,player.hp+1);
+        }
+        hitAny=true;
+        shake=Math.max(shake,fin?5:3);
+        beep(fin?110:140,0.07,'square',0.05);
+      }
+    }
+  }
+  if(hitAny) hitstop=Math.max(hitstop, fin?0.07:0.045);
+}
+
+function castSkill(i){
+  const sk=SKILLS[i];
+  if(player.level<sk.unlock){ log(sk.name+' - ab Stufe '+sk.unlock,'bad'); return; }
+  if(player.cds[i]>0) return;
+  if(player.mana<sk.mana){ log('Nicht genug Mana','bad'); beep(110,0.1,'square',0.04); return; }
+  player.mana-=sk.mana; player.cds[i]=sk.cd;
+  if(i===0){ // Feuerball
+    const a=aimAngle();
+    player.dir=a;
+    projectiles.push({x:player.x+Math.cos(a)*16,y:player.y+Math.sin(a)*16,
+      vx:Math.cos(a)*390,vy:Math.sin(a)*390,r:6,dmg:Math.round((16+5*player.level)*(player.buffT>0?1.3:1)),from:'player',col:'#e8842a',fire:true});
+    beep(330,0.1,'sawtooth',0.05);
+  }
+  if(i===1){ // Heiliges Licht
+    const R=135, dmg=22+5*player.level;
+    burst(player.x,player.y,'#f0dc92',34,220);
+    shake=Math.max(shake,4);
+    beep(520,0.2,'triangle',0.06); beep(780,0.25,'sine',0.05);
+    for(const e of cur.enemies.slice()){
+      if(dist(player,e)<R+e.r) damageEnemy(e,Math.round(dmg*rnd(0.9,1.2)));
+    }
+    telegraphs.push({x:player.x,y:player.y,r:R,t:0.22,holy:true});
+  }
+  if(i===2){ // Heilung
+    player.hp=Math.min(player.maxhp, player.hp+Math.round(player.maxhp*0.4));
+    burst(player.x,player.y,'#8ae08a',16,100);
+    log('Heilung gewirkt','magic'); beep(600,0.15,'sine',0.06);
+  }
+}
+
+function addFloat(x,y,txt,col){
+  if(!SETTINGS.dmgNums && /^[0-9]/.test(String(txt))) return;
+  floats.push({x,y,txt,col,life:0.75});
+  if(floats.length>40) floats.shift();
+}
+function resolveMeleeHit(e,dmg){
+  const p=player;
+  if(p.dashT>0){ addFloat(p.x,p.y-20,'Ausgewichen','#9ad8a0'); return; }
+  const aTo=Math.atan2(e.y-p.y,e.x-p.x);
+  let diff=aTo-p.dir; diff=Math.atan2(Math.sin(diff),Math.cos(diff));
+  if(p.blocking && Math.abs(diff)<1.35){
+    if(p.blockT<0.25){
+      // Perfekte Parade
+      addFloat(p.x,p.y-22,'PARIERT!','#f0d878');
+      p.riposteT=1.3;
+      if(!e.boss) e.stun=0.9;
+      hitstop=Math.max(hitstop,0.10);
+      burst(p.x+Math.cos(aTo)*14, p.y+Math.sin(aTo)*14, '#f0e8c0', 14, 220);
+      beep(900,0.08,'triangle',0.07); beep(1350,0.06,'sine',0.05);
+      return;
+    }
+    // Normaler Block
+    burst(p.x+Math.cos(aTo)*12, p.y+Math.sin(aTo)*12, '#aab4c0', 8, 150);
+    beep(420,0.06,'square',0.05);
+    hurtPlayer(Math.max(1,Math.round(dmg*0.3)));
+    return;
+  }
+  hurtPlayer(dmg);
+  if(e.affix==='Vampirisch'){
+    e.hp=Math.min(e.maxhp, e.hp+Math.round(dmg*0.6));
+    burst(e.x,e.y,'#a83a6a',6,90);
+  }
+}
+function dash(){
+  const p=player;
+  if(p.dashCd>0 || p.blocking) return;
+  let dx=joy.x, dy=joy.y;
+  if(keys['w']||keys['arrowup'])dy-=1; if(keys['s']||keys['arrowdown'])dy+=1;
+  if(keys['a']||keys['arrowleft'])dx-=1; if(keys['d']||keys['arrowright'])dx+=1;
+  let a;
+  if(dx||dy) a=Math.atan2(dy,dx); else a=p.dir;
+  p.dashT=0.18; p.dashCd=0.9;
+  p.dashVx=Math.cos(a)*560; p.dashVy=Math.sin(a)*560;
+  burst(p.x,p.y,'#8a8276',8,90);
+  beep(260,0.06,'sine',0.04);
+}
+function openChest(ch){
+  ch.open=true;
+  burst(ch.x,ch.y-6,'#e0b53a',16,170);
+  beep(300,0.12,'triangle',0.06); beep(520,0.15,'sine',0.05);
+  const d=(cur.depth||1);
+  cur.pickups.push({kind:'gold',amt:ri(15,35)+d*8,x:ch.x+rnd(-10,10),y:ch.y+rnd(4,12),bob:rnd(0,6)});
+  cur.pickups.push({kind:'gear',item:rollGear(d+(Math.random()<0.2?1:0)),x:ch.x,y:ch.y+18,bob:rnd(0,6)});
+  if(Math.random()<0.35) cur.pickups.push({kind:'gem',item:rollGem(d),x:ch.x+14,y:ch.y+10,bob:rnd(0,6)});
+  log('Truhe geöffnet','gold');
+}
+function useWell(wl){
+  wl.used=true;
+  burst(wl.x,wl.y,'#8c1a1a',16,140);
+  beep(140,0.3,'sawtooth',0.06);
+  const r=Math.random();
+  if(r<0.45){ player.elixirs++; calc(); player.hp=Math.min(player.maxhp,player.hp+10);
+    log('Das Blut brennt in deinen Adern: +10 maximales Leben','gold'); }
+  else if(r<0.8){ player.hp=player.maxhp; player.mana=player.maxmana;
+    log('Der Brunnen stillt mehr als Durst - vollständig geheilt',''); }
+  else {
+    log('Das Blut ruft die Schatten!','bad');
+    for(let i=0;i<2;i++){ const a2=rnd(0,6.283);
+      cur.enemies.push(makeEnemy('schatten', cur.depth||2, wl.x+Math.cos(a2)*70, wl.y+Math.sin(a2)*70)); }
+  }
+}
+function useAltar(al){
+  al.used=true;
+  burst(al.x,al.y,'#c9a227',18,160); beep(200,0.3,'triangle',0.06);
+  const r=Math.random();
+  if(r<0.25){ player.buffT=45; log('Segen der Stärke: +30% Schaden für 45 Sekunden','gold'); }
+  else if(r<0.45){ player.hp=player.maxhp; player.mana=player.maxmana; log('Der Altar heilt deine Wunden','gold'); }
+  else if(r<0.60){ const g=ri(30,80); player.gold+=g; log('Vergessene Opfergaben: +'+g+' Gold','gold'); }
+  else if(r<0.80){ gainXP(25+15*(cur.depth||1)); log('Visionen vergangener Zeiten: Erfahrung erhalten','magic'); }
+  else {
+    log('Die Toten erwachen!','bad'); beep(80,0.4,'sawtooth',0.07);
+    for(let i=0;i<3;i++){
+      const a2=rnd(0,6.283);
+      cur.enemies.push(makeEnemy(pick(['skelett','pest']), cur.depth||2, al.x+Math.cos(a2)*64, al.y+Math.sin(a2)*64));
+    }
+  }
+}
+function drinkPot(){
+  if(player.pot<=0){ log('Keine Heiltränke','bad'); return; }
+  if(player.hp>=player.maxhp) return;
+  player.pot--; player.hp=Math.min(player.maxhp,player.hp+Math.round(player.maxhp*0.45));
+  log('Heiltrank getrunken',''); beep(520,0.12,'sine',0.06);
+}
+function drinkMpot(){
+  if(player.mpot<=0){ log('Keine Manatränke','bad'); return; }
+  if(player.mana>=player.maxmana) return;
+  player.mpot--; player.mana=Math.min(player.maxmana,player.mana+Math.round(player.maxmana*0.6));
+  log('Manatrank getrunken','magic'); beep(560,0.12,'sine',0.06);
+}
+
+function hurtPlayer(dmg){
+  const eff=Math.max(1, dmg-player.armor);
+  player.hp-=eff; player.hitFlash=0.18; shake=Math.max(shake,5);
+  hitstop=Math.max(hitstop,0.05);
+  addFloat(player.x,player.y-22,'-'+eff,'#e05a4a');
+  burst(player.x,player.y,'#c03030',8,130);
+  beep(95,0.1,'sawtooth',0.06);
+  if(player.hp<=0) die();
+}
+function die(){
+  state='dead';
+  const lost=Math.round(player.gold*0.2);
+  player.gold-=lost;
+  $('deathText').textContent='Die Dunkelheit nimmt, was ihr gehört. '+lost+' Gold verloren. Deine Habseligkeiten bleiben dir - Ravensmoor wartet.';
+  $('death').classList.remove('hidden');
+}
+
+/* ============================================================
+   UPDATE
+============================================================ */
+function update(dt){
+  time+=dt;
+  const p=player;
+  // Cooldowns/Regeneration
+  p.atkCd=Math.max(0,p.atkCd-dt); p.hitFlash=Math.max(0,p.hitFlash-dt);
+  for(let i=0;i<3;i++) p.cds[i]=Math.max(0,p.cds[i]-dt);
+  p.mana=Math.min(p.maxmana,p.mana+2.2*dt);
+  if(p.buffT>0){ p.buffT-=dt; if(p.buffT<=0){ p.buffT=0; log('Der Segen verblasst',''); } }
+  p.comboT=Math.max(0,p.comboT-dt);
+  p.riposteT=Math.max(0,p.riposteT-dt);
+  p.dashCd=Math.max(0,p.dashCd-dt);
+  if(p.blocking){
+    p.blockT+=dt;
+    p.dir=aimAngle();
+  }
+  // Schornsteinrauch im Dorf
+  if(cur.chimney){
+    p.smokeT-=dt;
+    if(p.smokeT<=0){
+      p.smokeT=0.35;
+      particles.push({x:cur.chimney.x+rnd(-2,2), y:cur.chimney.y,
+        vx:rnd(-7,7), vy:rnd(-28,-16), life:rnd(1.8,2.6), col:'rgba(130,130,130,0.5)', sz:rnd(3,5)});
+    }
+  }
+
+  // Bewegung
+  let dx=0,dy=0;
+  if(keys['w']||keys['arrowup'])dy-=1; if(keys['s']||keys['arrowdown'])dy+=1;
+  if(keys['a']||keys['arrowleft'])dx-=1; if(keys['d']||keys['arrowright'])dx+=1;
+  dx+=joy.x; dy+=joy.y;
+  if(p.dashT>0){
+    p.dashT-=dt;
+    moveBody(p, p.dashVx*dt, p.dashVy*dt);
+  } else if(dx||dy){
+    const l=Math.hypot(dx,dy);
+    const spd=p.speed*(p.blocking?0.45:1)*Math.min(1,l);
+    moveBody(p, dx/l*spd*dt, dy/l*spd*dt);
+    if(!p.blocking) p.dir=Math.atan2(dy,dx);
+  }
+  if(mouse.down||touchBtn.atk) playerAttack();
+
+  // Sicht (Krypta)
+  if(cur.dark){
+    const ptx=Math.floor(p.x/TILE), pty=Math.floor(p.y/TILE), R=8;
+    for(let ty=pty-R;ty<=pty+R;ty++) for(let tx=ptx-R;tx<=ptx+R;tx++)
+      if(tx>=0&&ty>=0&&tx<cur.w&&ty<cur.h&&(tx-ptx)**2+(ty-pty)**2<=R*R) cur.seen[ty][tx]=true;
+  }
+
+  // Trigger-Kacheln
+  const tid = cur.map[Math.floor(p.y/TILE)]?.[Math.floor(p.x/TILE)];
+  if(!p.triggerLock){
+    if(tid===T.CDOOR){
+      if(p.hasKey){ goArea('crypt1', null); }
+      else { log('Die Kirchentür ist verschlossen. Pater Johannes hat den Schlüssel.','bad'); p.triggerLock=true; }
+    }
+    else if(tid===T.STAIR){
+      if(cur.id==='crypt1') goArea('crypt2',null);
+      else if(cur.id==='crypt2') goArea('crypt3',null);
+      else if(cur.id==='crypt3') goArea('boss',null);
+    }
+    else if(tid===T.STAIRUP){
+      if(cur.id==='crypt1') goArea('village', getArea('village').downPos);
+      else if(cur.id==='crypt2') goArea('crypt1', getArea('crypt1').downPos);
+      else if(cur.id==='crypt3') goArea('crypt2', getArea('crypt2').downPos);
+      else if(cur.id==='boss') goArea('crypt3', getArea('crypt3').downPos);
+    }
+  } else if(tid!==T.CDOOR && tid!==T.STAIR && tid!==T.STAIRUP){
+    p.triggerLock=false;
+  }
+
+  // Interaktions-Hinweis
+  let hint=null, hintNpc=null, hintPickup=null, hintAltar=null, hintChest=null, hintWell=null;
+  for(const n of cur.npcs){ if(dist(n,p)<46){ hint=n.name+' - '+IK()+' zum Reden'; hintNpc=n; break; } }
+  if(!hint) for(const pk of cur.pickups){
+    if(pk.kind==='gear'||pk.kind==='relic'||pk.kind==='note'){
+      if(dist(pk,p)<34){
+        hint = pk.kind==='relic' ? 'Das Relikt - '+IK()+' zum Aufheben'
+             : pk.kind==='note'  ? 'Zerknitterte Notiz - '+IK()+' zum Lesen'
+             : pk.item.name+' - '+IK()+' zum Aufheben';
+        hintPickup=pk; break;
+      }
+    }
+  }
+  if(!hint && cur.chests) for(const ch of cur.chests){
+    if(!ch.open && dist(ch,p)<42){ hint='Truhe - '+IK()+' zum Öffnen'; hintChest=ch; break; }
+  }
+  if(!hint && cur.wells) for(const wl of cur.wells){
+    if(!wl.used && dist(wl,p)<46){ hint='Blutbrunnen - '+IK()+' zum Trinken'; hintWell=wl; break; }
+  }
+  if(!hint && cur.altars) for(const al of cur.altars){
+    if(!al.used && dist(al,p)<46){ hint='Opferaltar - '+IK()+' zum Beten'; hintAltar=al; break; }
+  }
+  const hintEl=$('hint');
+  if(hint){ hintEl.textContent=hint; hintEl.classList.remove('hidden'); } else hintEl.classList.add('hidden');
+  if(touchMode) $('tbE').classList.toggle('hidden', !hint);
+  if(keys['__e']){
+    keys['__e']=false;
+    if(hintNpc) talkTo(hintNpc);
+    else if(hintAltar) useAltar(hintAltar);
+    else if(hintChest) openChest(hintChest);
+    else if(hintWell) useWell(hintWell);
+    else if(hintPickup){
+      if(hintPickup.kind==='relic') pickupRelic(hintPickup);
+      else if(hintPickup.kind==='note'){
+        hintPickup.dead=true;
+        cur.pickups=cur.pickups.filter(x=>!x.dead);
+        gainXP(15+8*(cur.depth||1));
+        openDialog('Zerknitterte Notiz',[NOTES[hintPickup.idx]||NOTES[1]]);
+      }
+      else { player.inv.push(hintPickup.item);
+             log(hintPickup.item.name+' aufgehoben', hintPickup.item.rarity===2?'gold':(hintPickup.item.rarity===1?'magic':''));
+             hintPickup.dead=true; beep(700,0.07,'sine',0.05); }
+    }
+  }
+
+  // Gegner
+  for(const e of cur.enemies.slice()){
+    e.atkCd=Math.max(0,e.atkCd-dt); e.shootCd=Math.max(0,e.shootCd-dt);
+    e.hitFlash=Math.max(0,e.hitFlash-dt); e.wobble+=dt*4;
+    e.slowT=Math.max(0,(e.slowT||0)-dt);
+    const d=dist(e,p);
+    if(e.boss){ bossAI(e,dt,d); if(state!=='play') return; continue; }
+    if(e.stun>0){ e.stun-=dt; continue; }
+    if(e.windup>0){
+      e.windup-=dt;
+      if(e.windup<=0){
+        if(dist(e,p)<e.r+p.r+18) resolveMeleeHit(e, Math.round(e.dmg*rnd(0.8,1.15)));
+        if(state!=='play') return;
+      }
+      continue;
+    }
+    if(d>e.aggro) continue;
+    if(e.ranged && d<290 && d>90 && los(e,p)){
+      if(e.shootCd===0){
+        e.shootCd=1.8;
+        const a=Math.atan2(p.y-e.y,p.x-e.x)+rnd(-0.06,0.06);
+        projectiles.push({x:e.x,y:e.y,vx:Math.cos(a)*265,vy:Math.sin(a)*265,r:4,dmg:e.dmg,from:'enemy',col:'#cfc4a8'});
+        beep(300,0.05,'square',0.03);
+      }
+      if(d<140){ const a=Math.atan2(e.y-p.y,e.x-p.x); moveBody(e,Math.cos(a)*e.speed*0.6*dt,Math.sin(a)*e.speed*0.6*dt); }
+    }
+    else if(d>e.r+p.r+2){
+      const a=Math.atan2(p.y-e.y,p.x-e.x);
+      const sf=e.slowT>0?0.5:1;
+      moveBody(e,Math.cos(a)*e.speed*sf*dt,Math.sin(a)*e.speed*sf*dt);
+    } else if(e.atkCd===0){
+      e.atkCd=1.05;
+      e.windup=0.36;
+      beep(180,0.05,'square',0.03);
+    }
+  }
+  // Gegner auseinanderdrücken
+  const en=cur.enemies;
+  for(let i=0;i<en.length;i++) for(let j=i+1;j<en.length;j++){
+    const A=en[i],B=en[j],d=dist(A,B),m=A.r+B.r;
+    if(d<m&&d>0.01){ const a=Math.atan2(B.y-A.y,B.x-A.x),push=(m-d)/2;
+      moveBody(A,-Math.cos(a)*push,-Math.sin(a)*push); moveBody(B,Math.cos(a)*push,Math.sin(a)*push); }
+  }
+
+  // Projektile
+  for(const pr of projectiles){
+    pr.x+=pr.vx*dt; pr.y+=pr.vy*dt;
+    if(isSolidAt(pr.x,pr.y)){ pr.dead=true; if(pr.fire) burst(pr.x,pr.y,'#e8842a',10,150); continue; }
+    if(pr.from==='player'){
+      for(const e of cur.enemies.slice()){
+        if(dist(pr,e)<pr.r+e.r){
+          pr.dead=true;
+          damageEnemy(e,Math.round(pr.dmg*rnd(0.9,1.15)));
+          if(pr.fire){ burst(pr.x,pr.y,'#e8842a',14,170);
+            for(const o of cur.enemies.slice()) if(o!==e&&dist(pr,o)<46) damageEnemy(o,Math.round(pr.dmg*0.5)); }
+          break;
+        }
+      }
+    } else if(dist(pr,p)<pr.r+p.r){
+      pr.dead=true;
+      if(p.dashT>0){ addFloat(p.x,p.y-20,'Ausgewichen','#9ad8a0'); }
+      else{
+        let diff=Math.atan2(pr.y-p.y,pr.x-p.x)-p.dir;
+        diff=Math.atan2(Math.sin(diff),Math.cos(diff));
+        if(p.blocking && Math.abs(diff)<1.35){
+          addFloat(p.x,p.y-20,'Geblockt','#aab4c0');
+          burst(pr.x,pr.y,'#aab4c0',6,140);
+          beep(500,0.05,'square',0.04);
+        } else {
+          hurtPlayer(pr.dmg);
+          if(state!=='play') return;
+        }
+      }
+    }
+  }
+  projectiles=projectiles.filter(pr=>!pr.dead && Math.abs(pr.x-p.x)<1400 && Math.abs(pr.y-p.y)<1400);
+
+  // Telegraphen (Boss-Schlag)
+  for(const tg of telegraphs){
+    tg.t-=dt;
+    if(tg.t<=0 && !tg.done && !tg.holy){
+      tg.done=true;
+      burst(tg.x,tg.y,'#8c6a3a',20,200); shake=Math.max(shake,7);
+      beep(70,0.25,'sawtooth',0.08);
+      if(Math.hypot(p.x-tg.x,p.y-tg.y)<tg.r+p.r){ hurtPlayer(tg.dmg); if(state!=='play') return; }
+    }
+  }
+  telegraphs=telegraphs.filter(tg=>tg.t>-0.15);
+
+  // Aufsammeln (Gold/Tränke automatisch)
+  for(const pk of cur.pickups){
+    pk.bob+=dt*3;
+    if(pk.kind==='gear'||pk.kind==='relic') continue;
+    if(dist(pk,p)<p.r+13){
+      if(pk.kind==='gold'){ p.gold+=pk.amt; log('+'+pk.amt+' Gold','gold'); beep(880,0.05,'sine',0.04); }
+      if(pk.kind==='potion'){ p.pot++; log('Heiltrank gefunden',''); beep(620,0.07,'sine',0.04); }
+      if(pk.kind==='mpotion'){ p.mpot++; log('Manatrank gefunden','magic'); beep(660,0.07,'sine',0.04); }
+      if(pk.kind==='folio'){ gainXP(22+13*(cur.depth||1)); log('Vergilbter Foliant: altes Wissen (+Erfahrung)','magic'); beep(540,0.1,'sine',0.05); }
+      if(pk.kind==='gem'){ p.inv.push(pk.item); log(pk.item.name+' gefunden','magic'); beep(720,0.08,'sine',0.05); }
+      pk.dead=true;
+    }
+  }
+  cur.pickups=cur.pickups.filter(pk=>!pk.dead);
+
+  // Partikel / Schwünge
+  for(const pa of particles){ pa.x+=pa.vx*dt; pa.y+=pa.vy*dt; pa.vx*=0.9; pa.vy*=0.9; pa.life-=dt; }
+  particles=particles.filter(pa=>pa.life>0);
+  for(const f of floats){ f.y-=34*dt; f.life-=dt; }
+  floats=floats.filter(f=>f.life>0);
+  for(const s of swings) s.life-=dt;
+  swings=swings.filter(s=>s.life>0);
+  shake=Math.max(0,shake-dt*18);
+
+  // Kamera
+  camX=clamp(p.x-W/2,-TILE,cur.w*TILE-W+TILE);
+  camY=clamp(p.y-H/2,-TILE,cur.h*TILE-H+TILE);
+  if(cur.w*TILE<W) camX=(cur.w*TILE-W)/2;
+  if(cur.h*TILE<H) camY=(cur.h*TILE-H)/2;
+  const shk=SETTINGS.shake?shake:0;
+  camX+=rnd(-shk,shk); camY+=rnd(-shk,shk);
+}
+
+function bossAI(e,dt,d){
+  const p=player;
+  e.slamCd=Math.max(0,e.slamCd-dt); e.fanCd=Math.max(0,e.fanCd-dt);
+  if(e.windup>0){
+    e.windup-=dt;
+    if(e.windup<=0){
+      if(dist(e,p)<e.r+p.r+28) resolveMeleeHit(e, Math.round(e.dmg*rnd(0.85,1.1)));
+      if(state!=='play') return;
+    }
+    return;
+  }
+  const phase2 = e.hp < e.maxhp*0.5;
+  const spd = phase2 ? e.speed*1.35 : e.speed;
+  // Beschwörung bei Schwellen
+  if(!e.sum1 && e.hp<e.maxhp*0.66){ e.sum1=true; summonAdds(e,2); }
+  if(!e.sum2 && e.hp<e.maxhp*0.33){ e.sum2=true; summonAdds(e,3); }
+  if(d>e.r+p.r+8){ const a=Math.atan2(p.y-e.y,p.x-e.x); moveBody(e,Math.cos(a)*spd*dt,Math.sin(a)*spd*dt); }
+  else if(e.atkCd===0){ e.atkCd=1.5; e.windup=0.5; beep(140,0.12,'square',0.05); }
+  if(e.slamCd===0 && d<360){
+    e.slamCd=phase2?3.6:5;
+    telegraphs.push({x:p.x,y:p.y,r:74,t:0.85,dmg:Math.round(e.dmg*1.6)});
+    log('Der Tempelritter holt aus!','bad'); beep(120,0.3,'triangle',0.06);
+  }
+  if(phase2 && e.fanCd===0 && d<420){
+    e.fanCd=3.4;
+    const base=Math.atan2(p.y-e.y,p.x-e.x);
+    for(let i=-2;i<=2;i++){
+      const a=base+i*0.22;
+      projectiles.push({x:e.x,y:e.y,vx:Math.cos(a)*230,vy:Math.sin(a)*230,r:5,dmg:Math.round(e.dmg*0.7),from:'enemy',col:'#a8e0c0'});
+    }
+    beep(260,0.15,'sawtooth',0.05);
+  }
+}
+function summonAdds(e,n){
+  log('Erhebt euch! Dient mir erneut!','bad');
+  for(let i=0;i<n;i++){
+    const a=rnd(0,6.283);
+    cur.enemies.push(makeEnemy(Math.random()<0.5?'skelett':'pest',3, e.x+Math.cos(a)*70, e.y+Math.sin(a)*70));
+  }
+  burst(e.x,e.y,'#6a6258',20,180);
+}
+
+/* ============================================================
+   RELIKT / ENDEN
+============================================================ */
+function pickupRelic(pk){
+  pk.dead=true;
+  cur.pickups=cur.pickups.filter(x=>!x.dead);
+  openDialog('Das Relikt des Kreuzritters',[
+    'In der zerschmetterten Rüstung des Ritters liegt ein Fragment - warm, obwohl alles hier kalt ist. Die Inschrift auf dem Grab nennt es ein "Geschenk des ewigen Lebens". Du spürst, wie es nach dir greift.',
+    {text:'Was tust du?', choices:[
+      {label:'Das Geschenk annehmen', fn:()=>endGame('annehmen')},
+      {label:'Das Relikt zerstören',  fn:()=>endGame('zerstoeren')},
+    ]},
+  ]);
+}
+function endGame(choice){
+  relicChoice=choice; closeDialog(); state='ending';
+  if(choice==='annehmen'){
+    $('endTitle').innerHTML='DER PREIS DER <span>UNSTERBLICHKEIT</span>';
+    $('endText').textContent='Das Geschenk ist nun Teil von dir. Du spürst die neue Kraft - und die neue Last. Die Dorfbewohner nennen dich ihren Retter, doch in ihren Augen liest du Furcht. Und manchmal, in der dunkelsten Stunde vor der Dämmerung, hörst du sein Lachen in deinem Kopf. Du weißt: Ein Teil von ihm lebt in dir weiter.';
+  } else {
+    $('endTitle').innerHTML='ERLÖSUNG';
+    $('endText').textContent='Das Fragment zerspringt unter deinem Stiefel, und ein Seufzen geht durch das Gewölbe - wie hundert Stimmen, die endlich schweigen dürfen. Ravensmoor ist frei. Die Narben des Krieges bleiben, doch die Toten ruhen wieder. Heinrich schenkt dir das erste ehrliche Bier des Jahres aus.';
+  }
+  $('ending').classList.remove('hidden');
+}
+$('btnContinue').onclick=()=>{
+  $('ending').classList.add('hidden');
+  state='play';
+  goArea('village', null);
+  if(relicChoice==='annehmen'){ player.elixirs+=3; calc(); player.hp=player.maxhp; log('Das Geschenk pulsiert in dir. +30 maximales Leben.','magic'); }
+};
+
+/* ============================================================
+   RENDERING
+============================================================ */
+function tileNoise(tx,ty){ return ((tx*73856093)^(ty*19349663))%7; }
+function floorBase(sx,sy,n){
+  const f = (cur.theme && cur.theme.floor) || [27,-3,-6];
+  const g = f[0] + n*2;
+  ctx.fillStyle = `rgb(${g},${g+f[1]},${g+f[2]})`;
+  ctx.fillRect(sx,sy,TILE,TILE);
+  ctx.strokeStyle='rgba(0,0,0,0.25)'; ctx.strokeRect(sx+.5,sy+.5,TILE,TILE);
+}
+
+function drawTile(tx,ty){
+  const v=cur.map[ty][tx], sx=tx*TILE-camX, sy=ty*TILE-camY, n=tileNoise(tx,ty);
+  switch(v){
+    case T.GRASS:{ const g=46+n*2; ctx.fillStyle=`rgb(${g-14},${g},${g-22})`; ctx.fillRect(sx,sy,TILE,TILE);
+      if(n===3){ ctx.fillStyle='rgba(20,40,16,0.5)'; ctx.fillRect(sx+8,sy+12,3,6); ctx.fillRect(sx+20,sy+6,3,6); }
+      if(n===2){ ctx.fillStyle='#b8aed0'; ctx.fillRect(sx+9,sy+9,2,2); ctx.fillStyle='#d0c890'; ctx.fillRect(sx+22,sy+18,2,2); }
+      if(n===6){ ctx.fillStyle='rgba(90,86,78,0.6)'; ctx.beginPath(); ctx.arc(sx+18,sy+20,3,0,6.283); ctx.fill(); } break; }
+    case T.PATH:{ const g=72+n*2; ctx.fillStyle=`rgb(${g},${g-10},${g-26})`; ctx.fillRect(sx,sy,TILE,TILE);
+      ctx.fillStyle='rgba(0,0,0,0.12)'; if(n<2) ctx.fillRect(sx+n*9,sy+10,5,4);
+      ctx.fillStyle='rgba(0,0,0,0.15)'; ctx.fillRect(sx+4+n*3,sy+22,4,3); break; }
+    case T.BURNT:{ ctx.fillStyle='#1c1814'; ctx.fillRect(sx,sy,TILE,TILE);
+      ctx.fillStyle='rgba(60,50,40,0.4)'; ctx.fillRect(sx+n*3,sy+n*2,6,3); break; }
+    case T.TREE:{ const g=46+n*2; ctx.fillStyle=`rgb(${g-14},${g},${g-22})`; ctx.fillRect(sx,sy,TILE,TILE);
+      ctx.fillStyle='#241a10'; ctx.fillRect(sx+13,sy+18,6,10);
+      ctx.fillStyle='#1c3018'; ctx.beginPath(); ctx.arc(sx+16,sy+12,12,0,6.283); ctx.fill();
+      ctx.fillStyle='rgba(40,70,34,0.8)'; ctx.beginPath(); ctx.arc(sx+12,sy+9,7,0,6.283); ctx.fill(); break; }
+    case T.HWALL:{
+      const front = ty+1<cur.h && !SOLID.has(cur.map[ty+1][tx]);
+      if(front){
+        // Fachwerk-Fassade
+        ctx.fillStyle='#8a7a62'; ctx.fillRect(sx,sy,TILE,TILE);
+        ctx.fillStyle='#2a1e12';
+        ctx.fillRect(sx,sy,TILE,3); ctx.fillRect(sx,sy+TILE-3,TILE,3);
+        ctx.fillRect(sx,sy,3,TILE); ctx.fillRect(sx+TILE-3,sy,3,TILE);
+        ctx.fillRect(sx+14,sy,3,TILE);
+        if(n%3===0){
+          ctx.fillStyle='#2a1e12'; ctx.fillRect(sx+5,sy+8,11,13);
+          ctx.fillStyle='rgba(232,168,74,0.95)'; ctx.fillRect(sx+6,sy+9,9,11);
+          ctx.fillStyle='#2a1e12'; ctx.fillRect(sx+10,sy+9,1,11); ctx.fillRect(sx+6,sy+14,9,1);
+        }
+      } else {
+        // Schindeldach
+        ctx.fillStyle='#4a2a20'; ctx.fillRect(sx,sy,TILE,TILE);
+        ctx.fillStyle='rgba(0,0,0,0.28)';
+        for(let i=0;i<4;i++) ctx.fillRect(sx,sy+((i*8+(tx%2)*4)%TILE),TILE,2);
+        ctx.fillStyle='rgba(255,255,255,0.05)'; ctx.fillRect(sx,sy,TILE,4);
+      }
+      break; }
+    case T.CWALL:{
+      const front = ty+1<cur.h && !SOLID.has(cur.map[ty+1][tx]);
+      if(front){
+        // Steinfassade der Kirche
+        ctx.fillStyle='#55524c'; ctx.fillRect(sx,sy,TILE,TILE);
+        ctx.fillStyle='rgba(0,0,0,0.22)';
+        ctx.fillRect(sx,sy+10,TILE,2); ctx.fillRect(sx,sy+21,TILE,2);
+        ctx.fillRect(sx+(n%2?8:18),sy,2,10); ctx.fillRect(sx+(n%2?20:8),sy+12,2,9);
+        if(n%3===1){
+          // Spitzbogenfenster mit fahlem Schein
+          ctx.fillStyle='#1c1a18';
+          ctx.beginPath(); ctx.moveTo(sx+11,sy+22); ctx.lineTo(sx+11,sy+12);
+          ctx.quadraticCurveTo(sx+16,sy+4,sx+21,sy+12); ctx.lineTo(sx+21,sy+22); ctx.closePath(); ctx.fill();
+          ctx.fillStyle='rgba(140,160,200,0.30)';
+          ctx.fillRect(sx+13,sy+12,6,9);
+        }
+      } else {
+        // Schieferdach
+        ctx.fillStyle='#3a3e46'; ctx.fillRect(sx,sy,TILE,TILE);
+        ctx.fillStyle='rgba(0,0,0,0.3)';
+        for(let i=0;i<4;i++) ctx.fillRect(sx,sy+((i*8+(tx%2)*4)%TILE),TILE,2);
+        ctx.fillStyle='rgba(255,255,255,0.04)'; ctx.fillRect(sx,sy,TILE,3);
+      }
+      break; }
+    case T.CDOOR:{ ctx.fillStyle='#241a10'; ctx.fillRect(sx,sy,TILE,TILE);
+      ctx.fillStyle='#3a2c1c'; ctx.fillRect(sx+5,sy+2,TILE-10,TILE-2);
+      ctx.strokeStyle='#c9a227'; ctx.strokeRect(sx+5.5,sy+2.5,TILE-11,TILE-3);
+      ctx.fillStyle='#c9a227'; ctx.fillRect(sx+TILE-12,sy+16,3,3); break; }
+    case T.GRAVE:{ const g=46+n*2; ctx.fillStyle=`rgb(${g-14},${g},${g-22})`; ctx.fillRect(sx,sy,TILE,TILE);
+      ctx.fillStyle='#5a564e'; ctx.fillRect(sx+10,sy+8,12,18);
+      ctx.beginPath(); ctx.arc(sx+16,sy+8,6,Math.PI,0); ctx.fill();
+      ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.fillRect(sx+13,sy+13,6,2); break; }
+    case T.WELL:{ const g=46+n*2; ctx.fillStyle=`rgb(${g-14},${g},${g-22})`; ctx.fillRect(sx,sy,TILE,TILE);
+      ctx.fillStyle='#55504a'; ctx.beginPath(); ctx.arc(sx+16,sy+16,13,0,6.283); ctx.fill();
+      ctx.fillStyle='#10141c'; ctx.beginPath(); ctx.arc(sx+16,sy+16,8,0,6.283); ctx.fill(); break; }
+    case T.WALL:{ const wt=cur.theme||{wallTop:'#0f0c08',wallFace:'#262017'};
+      ctx.fillStyle=wt.wallTop; ctx.fillRect(sx,sy,TILE,TILE);
+      if(ty+1<cur.h && cur.map[ty+1][tx]!==T.WALL){ ctx.fillStyle=wt.wallFace; ctx.fillRect(sx,sy+TILE-10,TILE,10); } break; }
+    case T.FLOOR:{ floorBase(sx,sy,n);
+      if(n===5){ ctx.fillStyle='rgba(0,0,0,0.18)'; ctx.fillRect(sx+6,sy+10,12,2); ctx.fillRect(sx+14,sy+12,2,8); } break; }
+    case T.BONES:{ floorBase(sx,sy,n);
+      ctx.fillStyle='#cfc4a8';
+      ctx.fillRect(sx+6,sy+19,9,2.5); ctx.fillRect(sx+18,sy+10,8,2.5);
+      ctx.beginPath(); ctx.arc(sx+12,sy+11,4,0,6.283); ctx.fill();
+      ctx.fillStyle='#1a1410'; ctx.fillRect(sx+10,sy+10,1.8,2); ctx.fillRect(sx+13.2,sy+10,1.8,2); break; }
+    case T.BLOOD:{ floorBase(sx,sy,n);
+      ctx.fillStyle='rgba(110,16,16,0.55)';
+      ctx.beginPath(); ctx.arc(sx+13+n,sy+14,7,0,6.283); ctx.fill();
+      ctx.beginPath(); ctx.arc(sx+23,sy+21,3.5,0,6.283); ctx.fill();
+      ctx.beginPath(); ctx.arc(sx+7,sy+23,2.5,0,6.283); ctx.fill(); break; }
+    case T.RUNE:{ floorBase(sx,sy,n);
+      const rc=(cur.theme&&cur.theme.rune)||'#c03030';
+      ctx.globalAlpha=0.45+Math.sin(time*3+tx+ty)*0.2;
+      ctx.strokeStyle=rc;
+      ctx.beginPath(); ctx.arc(sx+16,sy+16,9,0,6.283); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(sx+16,sy+7); ctx.lineTo(sx+24,sy+21); ctx.lineTo(sx+8,sy+21); ctx.closePath(); ctx.stroke();
+      ctx.globalAlpha=1; break; }
+    case T.ALTAR:{ floorBase(sx,sy,n);
+      ctx.fillStyle='#3a362e'; ctx.fillRect(sx+4,sy+9,TILE-8,TILE-12);
+      ctx.fillStyle='#4e4a40'; ctx.fillRect(sx+2,sy+6,TILE-4,7);
+      ctx.fillStyle='rgba(110,16,16,0.8)'; ctx.fillRect(sx+12,sy+13,8,3); ctx.fillRect(sx+15,sy+16,3,9);
+      const cf=Math.sin(time*8+tx);
+      ctx.fillStyle='#f8d878';
+      ctx.beginPath(); ctx.ellipse(sx+6,sy+4+cf*0.4,1.6,3,0,0,6.283); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(sx+26,sy+4-cf*0.4,1.6,3,0,0,6.283); ctx.fill(); break; }
+    case T.SHELF:{
+      ctx.fillStyle='#2e2114'; ctx.fillRect(sx,sy,TILE,TILE);
+      ctx.fillStyle='#1a1108'; ctx.fillRect(sx+2,sy+4,TILE-4,9); ctx.fillRect(sx+2,sy+18,TILE-4,9);
+      const bc=['#7a3030','#3a5a7a','#6a6a3a','#5a3a6a','#7a5a2a'];
+      for(let i=0;i<5;i++){ ctx.fillStyle=bc[(i+n)%5]; ctx.fillRect(sx+4+i*5,sy+5,3.5,7); }
+      for(let i=0;i<5;i++){ ctx.fillStyle=bc[(i+n+2)%5]; ctx.fillRect(sx+4+i*5,sy+19,3.5,7); }
+      break; }
+    case T.STAIR: case T.STAIRUP:{
+      ctx.fillStyle='#0a0805'; ctx.fillRect(sx,sy,TILE,TILE);
+      ctx.strokeStyle = v===T.STAIR ? '#c9a227' : '#8a9ab8';
+      ctx.strokeRect(sx+3.5,sy+3.5,TILE-7,TILE-7);
+      ctx.fillStyle='#4a4434';
+      for(let i=1;i<4;i++) ctx.fillRect(sx+6,sy+3+i*6,TILE-12,2);
+      break; }
+  }
+}
+
+function drawFigure(x,y,r,bodyCol,headCol,dir,hitFlash){
+  ctx.fillStyle='rgba(0,0,0,0.45)';
+  ctx.beginPath(); ctx.ellipse(x,y+r*0.85,r*0.9,r*0.42,0,0,6.283); ctx.fill();
+  ctx.fillStyle=hitFlash>0?'#fff':bodyCol;
+  ctx.beginPath(); ctx.arc(x,y,r,0,6.283); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.55)'; ctx.stroke();
+  ctx.fillStyle=headCol;
+  ctx.beginPath(); ctx.arc(x+Math.cos(dir)*3, y+Math.sin(dir)*3-1, r*0.42,0,6.283); ctx.fill();
+}
+
+function render(){
+  ctx.fillStyle = cur.dark ? '#050403' : '#0c1208';
+  ctx.fillRect(0,0,W,H);
+  const x0=Math.max(0,Math.floor(camX/TILE)), x1=Math.min(cur.w-1,Math.ceil((camX+W)/TILE));
+  const y0=Math.max(0,Math.floor(camY/TILE)), y1=Math.min(cur.h-1,Math.ceil((camY+H)/TILE));
+  for(let ty=y0;ty<=y1;ty++) for(let tx=x0;tx<=x1;tx++) drawTile(tx,ty);
+
+  // Gebäudenamen
+  ctx.font='15px "IM Fell English"'; ctx.textAlign='center';
+  ctx.fillStyle='rgba(216,207,184,0.85)';
+  for(const l of cur.labels){
+    ctx.fillText(l.t, l.x-camX, l.y-camY);
+  }
+
+  // Wandfackeln
+  if(cur.torches) for(const t of cur.torches){
+    if(t.glow) continue;
+    const sx=t.x-camX, sy=t.y-camY;
+    if(sx<-40||sy<-40||sx>W+40||sy>H+40) continue;
+    ctx.fillStyle='#3a2c1c'; ctx.fillRect(sx-2,sy,4,8);
+    const f=Math.sin(time*9+t.ph)*1.5;
+    ctx.fillStyle='#e8842a';
+    ctx.beginPath(); ctx.ellipse(sx,sy-4+f*0.3,3.5,5.5+f,0,0,6.283); ctx.fill();
+    ctx.fillStyle='#f8d878';
+    ctx.beginPath(); ctx.ellipse(sx,sy-3,1.8,3,0,0,6.283); ctx.fill();
+  }
+
+  // Telegraphen
+  for(const tg of telegraphs){
+    const sx=tg.x-camX, sy=tg.y-camY;
+    if(tg.holy){ ctx.strokeStyle=`rgba(240,220,150,${Math.max(0,tg.t*4)})`; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(sx,sy,tg.r,0,6.283); ctx.stroke(); ctx.lineWidth=1; continue; }
+    const prog=1-Math.max(0,tg.t)/0.85;
+    ctx.strokeStyle='rgba(200,60,40,0.8)';
+    ctx.beginPath(); ctx.arc(sx,sy,tg.r,0,6.283); ctx.stroke();
+    ctx.fillStyle=`rgba(180,50,30,${0.12+prog*0.22})`;
+    ctx.beginPath(); ctx.arc(sx,sy,tg.r*prog,0,6.283); ctx.fill();
+  }
+
+  // Blutspuren gefallener Gegner
+  if(cur.decals) for(const dc of cur.decals){
+    const sx=dc.x-camX, sy=dc.y-camY;
+    if(sx<-40||sy<-40||sx>W+40||sy>H+40) continue;
+    ctx.fillStyle='rgba(90,14,14,0.4)';
+    ctx.beginPath(); ctx.ellipse(sx,sy,dc.r,dc.r*0.6,dc.a,0,6.283); ctx.fill();
+    if(dc.bone){
+      ctx.fillStyle='rgba(207,196,168,0.8)';
+      ctx.fillRect(sx-5,sy-1,7,2); ctx.fillRect(sx+1,sy+3,6,2);
+    }
+  }
+
+  // Truhen & Blutbrunnen
+  if(cur.chests) for(const ch of cur.chests){
+    const sx=ch.x-camX, sy=ch.y-camY;
+    if(sx<-40||sy<-40||sx>W+40||sy>H+40) continue;
+    ctx.fillStyle='rgba(0,0,0,0.4)';
+    ctx.beginPath(); ctx.ellipse(sx,sy+9,13,5,0,0,6.283); ctx.fill();
+    if(ch.open){
+      ctx.fillStyle='#3a2814'; ctx.fillRect(sx-12,sy-4,24,12);
+      ctx.fillStyle='#16100a'; ctx.fillRect(sx-10,sy-2,20,8);
+      ctx.fillStyle='#5a3f20'; ctx.fillRect(sx-12,sy-14,24,6);
+    } else {
+      ctx.fillStyle='#5a3f20'; ctx.fillRect(sx-12,sy-10,24,18);
+      ctx.fillStyle='#3a2814'; ctx.fillRect(sx-12,sy-10,24,7);
+      ctx.fillStyle='#c9a227'; ctx.fillRect(sx-12,sy-3,24,2); ctx.fillRect(sx-2,sy-2,4,6);
+      ctx.fillStyle='rgba(224,181,58,'+(0.15+Math.sin(time*3+sx)*0.08)+')';
+      ctx.beginPath(); ctx.arc(sx,sy,16,0,6.283); ctx.fill();
+    }
+  }
+  if(cur.wells) for(const wl of cur.wells){
+    const sx=wl.x-camX, sy=wl.y-camY;
+    if(sx<-40||sy<-40||sx>W+40||sy>H+40) continue;
+    ctx.fillStyle='#55504a';
+    ctx.beginPath(); ctx.arc(sx,sy,14,0,6.283); ctx.fill();
+    ctx.fillStyle = wl.used ? '#1a0606' : '#6e1212';
+    ctx.beginPath(); ctx.arc(sx,sy,9,0,6.283); ctx.fill();
+    if(!wl.used){
+      ctx.fillStyle='rgba(140,26,26,'+(0.35+Math.sin(time*2.4)*0.15)+')';
+      ctx.beginPath(); ctx.arc(sx,sy,8,0,6.283); ctx.fill();
+    }
+  }
+
+  // Pickups
+  for(const pk of cur.pickups){
+    const sx=pk.x-camX, sy=pk.y-camY+Math.sin(pk.bob)*2;
+    if(pk.kind==='gold'){ ctx.fillStyle='#c9a227'; ctx.beginPath(); ctx.arc(sx,sy,4,0,6.283); ctx.fill();
+      ctx.fillStyle='#f0d878'; ctx.fillRect(sx-1,sy-2,2,2); }
+    else if(pk.kind==='potion'||pk.kind==='mpotion'){
+      ctx.fillStyle='#2a1a10'; ctx.fillRect(sx-4,sy-6,8,12);
+      ctx.fillStyle=pk.kind==='potion'?'#d8402a':'#4a6ae0'; ctx.fillRect(sx-3,sy-3,6,8);
+      ctx.fillStyle='#8a7a5a'; ctx.fillRect(sx-2,sy-8,4,3); }
+    else if(pk.kind==='gear'||pk.kind==='gem'){
+      const rar=pk.item.rarity||0;
+      const col=pk.kind==='gem'? pk.item.col : (['#d8cfb8','#8aa6e8','#e0b53a','#b048e8'][rar]);
+      const rgb=pk.kind==='gem'? pk.item.rgb : ([null,'138,166,232','224,181,58','176,72,232'][rar]);
+      if(rgb){
+        const bh = rar===3? 110:70;
+        const gr=ctx.createLinearGradient(sx,sy-bh,sx,sy);
+        gr.addColorStop(0,'rgba('+rgb+',0)');
+        gr.addColorStop(1,'rgba('+rgb+','+(0.28+Math.sin(pk.bob*2)*0.08)+')');
+        ctx.fillStyle=gr;
+        ctx.fillRect(sx-3,sy-bh,6,bh);
+      }
+      if(pk.kind==='gem'){
+        ctx.fillStyle=col;
+        ctx.beginPath(); ctx.moveTo(sx,sy-7); ctx.lineTo(sx+5,sy); ctx.lineTo(sx,sy+7); ctx.lineTo(sx-5,sy); ctx.closePath(); ctx.fill();
+        ctx.fillStyle='rgba(255,255,255,.6)'; ctx.fillRect(sx-1,sy-4,2,3);
+      }
+      else if(pk.item.kind==='ring'){
+        ctx.strokeStyle=col; ctx.lineWidth=2.5;
+        ctx.beginPath(); ctx.arc(sx,sy,5,0,6.283); ctx.stroke(); ctx.lineWidth=1;
+        ctx.fillStyle='#f0e8c8'; ctx.fillRect(sx-1.5,sy-8,3,3);
+      } else {
+        ctx.save(); ctx.translate(sx,sy); ctx.rotate(0.7);
+        ctx.fillStyle=col; ctx.fillRect(-2,-9,4,15); ctx.fillRect(-6,2,12,3);
+        ctx.restore();
+      }
+      ctx.fillStyle=`rgba(255,235,160,${0.25+Math.sin(pk.bob*2)*0.15})`;
+      ctx.beginPath(); ctx.arc(sx,sy,11,0,6.283); ctx.fill(); }
+    else if(pk.kind==='folio'){
+      ctx.fillStyle='#4a3520'; ctx.fillRect(sx-6,sy-5,12,10);
+      ctx.fillStyle='#d8cba8'; ctx.fillRect(sx-4,sy-3,8,6);
+      ctx.fillStyle='#8a7a5a'; ctx.fillRect(sx-3,sy-1.5,6,1); ctx.fillRect(sx-3,sy+0.5,6,1); }
+    else if(pk.kind==='relic'){
+      const gl=0.5+Math.sin(time*4)*0.3;
+      ctx.fillStyle=`rgba(220,170,60,${gl})`;
+      ctx.beginPath(); ctx.arc(sx,sy,14,0,6.283); ctx.fill();
+      ctx.fillStyle='#f3e0a0';
+      ctx.beginPath(); ctx.moveTo(sx,sy-7); ctx.lineTo(sx+6,sy); ctx.lineTo(sx,sy+7); ctx.lineTo(sx-6,sy); ctx.closePath(); ctx.fill(); }
+  }
+
+  // NPCs
+  for(const n of cur.npcs){
+    const sx=n.x-camX, sy=n.y-camY;
+    drawFigure(sx,sy,11,n.col,'#c8b090',Math.sin(time+sx)*0.4,0);
+    ctx.font='13px "IM Fell English"'; ctx.textAlign='center';
+    ctx.fillStyle='rgba(216,207,184,0.9)';
+    ctx.fillText(n.name, sx, sy-18);
+  }
+
+  // Gegner
+  for(const e of cur.enemies){
+    const sx=e.x-camX, sy=e.y-camY;
+    if(sx<-60||sy<-60||sx>W+60||sy>H+60) continue;
+    const wob=Math.sin(e.wobble)*1.5;
+    drawFigure(sx,sy+wob,e.r,e.col, e.boss?'#3a3430':'#1a1410', Math.atan2(player.y-e.y,player.x-e.x), e.hitFlash);
+    if(e.boss){
+      ctx.strokeStyle='#8c1a1a'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(sx,sy-7+wob); ctx.lineTo(sx,sy+5+wob);
+      ctx.moveTo(sx-5,sy-3+wob); ctx.lineTo(sx+5,sy-3+wob); ctx.stroke(); ctx.lineWidth=1;
+    }
+    ctx.fillStyle = e.type==='schatten' ? '#b06ae8' : '#1a0808';
+    if(e.type==='skelett'||e.type==='schuetze') ctx.fillStyle='#1a0808';
+    if(e.boss) ctx.fillStyle='#ffd040';
+    const ea=Math.atan2(player.y-e.y,player.x-e.x), ex=Math.cos(ea)*3, ey=Math.sin(ea)*3;
+    ctx.beginPath(); ctx.arc(sx-4+ex,sy+wob-2+ey,1.8,0,6.283); ctx.fill();
+    ctx.beginPath(); ctx.arc(sx+4+ex,sy+wob-2+ey,1.8,0,6.283); ctx.fill();
+    if(e.hp<e.maxhp){
+      const w=e.boss?60:e.r*2;
+      ctx.fillStyle='#1a0808'; ctx.fillRect(sx-w/2,sy-e.r-10,w,e.boss?6:4);
+      ctx.fillStyle='#a82020'; ctx.fillRect(sx-w/2,sy-e.r-10,w*Math.max(0,e.hp/e.maxhp),e.boss?6:4);
+    }
+    if(e.windup>0){
+      ctx.strokeStyle=`rgba(225,70,50,${0.35+0.5*Math.abs(Math.sin(time*26))})`;
+      ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.arc(sx,sy,e.r+5,0,6.283); ctx.stroke();
+      ctx.lineWidth=1;
+    }
+    if(e.stun>0){
+      ctx.font='12px serif'; ctx.textAlign='center';
+      ctx.fillStyle='#f0d878';
+      ctx.fillText('✶ ✶', sx, sy-e.r-14);
+    }
+    if(e.elite){
+      ctx.strokeStyle='rgba(224,181,58,0.75)';
+      ctx.beginPath(); ctx.arc(sx,sy,e.r+4,0,6.283); ctx.stroke();
+      ctx.font='11px "Cinzel"'; ctx.textAlign='center'; ctx.fillStyle='#e0b53a';
+      ctx.fillText(e.name, sx, sy-e.r-16);
+    }
+    if(e.boss){
+      ctx.font='13px "Cinzel"'; ctx.textAlign='center'; ctx.fillStyle='#d8b13a';
+      ctx.fillText('DER TEMPELRITTER', sx, sy-e.r-16);
+    }
+  }
+
+  // Spieler
+  drawFigure(player.x-camX, player.y-camY, player.r, player.hitFlash>0?'#fff':'#2a2438', '#bfa888', player.dir, 0);
+  if(player.blocking){
+    const bx=player.x-camX, by=player.y-camY;
+    const parry = player.blockT<0.25;
+    ctx.strokeStyle = player.riposteT>0 ? 'rgba(240,216,120,0.95)'
+                    : (parry ? 'rgba(220,228,240,0.95)' : 'rgba(150,162,176,0.85)');
+    ctx.lineWidth=5;
+    ctx.beginPath(); ctx.arc(bx,by,20,player.dir-1.1,player.dir+1.1); ctx.stroke();
+    ctx.lineWidth=1;
+  }
+  if(player.dashT>0){
+    ctx.fillStyle='rgba(216,207,184,0.25)';
+    ctx.beginPath(); ctx.arc(player.x-camX,player.y-camY,player.r+5,0,6.283); ctx.fill();
+  }
+
+  // Schwünge
+  for(const s of swings){
+    const sx=s.x-camX, sy=s.y-camY, prog=1-s.life/(s.maxLife||0.16);
+    const col=s.col||'rgba(232,224,200,';
+    const half=s.fin?1.4:1.0;
+    const shift=(s.sweep||1)*prog*0.55;
+    const rad=44+prog*(s.fin?22:14);
+    if(s.glow){
+      ctx.strokeStyle=s.glow+(0.45*(1-prog))+')'; ctx.lineWidth=(s.w||4)+5;
+      ctx.beginPath(); ctx.arc(sx,sy,rad,s.ang-half+shift,s.ang+half+shift); ctx.stroke();
+    }
+    ctx.strokeStyle=col+(0.9*(1-prog))+')'; ctx.lineWidth=s.w||4;
+    ctx.beginPath(); ctx.arc(sx,sy,rad,s.ang-half+shift,s.ang+half+shift); ctx.stroke();
+    ctx.lineWidth=1;
+  }
+
+  // Projektile
+  for(const pr of projectiles){
+    const sx=pr.x-camX, sy=pr.y-camY;
+    if(pr.fire){ ctx.fillStyle='rgba(232,132,42,0.35)'; ctx.beginPath(); ctx.arc(sx,sy,pr.r+5,0,6.283); ctx.fill(); }
+    ctx.fillStyle=pr.col;
+    ctx.beginPath(); ctx.arc(sx,sy,pr.r,0,6.283); ctx.fill();
+  }
+
+  // Partikel
+  for(const pa of particles){
+    ctx.fillStyle=pa.col; ctx.globalAlpha=clamp(pa.life*3,0,1);
+    ctx.fillRect(pa.x-camX-pa.sz/2, pa.y-camY-pa.sz/2, pa.sz, pa.sz);
+  }
+  ctx.globalAlpha=1;
+
+  // Schadenszahlen
+  ctx.font='bold 14px "Cinzel"'; ctx.textAlign='center';
+  for(const f of floats){
+    ctx.globalAlpha=clamp(f.life*2,0,1);
+    ctx.fillStyle='#000'; ctx.fillText(f.txt, f.x-camX+1, f.y-camY+1);
+    ctx.fillStyle=f.col; ctx.fillText(f.txt, f.x-camX, f.y-camY);
+  }
+  ctx.globalAlpha=1;
+
+  // Licht
+  const px=player.x-camX, py=player.y-camY;
+  if(cur.dark){
+    if(lightCv.width!==W || lightCv.height!==H){ lightCv.width=W; lightCv.height=H; }
+    lctx.globalCompositeOperation='source-over';
+    lctx.clearRect(0,0,W,H);
+    lctx.fillStyle='rgba(2,1,0,0.97)';
+    lctx.fillRect(0,0,W,H);
+    lctx.globalCompositeOperation='destination-out';
+    const flicker=1+Math.sin(time*9)*0.025+Math.sin(time*23)*0.015;
+    cutLight(px,py,(235+(player.licht||0))*flicker);
+    if(cur.torches) for(const t of cur.torches){
+      const tx=t.x-camX, ty=t.y-camY;
+      if(tx<-160||ty<-160||tx>W+160||ty>H+160) continue;
+      cutLight(tx,ty-4, 95+Math.sin(time*7+t.ph)*10);
+    }
+    lctx.globalCompositeOperation='source-over';
+    ctx.globalAlpha=Math.min(1,100/SETTINGS.bright);
+    ctx.drawImage(lightCv,0,0);
+    ctx.globalAlpha=1;
+    if(SETTINGS.bright<100){
+      ctx.fillStyle='rgba(0,0,0,'+(((100-SETTINGS.bright)/100)*0.6).toFixed(3)+')';
+      ctx.fillRect(0,0,W,H);
+    }
+    // warmer Schein um Spieler und Fackeln
+    const warm=ctx.createRadialGradient(px,py,0,px,py,160);
+    warm.addColorStop(0,'rgba(255,170,60,0.07)'); warm.addColorStop(1,'rgba(255,170,60,0)');
+    ctx.fillStyle=warm; ctx.fillRect(0,0,W,H);
+    if(cur.torches) for(const t of cur.torches){
+      const tx=t.x-camX, ty=t.y-camY;
+      if(tx<-100||ty<-100||tx>W+100||ty>H+100) continue;
+      const tg=ctx.createRadialGradient(tx,ty-4,0,tx,ty-4,68);
+      tg.addColorStop(0,'rgba(255,150,50,0.10)'); tg.addColorStop(1,'rgba(255,150,50,0)');
+      ctx.fillStyle=tg; ctx.fillRect(tx-68,ty-72,136,136);
+    }
+  } else {
+    // Treibende Nebelschwaden
+    for(let i=0;i<3;i++){
+      const fx=((time*14+i*430)%(W+400))-200;
+      const fy=H*0.22+Math.sin(time*0.3+i*2.1)*60+i*110;
+      const fg2=ctx.createRadialGradient(fx,fy,0,fx,fy,180);
+      fg2.addColorStop(0,'rgba(180,190,200,0.055)');
+      fg2.addColorStop(1,'rgba(180,190,200,0)');
+      ctx.fillStyle=fg2; ctx.fillRect(fx-180,fy-180,360,360);
+    }
+    // Dorfnebel - bleierner Himmel über Ravensmoor
+    const fog=ctx.createRadialGradient(px,py,180,px,py,Math.max(W,H)*0.75);
+    fog.addColorStop(0,'rgba(20,26,30,0)');
+    fog.addColorStop(1,'rgba(14,18,22,0.62)');
+    ctx.fillStyle=fog; ctx.fillRect(0,0,W,H);
+  }
+
+  if(player.hitFlash>0){
+    ctx.fillStyle=`rgba(140,20,20,${player.hitFlash*1.4})`;
+    ctx.fillRect(0,0,W,H);
+  }
+
+  // Minikarte (nur Krypta)
+  if(cur.dark && cur.seen){
+    const ms=3, mw=cur.w*ms, mh=cur.h*ms, mx=W-mw-14, my=14;
+    ctx.fillStyle='rgba(5,4,3,0.75)'; ctx.fillRect(mx-4,my-4,mw+8,mh+8);
+    ctx.strokeStyle='#3a2f24'; ctx.strokeRect(mx-3.5,my-3.5,mw+7,mh+7);
+    for(let ty=0;ty<cur.h;ty++) for(let tx=0;tx<cur.w;tx++){
+      if(!cur.seen[ty][tx]) continue;
+      const v=cur.map[ty][tx];
+      if(SOLID.has(v)) continue;
+      ctx.fillStyle = v===T.STAIR?'#c9a227' : v===T.STAIRUP?'#8a9ab8' : '#4a4236';
+      ctx.fillRect(mx+tx*ms,my+ty*ms,ms,ms);
+    }
+    ctx.fillStyle='#e04a3a';
+    ctx.fillRect(mx+Math.floor(player.x/TILE)*ms-1,my+Math.floor(player.y/TILE)*ms-1,ms+2,ms+2);
+  }
+  ctx.textAlign='left';
+}
+
+/* ============================================================
+   HUD
+============================================================ */
+function renderHUD(){
+  const p=player;
+  $('hpfill').style.height=clamp(p.hp/p.maxhp*100,0,100)+'%';
+  $('hptext').textContent=Math.max(0,Math.ceil(p.hp));
+  $('mpfill').style.height=clamp(p.mana/p.maxmana*100,0,100)+'%';
+  $('mptext').textContent=Math.ceil(p.mana);
+  $('xpfill').style.width=clamp(p.xp/p.xpNext*100,0,100)+'%';
+  $('st-level').textContent='STUFE '+p.level;
+  $('st-gold').textContent=p.gold+' GOLD';
+  $('potCount').textContent='x'+p.pot;
+  $('mpotCount').textContent='x'+p.mpot;
+  const bar=$('skillbar');
+  if(bar.children.length===0){
+    SKILLS.forEach((sk,i)=>{
+      const d=document.createElement('div'); d.className='skill'; d.id='sk'+i;
+      d.innerHTML=`<span class="key">${i+1}</span><span class="ico">${sk.ico}</span><span class="cost">${sk.mana}</span><div class="cd" style="height:0"></div>`;
+      d.title=sk.name+' (ab Stufe '+sk.unlock+')';
+      bar.appendChild(d);
+    });
+  }
+  SKILLS.forEach((sk,i)=>{
+    const d=$('sk'+i);
+    d.classList.toggle('locked', p.level<sk.unlock);
+    d.querySelector('.cd').style.height=(p.cds[i]/sk.cd*100)+'%';
+  });
+}
+
+/* ============================================================
+   EINGABEN
+============================================================ */
+addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();
+  keys[k]=true;
+  if(state!=='play') return;
+  if(uiMode){
+    if(k==='escape'||k===KB().inv){ if(uiMode==='inv') toggleInv();
+      else if(uiMode==='shop'){ $('shop').style.display='none'; uiMode=null; } }
+    return;
+  }
+  const kb=KB();
+  if(k===kb.pot) drinkPot();
+  if(k===kb.mpot) drinkMpot();
+  if(k===kb.roll){ e.preventDefault(); dash(); }
+  if(k===kb.inv) toggleInv();
+  if(k===kb.interact) keys['__e']=true;
+  if(k===kb.s1) castSkill(0);
+  if(k===kb.s2) castSkill(1);
+  if(k===kb.s3) castSkill(2);
+  if(k===kb.pause){ state='pause'; $('pause').classList.remove('hidden'); }
+});
+addEventListener('keydown',e=>{
+  if(state==='pause' && e.key.toLowerCase()===KB().pause && $('settings').classList.contains('hidden')){
+    state='play'; $('pause').classList.add('hidden');
+  }
+});
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+cv.addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY;});
+cv.addEventListener('mousedown',e=>{
+  if(uiMode||state!=='play'||!player) return;
+  if(e.button===0) mouse.down=true;
+  if(e.button===2){
+    player.blocking=true; player.blockT=0;
+    player.dir=Math.atan2(mouse.y+camY-player.y, mouse.x+camX-player.x);
+  }
+});
+addEventListener('mouseup',e=>{
+  if(e.button===0) mouse.down=false;
+  if(e.button===2 && player) player.blocking=false;
+});
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+
+// ---------- Touch-Steuerung ----------
+if(touchMode){
+  $('touch').classList.remove('hidden');
+  const zone=$('joyZone'), stick=$('joyStick'), base=$('joyBase');
+  let jid=null, ox=0, oy=0;
+  zone.addEventListener('touchstart',e=>{
+    e.preventDefault();
+    const t=e.changedTouches[0];
+    jid=t.identifier; ox=t.clientX; oy=t.clientY;
+    base.style.left=(ox-60)+'px'; base.style.top=(oy-60)+'px';
+    base.style.bottom='auto'; base.style.opacity='1';
+  },{passive:false});
+  zone.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    for(const t of e.changedTouches){
+      if(t.identifier!==jid) continue;
+      let vx=t.clientX-ox, vy=t.clientY-oy;
+      const m=Math.hypot(vx,vy), max=50;
+      if(m>max){ vx=vx/m*max; vy=vy/m*max; }
+      joy.x=vx/max; joy.y=vy/max;
+      stick.style.transform='translate('+vx+'px,'+vy+'px)';
+    }
+  },{passive:false});
+  const endJoy=e=>{
+    for(const t of e.changedTouches){
+      if(t.identifier!==jid) continue;
+      jid=null; joy.x=0; joy.y=0;
+      stick.style.transform='translate(0,0)';
+      base.style.opacity='0.55';
+    }
+  };
+  zone.addEventListener('touchend',endJoy);
+  zone.addEventListener('touchcancel',endJoy);
+
+  const bindHold=(id,on,off)=>{
+    const el=$(id);
+    el.addEventListener('touchstart',e=>{e.preventDefault();on();},{passive:false});
+    el.addEventListener('touchend',e=>{e.preventDefault();off();},{passive:false});
+    el.addEventListener('touchcancel',()=>off());
+  };
+  const bindTap=(id,fn)=>{
+    $(id).addEventListener('touchstart',e=>{e.preventDefault();fn();},{passive:false});
+  };
+  bindHold('tbAtk',()=>{touchBtn.atk=true;},()=>{touchBtn.atk=false;});
+  bindHold('tbBlk',
+    ()=>{ if(player&&state==='play'&&!uiMode){ player.blocking=true; player.blockT=0; player.dir=aimAngle(); } },
+    ()=>{ if(player) player.blocking=false; });
+  bindTap('tbRoll',()=>{ if(state==='play'&&!uiMode) dash(); });
+  bindTap('tbPot', ()=>{ if(state==='play'&&!uiMode) drinkPot(); });
+  bindTap('tbS1',  ()=>{ if(state==='play'&&!uiMode) castSkill(0); });
+  bindTap('tbS2',  ()=>{ if(state==='play'&&!uiMode) castSkill(1); });
+  bindTap('tbS3',  ()=>{ if(state==='play'&&!uiMode) castSkill(2); });
+  bindTap('tbE',   ()=>{ keys['__e']=true; });
+  bindTap('tbInv', ()=>{ if(state==='play') toggleInv(); });
+}
+$('pause').addEventListener('click',()=>{
+  if(state==='pause'){ state='play'; $('pause').classList.add('hidden'); }
+});
+
+function refreshLoadBtn(){ $('btnLoad').disabled=!hasSave(); }
+refreshLoadBtn();
+$('btnStart').onclick=()=>{ $('title').classList.add('hidden'); newGame(); };
+$('btnLoad').onclick=()=>{
+  if(!hasSave()) return;
+  $('title').classList.add('hidden');
+  if(!loadGame()) newGame();
+};
+// Titelbild: einfach "ravensmoor-title.jpg" neben diese Datei legen
+(function(){
+  const im=new Image();
+  im.onload=()=>{
+    const t=$('title');
+    t.style.backgroundImage='linear-gradient(rgba(8,5,3,.55),rgba(8,5,3,.82)),url(ravensmoor-title.jpg)';
+    t.style.backgroundSize='cover';
+    t.style.backgroundPosition='center';
+  };
+  im.src='ravensmoor-title.jpg';
+})();
+
+// ---------- Einstellungsmenü ----------
+let settingsReturn='title', pendingBind=null;
+const KEYROWS=[['roll','Ausweichrolle'],['interact','Reden / Aufheben'],['inv','Inventar'],
+  ['pot','Heiltrank'],['mpot','Manatrank'],['s1','Zauber 1'],['s2','Zauber 2'],['s3','Zauber 3'],['pause','Pause']];
+function buildKeyRows(){
+  const host=$('setKeys'); host.innerHTML='';
+  for(const kr of KEYROWS){
+    const id=kr[0];
+    const row=document.createElement('div'); row.className='setRow';
+    const sp=document.createElement('span'); sp.textContent=kr[1];
+    const b=document.createElement('button'); b.className='setKey';
+    b.textContent=keyLabel(SETTINGS.kb[id]);
+    b.onclick=()=>{ pendingBind=id; b.textContent='Taste drücken …'; };
+    row.appendChild(sp); row.appendChild(b); host.appendChild(row);
+  }
+}
+addEventListener('keydown',e=>{
+  if(!pendingBind) return;
+  e.preventDefault(); e.stopPropagation();
+  const k=e.key.toLowerCase();
+  if(k!=='escape'){
+    for(const id in SETTINGS.kb) if(SETTINGS.kb[id]===k) SETTINGS.kb[id]=SETTINGS.kb[pendingBind];
+    SETTINGS.kb[pendingBind]=k;
+    saveSettings();
+  }
+  pendingBind=null; buildKeyRows();
+},true);
+function tglBtn(btn,val){ btn.textContent=val?'AN':'AUS'; btn.classList.toggle('on',val); }
+function refreshSettingsUI(){
+  $('setVol').value=SETTINGS.vol; $('setVolV').textContent=SETTINGS.vol+'%';
+  $('setBright').value=SETTINGS.bright; $('setBrightV').textContent=SETTINGS.bright+'%';
+  tglBtn($('setShake'),SETTINGS.shake);
+  tglBtn($('setDmg'),SETTINGS.dmgNums);
+  tglBtn($('setBlood'),SETTINGS.blood);
+  tglBtn($('setLefty'),SETTINGS.lefty);
+  document.body.classList.toggle('lefty',SETTINGS.lefty);
+  buildKeyRows();
+}
+function openSettings(from){
+  settingsReturn=from; pendingBind=null;
+  refreshSettingsUI();
+  $('title').classList.add('hidden');
+  $('pause').classList.add('hidden');
+  $('settings').classList.remove('hidden');
+}
+$('btnSettings').onclick=()=>openSettings('title');
+$('btnSetBack').onclick=()=>{
+  pendingBind=null;
+  $('settings').classList.add('hidden');
+  if(settingsReturn==='pause') $('pause').classList.remove('hidden');
+  else { $('title').classList.remove('hidden'); refreshLoadBtn(); }
+};
+$('btnSetReset').onclick=()=>{
+  SETTINGS=JSON.parse(JSON.stringify(DEF_SETTINGS));
+  saveSettings(); refreshSettingsUI(); beep(520,0.08,'sine',0.05);
+};
+$('setVol').oninput=e=>{ SETTINGS.vol=+e.target.value; $('setVolV').textContent=SETTINGS.vol+'%'; saveSettings(); };
+$('setVol').onchange=()=>beep(660,0.1,'sine',0.06);
+$('setBright').oninput=e=>{ SETTINGS.bright=+e.target.value; $('setBrightV').textContent=SETTINGS.bright+'%'; saveSettings(); };
+$('setShake').onclick=()=>{ SETTINGS.shake=!SETTINGS.shake; saveSettings(); refreshSettingsUI(); };
+$('setDmg').onclick=()=>{ SETTINGS.dmgNums=!SETTINGS.dmgNums; saveSettings(); refreshSettingsUI(); };
+$('setBlood').onclick=()=>{ SETTINGS.blood=!SETTINGS.blood; saveSettings(); refreshSettingsUI(); };
+$('setLefty').onclick=()=>{ SETTINGS.lefty=!SETTINGS.lefty; saveSettings(); refreshSettingsUI(); };
+(function(){
+  const b=document.createElement('button');
+  b.textContent='EINSTELLUNGEN';
+  b.onclick=ev=>{ ev.stopPropagation(); openSettings('pause'); };
+  $('pause').appendChild(b);
+})();
+document.body.classList.toggle('lefty',SETTINGS.lefty);
+addEventListener('beforeunload',()=>{ if(state==='play') saveGame(); });
+document.addEventListener('visibilitychange',()=>{ if(document.hidden && state==='play') saveGame(); });
+$('btnRetry').onclick=()=>{
+  $('death').classList.add('hidden');
+  player.hp=player.maxhp; player.mana=player.maxmana;
+  // Krypten neu bevölkern beim Tod
+  delete areas['crypt1']; delete areas['crypt2']; delete areas['crypt3']; delete areas['boss'];
+  state='play';
+  goArea('village', null);
+};
+
+/* ============================================================
+   SCHLEIFE
+============================================================ */
+let last=performance.now();
+function loop(now){
+  let dt=Math.min(0.05,(now-last)/1000); last=now;
+  if(hitstop>0){ hitstop-=dt; dt*=0.15; }
+  if(state==='play'){
+    if(!uiMode) update(dt);
+    render(); renderHUD();
+  } else if(state==='pause'||state==='dead'||state==='ending'){
+    if(cur) render();
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+})();
+</script>
+</body>
+</html>

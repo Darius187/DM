@@ -1,0 +1,320 @@
+{
+  "asset": "medieval_apothecary_house_3d_runtime",
+  "asset_type": "rotatable walkable interactive 3D medieval apothecary house",
+  "model": "medieval_apothecary_house_3d_runtime.glb",
+  "units": "meters",
+  "root_node": "APOTHECARY_HOUSE_ROTATION_PIVOT",
+  "coordinate_conversion": {
+    "blender": "X/Y ground, Z up",
+    "threejs": "X/Z ground, Y up",
+    "point_rule": "[x,y,z] -> [x,z,-y]"
+  },
+  "continuous_controls": {
+    "building_yaw_degrees": {
+      "min": 0,
+      "max": 360,
+      "default": 0
+    },
+    "uniform_scale": {
+      "min": 0.25,
+      "max": 4,
+      "default": 1
+    },
+    "camera_elevation_degrees": {
+      "min": 18,
+      "max": 78,
+      "default": 43
+    },
+    "camera_azimuth_degrees": {
+      "min": 0,
+      "max": 360,
+      "default": 36
+    },
+    "orthographic_zoom": {
+      "min": 0.55,
+      "max": 2.4,
+      "default": 1
+    }
+  },
+  "materials": {
+    "all_visible_materials_have_embedded_basecolor_textures": true,
+    "runtime_tinting_allowed": false,
+    "transparent_windows": true,
+    "texture_count": 21,
+    "used_materials": [
+      "MAT_APOTHECARY_AGED_CERAMIC",
+      "MAT_APOTHECARY_AWNING_CLOTH",
+      "MAT_APOTHECARY_BOTTLE_BLUE",
+      "MAT_APOTHECARY_BOTTLE_GREEN",
+      "MAT_APOTHECARY_FORGED_IRON",
+      "MAT_APOTHECARY_GLASS_TRANSPARENT",
+      "MAT_APOTHECARY_HEMP_ROPE",
+      "MAT_APOTHECARY_HERB_GOLD",
+      "MAT_APOTHECARY_HERB_GREEN",
+      "MAT_APOTHECARY_HERB_PURPLE",
+      "MAT_APOTHECARY_MOSS_WEATHERING",
+      "MAT_APOTHECARY_OAK_DARK",
+      "MAT_APOTHECARY_OAK_MID",
+      "MAT_APOTHECARY_PACKED_EARTH",
+      "MAT_APOTHECARY_PLASTER_AGED",
+      "MAT_APOTHECARY_PLASTER_WORN",
+      "MAT_APOTHECARY_SHINGLE_A",
+      "MAT_APOTHECARY_SHINGLE_B",
+      "MAT_APOTHECARY_SHINGLE_C",
+      "MAT_APOTHECARY_STONE_DARK",
+      "MAT_APOTHECARY_STONE_WARM"
+    ]
+  },
+  "renderer_recipe": {
+    "output_color_space": "SRGBColorSpace",
+    "tone_mapping": "ACESFilmicToneMapping",
+    "exposure": 1.0,
+    "do_not_replace_materials": true
+  },
+  "doors": {
+    "main": {
+      "node": "DOOR_APOTHECARY_MAIN_HINGE",
+      "closed_frame": 1,
+      "open_frame": 30,
+      "trigger": "TRIGGER_APOTHECARY_MAIN"
+    },
+    "rear": {
+      "node": "DOOR_APOTHECARY_REAR_HINGE",
+      "closed_frame": 1,
+      "open_frame": 30,
+      "trigger": "TRIGGER_APOTHECARY_REAR"
+    }
+  },
+  "walkable_interior": {
+    "enabled": false,
+    "reason": "Exterior runtime avoids narrow-space collision traps and abrupt alpha cutaways."
+  },
+  "visibility_controls": {
+    "interior_switching": false,
+    "roof_locked_visible": true,
+    "cutaway_locked_visible": true
+  },
+  "node_groups": {
+    "transparent_windows": [
+      "WINDOW_DORMER_GLASS",
+      "WINDOW_FRONT_ATTIC_GLASS",
+      "WINDOW_FRONT_GROUND_GLASS",
+      "WINDOW_FRONT_UPPER_0_GLASS",
+      "WINDOW_FRONT_UPPER_1_GLASS",
+      "WINDOW_FRONT_UPPER_2_GLASS",
+      "WINDOW_LEFT_GROUND_GLASS",
+      "WINDOW_LEFT_UPPER_GLASS",
+      "WINDOW_REAR_ATTIC_GLASS",
+      "WINDOW_REAR_UPPER_LEFT_GLASS",
+      "WINDOW_REAR_UPPER_RIGHT_GLASS",
+      "WINDOW_RIGHT_UPPER_FRONT_GLASS",
+      "WINDOW_RIGHT_UPPER_REAR_GLASS"
+    ],
+    "herbs": [
+      "FRONT_HERB",
+      "SIDE_HERB",
+      "FACADE_HERB"
+    ],
+    "bottles": [
+      "SHOP_BOTTLE",
+      "FACADE_BOTTLE"
+    ]
+  },
+  "animations": [
+    {
+      "name": "DOOR_APOTHECARY_MAIN_HINGEAction",
+      "frame_range": [
+        1.0,
+        30.0
+      ]
+    },
+    {
+      "name": "DOOR_APOTHECARY_REAR_HINGEAction",
+      "frame_range": [
+        1.0,
+        30.0
+      ]
+    }
+  ],
+  "collision_guides": [
+    {
+      "name": "COLLISION_APOTHECARY_BUILDING_CORE",
+      "kind": "block",
+      "role": "solid_building",
+      "floor": "EXTERIOR",
+      "center_blender_xyz": [
+        0,
+        0,
+        1.65
+      ],
+      "size_blender_xyz": [
+        7.4,
+        6.6,
+        3.3
+      ]
+    },
+    {
+      "name": "COLLISION_SHOP_COUNTER",
+      "kind": "block",
+      "role": "fixed_furniture",
+      "floor": "EXTERIOR",
+      "center_blender_xyz": [
+        5.05,
+        -2.98,
+        0.72
+      ],
+      "size_blender_xyz": [
+        3.3,
+        0.95,
+        1.35
+      ]
+    },
+    {
+      "name": "COLLISION_SHOP_REAR_SHELF",
+      "kind": "block",
+      "role": "fixed_furniture",
+      "floor": "EXTERIOR",
+      "center_blender_xyz": [
+        4.04,
+        2.82,
+        1.35
+      ],
+      "size_blender_xyz": [
+        2.55,
+        0.55,
+        2.55
+      ]
+    },
+    {
+      "name": "NAV_APOTHECARY_SHOP",
+      "kind": "walk",
+      "role": "walkable_shop_apron",
+      "floor": "EXTERIOR",
+      "center_blender_xyz": [
+        5.05,
+        -0.09,
+        0.28
+      ],
+      "size_blender_xyz": [
+        3.02,
+        5.73,
+        0.06
+      ]
+    },
+    {
+      "name": "TRIGGER_APOTHECARY_MAIN",
+      "kind": "interaction",
+      "role": "open_main_door",
+      "floor": "EXTERIOR",
+      "center_blender_xyz": [
+        0,
+        -3.32,
+        1.3
+      ],
+      "size_blender_xyz": [
+        1.25,
+        1.0,
+        2.5
+      ]
+    },
+    {
+      "name": "TRIGGER_APOTHECARY_REAR",
+      "kind": "interaction",
+      "role": "open_rear_door",
+      "floor": "EXTERIOR",
+      "center_blender_xyz": [
+        1.7,
+        3.32,
+        1.28
+      ],
+      "size_blender_xyz": [
+        1.2,
+        1.0,
+        2.45
+      ]
+    }
+  ],
+  "markers": [
+    {
+      "name": "SPAWN_EXTERIOR_MAIN",
+      "role": "spawn_exterior",
+      "floor": "EXTERIOR",
+      "blender_xyz": [
+        0,
+        -4.22,
+        0.08
+      ]
+    },
+    {
+      "name": "SPAWN_SHOP",
+      "role": "spawn_shop",
+      "floor": "EXTERIOR",
+      "blender_xyz": [
+        5.98,
+        -3.88,
+        0.08
+      ]
+    }
+  ],
+  "counts": {
+    "runtime_objects": 40,
+    "materials": 21,
+    "windows": 13,
+    "doors": 2,
+    "collisions": 6,
+    "main_roof_shingles": 591,
+    "bottle_objects": 132,
+    "herb_objects": 605
+  },
+  "integration_contract": {
+    "load_with": "Three.js GLTFLoader",
+    "rotate": "APOTHECARY_HOUSE_ROTATION_PIVOT around Three.js Y",
+    "collisions": "build from JSON and transform with building",
+    "doors": "animations remain visual; building core collision prevents entry",
+    "interactions": "shop counter, mortar and herb storage from JSON",
+    "forbidden": [
+      "PNG replacement",
+      "global ground plate",
+      "interior alpha switching",
+      "material replacement",
+      "material tinting",
+      "runtime mesh splitting",
+      "visible collision meshes"
+    ],
+    "interior": "not exported; never activate alpha cutaway or floor switching",
+    "performance": "static meshes are already material-batched; do not split them into source nodes"
+  },
+  "runtime_mode": "exterior_only",
+  "bounds_blender": {
+    "min": [
+      -4.21461,
+      -4.43,
+      0.0
+    ],
+    "max": [
+      7.725,
+      3.75,
+      9.82607
+    ],
+    "center": [
+      1.75519,
+      -0.34,
+      4.91303
+    ],
+    "size": [
+      11.93961,
+      8.18,
+      9.82607
+    ],
+    "bounding_radius": 8.90508
+  },
+  "optimization": {
+    "strategy": "merge static meshes by material and roof visibility group",
+    "source_visual_objects": 2351,
+    "runtime_visual_objects": 40,
+    "runtime_static_batches": 25,
+    "interior_geometry_exported": false,
+    "door_animations_preserved": true,
+    "transparent_glass_preserved": true
+  }
+}

@@ -1,0 +1,714 @@
+{
+  "model": "medieval_castle_3d_runtime.glb",
+  "root_node": "BRG_CASTLE_RUNTIME_ROOT",
+  "runtime_mode": "exterior_only",
+  "bounds_blender": {
+    "min": [
+      -31.0567,
+      -22.4327,
+      -0.035
+    ],
+    "max": [
+      31.0567,
+      23.3567,
+      16.0059
+    ],
+    "center": [
+      0.0,
+      0.462,
+      7.9855
+    ],
+    "size": [
+      62.1135,
+      45.7894,
+      16.0409
+    ],
+    "bounding_radius": 38.8595
+  },
+  "continuous_controls": {
+    "camera_elevation_degrees": {
+      "min": 28,
+      "max": 68,
+      "default": 38
+    },
+    "camera_azimuth_degrees": {
+      "min": -180,
+      "max": 180,
+      "default": 0
+    },
+    "orthographic_zoom": {
+      "min": 0.72,
+      "max": 1.5,
+      "default": 1.0
+    }
+  },
+  "renderer_recipe": {
+    "output_color_space": "SRGBColorSpace",
+    "tone_mapping": "ACESFilmicToneMapping",
+    "exposure": 0.6,
+    "do_not_replace_materials": true,
+    "transparent_background": true,
+    "adaptive_offscreen_resolution": "display size * camera zoom * min(devicePixelRatio, 2), capped at 4096",
+    "texture_sampling": "mipmaps + LinearMipmapLinearFilter + anisotropy up to 8",
+    "shadow_map": "2048 PCFShadowMap with model-tight directional-light frustum",
+    "postprocessing": "none (direct WebGLRenderer render for a clean comparison path)"
+  },
+  "materials": {
+    "embedded_basecolor_textures": true,
+    "texture_max_size": 2048,
+    "texture_policy": "architecture/towers/walls/gates/roofs/courtyard paving 2048; small props 1024",
+    "generated_prop_materials": "glTF-safe Principled base colors (no unsupported procedural fallback)"
+  },
+  "walkable_interior": {
+    "enabled": false,
+    "note": "Courtyard remains exterior gameplay space; only walls, towers, buildings, stable and well block movement."
+  },
+  "courtyard_surfaces": {
+    "uv_tile_meters": 4.0,
+    "packed_earth_material": "BRG_MAT_CourtyardPackedEarth",
+    "stable_zone_material": "BRG_MAT_CourtyardPackedEarth",
+    "paving_material": "BRG_MAT_CourtyardPaving",
+    "moss_edge_material": "BRG_MAT_CourtyardMoss",
+    "textures_embedded_in_glb": true
+  },
+  "collision_guides": [
+    {
+      "name": "COLLISION_BRG_Wall_South_W1",
+      "kind": "block",
+      "role": "wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -23.0,
+        -18.6,
+        2.9505
+      ],
+      "size_blender_xyz": [
+        9.4769,
+        4.1811,
+        5.9009
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_Wall_South_W2",
+      "kind": "block",
+      "role": "wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -13.8,
+        -18.6,
+        2.9505
+      ],
+      "size_blender_xyz": [
+        9.4769,
+        4.1811,
+        5.9009
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_Wall_South_E1",
+      "kind": "block",
+      "role": "wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        13.8,
+        -18.6,
+        2.9505
+      ],
+      "size_blender_xyz": [
+        9.4769,
+        4.1811,
+        5.9009
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_Wall_South_E2",
+      "kind": "block",
+      "role": "wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        23.0,
+        -18.6,
+        2.9505
+      ],
+      "size_blender_xyz": [
+        9.4769,
+        4.1811,
+        5.9009
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_Wall_North_W1",
+      "kind": "block",
+      "role": "wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -20.7,
+        19.9,
+        2.9505
+      ],
+      "size_blender_xyz": [
+        14.0754,
+        4.1811,
+        5.9009
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_Wall_North_W2",
+      "kind": "block",
+      "role": "wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -6.9,
+        19.9,
+        2.9505
+      ],
+      "size_blender_xyz": [
+        14.0754,
+        4.1811,
+        5.9009
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_Wall_North_E1",
+      "kind": "block",
+      "role": "wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        6.9,
+        19.9,
+        2.9505
+      ],
+      "size_blender_xyz": [
+        14.0754,
+        4.1811,
+        5.9009
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_Wall_North_E2",
+      "kind": "block",
+      "role": "wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        20.7,
+        19.9,
+        2.9505
+      ],
+      "size_blender_xyz": [
+        14.0754,
+        4.1811,
+        5.9009
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_Wall_East_S",
+      "kind": "block",
+      "role": "wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        27.6,
+        -12.1833,
+        2.9505
+      ],
+      "size_blender_xyz": [
+        4.1811,
+        13.109,
+        5.9009
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_Wall_East_M",
+      "kind": "block",
+      "role": "wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        27.6,
+        0.65,
+        2.9505
+      ],
+      "size_blender_xyz": [
+        4.1811,
+        13.109,
+        5.9009
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_Wall_East_N",
+      "kind": "block",
+      "role": "wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        27.6,
+        13.4833,
+        2.9505
+      ],
+      "size_blender_xyz": [
+        4.1811,
+        13.109,
+        5.9009
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_Wall_West_S",
+      "kind": "block",
+      "role": "wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -27.6,
+        -12.1833,
+        2.9505
+      ],
+      "size_blender_xyz": [
+        4.1811,
+        13.109,
+        5.9009
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_Wall_West_M",
+      "kind": "block",
+      "role": "wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -27.6,
+        0.65,
+        2.9505
+      ],
+      "size_blender_xyz": [
+        4.1811,
+        13.109,
+        5.9009
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_Wall_West_N",
+      "kind": "block",
+      "role": "wall",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -27.6,
+        13.4833,
+        2.9505
+      ],
+      "size_blender_xyz": [
+        4.1811,
+        13.109,
+        5.9009
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_WallCorner_SW",
+      "kind": "block",
+      "role": "wall_corner",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -27.6,
+        -18.6,
+        2.9
+      ],
+      "size_blender_xyz": [
+        4.3,
+        4.3,
+        5.8
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_WallCorner_SE",
+      "kind": "block",
+      "role": "wall_corner",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        27.6,
+        -18.6,
+        2.9
+      ],
+      "size_blender_xyz": [
+        4.3,
+        4.3,
+        5.8
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_WallCorner_NW",
+      "kind": "block",
+      "role": "wall_corner",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -27.6,
+        19.9,
+        2.9
+      ],
+      "size_blender_xyz": [
+        4.3,
+        4.3,
+        5.8
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_WallCorner_NE",
+      "kind": "block",
+      "role": "wall_corner",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        27.6,
+        19.9,
+        2.9
+      ],
+      "size_blender_xyz": [
+        4.3,
+        4.3,
+        5.8
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_GateTower_West",
+      "kind": "block",
+      "role": "tower",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -6.45,
+        -18.6,
+        5.4268
+      ],
+      "size_blender_xyz": [
+        5.4173,
+        5.3146,
+        10.8536
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_GateTower_East",
+      "kind": "block",
+      "role": "tower",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        6.45,
+        -18.6,
+        5.4268
+      ],
+      "size_blender_xyz": [
+        5.3146,
+        5.4173,
+        10.8536
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_RearFlankTower_NW",
+      "kind": "block",
+      "role": "tower",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -27.6,
+        19.9,
+        6.9574
+      ],
+      "size_blender_xyz": [
+        5.9051,
+        6.0192,
+        13.9149
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_Keep_RearEast",
+      "kind": "block",
+      "role": "keep",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        23.8,
+        16.0,
+        8.003
+      ],
+      "size_blender_xyz": [
+        7.9491,
+        7.9491,
+        16.0059
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_Palas_GreatHall_North",
+      "kind": "block",
+      "role": "palas",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -4.0,
+        13.3048,
+        5.8042
+      ],
+      "size_blender_xyz": [
+        6.5678,
+        10.5285,
+        11.4884
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_SmallChapel_NorthEast",
+      "kind": "block",
+      "role": "chapel",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        8.9391,
+        12.6652,
+        3.8661
+      ],
+      "size_blender_xyz": [
+        3.8166,
+        6.1685,
+        7.6121
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_Kitchen_West",
+      "kind": "block",
+      "role": "kitchen",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -18.9276,
+        4.9749,
+        4.5492
+      ],
+      "size_blender_xyz": [
+        7.7547,
+        4.798,
+        8.9784
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_Storage_West",
+      "kind": "block",
+      "role": "storage",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -18.4804,
+        -7.9649,
+        3.5733
+      ],
+      "size_blender_xyz": [
+        5.9923,
+        3.7075,
+        7.0266
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_Stable_Shelter_East",
+      "kind": "block",
+      "role": "stable",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        19.1977,
+        -1.3102,
+        3.6706
+      ],
+      "size_blender_xyz": [
+        9.5,
+        5.9001,
+        7.2211
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_CourtyardWell",
+      "kind": "block",
+      "role": "well",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        2.0042,
+        2.0001,
+        1.5426
+      ],
+      "size_blender_xyz": [
+        2.0734,
+        2.0815,
+        2.8251
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_MainGatehouse_West",
+      "kind": "block",
+      "role": "gatehouse",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -3.1981,
+        -18.6,
+        4.5482
+      ],
+      "size_blender_xyz": [
+        2.7961,
+        5.8108,
+        9.0965
+      ]
+    },
+    {
+      "name": "COLLISION_BRG_MainGatehouse_East",
+      "kind": "block",
+      "role": "gatehouse",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        3.1981,
+        -18.6,
+        4.5482
+      ],
+      "size_blender_xyz": [
+        2.7961,
+        5.8108,
+        9.0965
+      ]
+    }
+  ],
+  "markers": [
+    {
+      "name": "TRIGGER_CASTLE_GATE",
+      "role": "entrance",
+      "floor": "GROUND",
+      "blender_xyz": [
+        0.0,
+        -22.1,
+        0.0
+      ]
+    },
+    {
+      "name": "SPAWN_CASTLE_COURTYARD",
+      "role": "spawn_courtyard",
+      "floor": "GROUND",
+      "blender_xyz": [
+        0.0,
+        -9.5,
+        0.0
+      ]
+    },
+    {
+      "name": "CASTLE_CENTER",
+      "role": "pivot",
+      "floor": "GROUND",
+      "blender_xyz": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "node_groups": {
+    "main_gate": [
+      "BRG_MainGatehouse",
+      "BRG_GateDoor_Left_Open",
+      "BRG_GateDoor_Right_Open"
+    ],
+    "wall_corners": [
+      "BRG_WallCorner_SW",
+      "BRG_WallCorner_SE",
+      "BRG_WallCorner_NW",
+      "BRG_WallCorner_NE"
+    ],
+    "wall_seams": [
+      "BRG_WallSeam_South_W1W2",
+      "BRG_WallSeam_South_W2Tower",
+      "BRG_WallSeam_South_TowerE1",
+      "BRG_WallSeam_South_E1E2",
+      "BRG_WallSeam_North_W1W2",
+      "BRG_WallSeam_North_Center",
+      "BRG_WallSeam_North_E1E2",
+      "BRG_WallSeam_West_SM",
+      "BRG_WallSeam_West_MN",
+      "BRG_WallSeam_East_SM",
+      "BRG_WallSeam_East_MN"
+    ],
+    "wall_access": [
+      "BRG_WallStairs_Gate",
+      "BRG_WallStairs_Rear"
+    ],
+    "wall_landings": []
+  },
+  "editable_parts": [
+    {
+      "id": "gatehouse",
+      "label": "Haupttorhaus",
+      "node": "BRG_MainGatehouse",
+      "nodes": [
+        "BRG_MainGatehouse",
+        "BRG_GateDoor_Left_Open",
+        "BRG_GateDoor_Right_Open"
+      ],
+      "collision_guides": [
+        "COLLISION_BRG_MainGatehouse_West",
+        "COLLISION_BRG_MainGatehouse_East"
+      ]
+    },
+    {
+      "id": "gate_tower_west",
+      "label": "Torturm West",
+      "node": "BRG_GateTower_West",
+      "collision_guides": [
+        "COLLISION_BRG_GateTower_West"
+      ]
+    },
+    {
+      "id": "gate_tower_east",
+      "label": "Torturm Ost",
+      "node": "BRG_GateTower_East",
+      "collision_guides": [
+        "COLLISION_BRG_GateTower_East"
+      ]
+    },
+    {
+      "id": "rear_tower_nw",
+      "label": "Eckturm Nordwest",
+      "node": "BRG_RearFlankTower_NW",
+      "collision_guides": [
+        "COLLISION_BRG_RearFlankTower_NW"
+      ]
+    },
+    {
+      "id": "keep",
+      "label": "Bergfried",
+      "node": "BRG_Keep_RearEast",
+      "collision_guides": [
+        "COLLISION_BRG_Keep_RearEast"
+      ]
+    },
+    {
+      "id": "palas",
+      "label": "Palas",
+      "node": "BRG_Palas_GreatHall_North",
+      "collision_guides": [
+        "COLLISION_BRG_Palas_GreatHall_North"
+      ]
+    },
+    {
+      "id": "chapel",
+      "label": "Kapelle",
+      "node": "BRG_SmallChapel_NorthEast",
+      "collision_guides": [
+        "COLLISION_BRG_SmallChapel_NorthEast"
+      ]
+    },
+    {
+      "id": "kitchen",
+      "label": "Kueche",
+      "node": "BRG_Kitchen_West",
+      "collision_guides": [
+        "COLLISION_BRG_Kitchen_West"
+      ]
+    },
+    {
+      "id": "storage",
+      "label": "Lagerhaus",
+      "node": "BRG_Storage_West",
+      "collision_guides": [
+        "COLLISION_BRG_Storage_West"
+      ]
+    },
+    {
+      "id": "stable",
+      "label": "Stall",
+      "node": "BRG_Stable_Shelter_East",
+      "collision_guides": [
+        "COLLISION_BRG_Stable_Shelter_East"
+      ]
+    }
+  ],
+  "source_blend": "castle_reworked.blend",
+  "phaser_integration": {
+    "runtime": "src/demo3d/gebaeude3d.ts + src/gfx/gebaeude3dWelt.ts",
+    "area": "burg",
+    "asset_url": "houses/castle/medieval_castle_3d_runtime.json",
+    "meters_to_pixels_setting": "settings.gebaeude3d.ppm"
+  }
+}

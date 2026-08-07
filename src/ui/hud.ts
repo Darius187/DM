@@ -1,0 +1,1163 @@
+// HUD (Feedback-Runde 1): Lebens-/Mana-Orbs im Stil der HTML-Referenz,
+// Zauber- und Fähigkeitsleiste mit Tasten, Abklingzeiten und Tooltips,
+// Trank-Anzeige mit Q/F-Hinweis.
+
+import Phaser from 'phaser';
+import hudUnifiedUrl from '../../assets/ui/hud/hud-command-bar-shell-v3.png';
+import { SPELLS, ABILITIES, ABILITY_FX } from '../data/balancing';
+import { skillBeschreibung, skillWirkungText } from '../data/skills';
+import { getSettings, keyLabel, saveSettings } from '../logic/settings';
+import { ArkaneFluessigkeit } from './arkaneFluessigkeit';
+import { XP_LEISTE } from '../data/hudFluessigkeit';
+import { TUNING } from '../logic/tuning';
+import type { PlayerState } from '../logic/playerState';
+import type { WeaponClass } from '../data/types';
+
+// Wo die Belegung eines Slots gespeichert liegt (Maus- oder Tastenleiste)
+interface Belegung { store: 'maus' | 'tasten'; feld: string }
+
+interface SlotDef {
+  key: string;
+  belegung?: Belegung;      // alle Slots sind frei belegbar (Runde 26)
+  aktion?: () => string;    // aktuelle Aktions-Kennung (fürs Tauschen)
+  ico: () => string;
+  name: () => string;
+  info?: () => [string, string]; // [Was es tut, Schaden/Wirkung] (Runde 49)
+  desc: () => string;
+  kosten: () => string;
+  cdFrac: () => number;     // 0..1 Restanteil der Abklingzeit
+  cdSek: () => number;      // Restsekunden
+  locked: () => string | null; // Grund, falls gesperrt
+  farbe?: () => string;     // Icon-Farbe (Runde 30: farbige Aktionen)
+  kategorie?: () => SlotKat; // Kampf/Zauber/Bogen/Item (Runde 36, Slot-Rahmen)
+}
+
+// Kategorie eines Slots (Runde 36): die Actionbar färbt den Rahmen danach,
+// damit Zauber/Kampf/Bogen/Item auf einen Blick auseinandergehen.
+type SlotKat = 'kampf' | 'zauber' | 'bogen' | 'item';
+const SLOT_KAT: Record<string, SlotKat> = {
+  angriff: 'kampf', block: 'kampf', rundumschlag: 'kampf', sturmangriff: 'kampf',
+  wuchtschlag: 'kampf', blutdurst: 'kampf', kriegsschrei: 'kampf', erschuetterung: 'kampf',
+  mehrfachschuss: 'bogen', markierterTod: 'bogen', hagel: 'bogen', splitterpfeil: 'bogen',
+  durchschlag: 'bogen', sprungpfeil: 'bogen', fesselpfeil: 'bogen',
+  s1: 'zauber', s2: 'zauber', s3: 'zauber', heilen: 'zauber', kettenblitz: 'zauber', frostnova: 'zauber', frostball: 'zauber',
+  bannkreis: 'zauber', feuerregen: 'zauber', aderlass: 'zauber', lebenstausch: 'zauber', atomschlag: 'zauber',
+  pot: 'item', mpot: 'item', rolle: 'item', stadtportal: 'item',
+};
+// Klassenfarben (Autorwunsch Runde 51): Krieger BLAU, Magier ROT, Bogen GRÜN.
+const SLOT_KAT_FARBE: Record<SlotKat, number> = {
+  kampf: 0x5a86e0, zauber: 0xd0563a, bogen: 0x5ac06a, item: 0xb89a4a,
+};
+
+const HUD_TEXT_FONT = '"Palatino Linotype", "Book Antiqua", Georgia, serif';
+const HUD_ICON_FONT = '"Segoe UI Symbol", "Segoe UI Emoji", "Palatino Linotype", serif';
+
+const ORB_R = 42;
+// Getrennte Leisten (Runde 20): Tastatur-Slots 1-6/9/0/R/T und Maus-Slots M1-M5
+const KB_SLOTS = 10;
+
+// Pixelkoordinaten der einteiligen Kommandoleisten-Vorlage. Die vier sichtbaren
+// Abschnitte werden zur Laufzeit ausgeschnitten, damit die vorhandenen F10-
+// Versatzregler fuer Kugeln, Mausleiste und Tastenleiste erhalten bleiben.
+const HUD_DESIGN_W = 1846;
+const HUD_DESIGN_H = 325;
+const HUD_LIFE_W = 121;
+const HUD_MOUSE_X = 121;
+const HUD_MOUSE_W = 481;
+const HUD_KEYBOARD_X = 602;
+const HUD_KEYBOARD_W = 936;
+const HUD_MANA_X = 1538;
+const HUD_MANA_W = 308;
+const HUD_ORB_HP_X = 57;
+const HUD_ORB_MP_X = 1577;
+const HUD_ORB_Y = 145;
+const HUD_METER_W = 50;
+const HUD_METER_H = 240;
+const HUD_STATUS_X = 122;
+const HUD_STATUS_Y = 249;
+const HUD_STATUS_W = 1397;
+const HUD_STATUS_EDGES = [122, 395, 729, 1028, 1299, 1519] as const;
+const HUD_SLOT_Y = 151;
+const HUD_KEY_LABEL_Y = 77;
+const HUD_POTION_LABEL_Y = 294;
+const HUD_MOUSE_SLOT_X = [167, 260, 353, 446, 539] as const;
+const HUD_KEYBOARD_SLOT_X = [653, 746, 840, 933, 1027, 1121, 1214, 1308, 1402, 1495] as const;
+const HUD_MENU_BUTTONS = [
+  { id: 'einstellungen', label: 'Einstellungen', x: 1663, y: 102 },
+  { id: 'charakter', label: 'Charakter', x: 1734, y: 102 },
+  { id: 'faehigkeiten', label: 'Fähigkeiten', x: 1805, y: 102 },
+  { id: 'karte', label: 'Karte', x: 1690, y: 211 },
+  { id: 'rts', label: 'RTS-Menü', x: 1773, y: 211 },
+] as const;
+const HUD_MENU_SIZE = 68;
+const HUD_NUMBER_OFFSET_X = 0;
+
+export type HudMenuId = typeof HUD_MENU_BUTTONS[number]['id'];
+
+function hudSkala(w: number): number {
+  const faktor = Phaser.Math.Clamp((getSettings().hudSkala ?? 100) / 100, 0.6, 1.5);
+  const passend = Math.max(0.1, (w - 12) / HUD_DESIGN_W);
+  return Math.min(passend, Phaser.Math.Clamp(0.5 * faktor, 0.24, 0.75));
+}
+
+function hudLinks(w: number): number {
+  return Math.round((w - HUD_DESIGN_W * hudSkala(w)) / 2);
+}
+
+const HUD_TEXTURES = {
+  unified: { key: 'hud_1300_command_shell_v3', url: hudUnifiedUrl },
+} as const;
+const HUD_LIFE_FRAME = 'hud_1300_command_life_v3';
+const HUD_MOUSE_FRAME = 'hud_1300_command_mouse_v3';
+const HUD_KEYBOARD_FRAME = 'hud_1300_command_keyboard_v3';
+const HUD_MANA_FRAME = 'hud_1300_command_mana_menu_v3';
+const HUD_PANEL_DEPTH = 4599;
+// Die Fluessigkeits-Ebenen belegen HUD_FLUID_DEPTH bis +5 (also 4593..4598)
+const HUD_FLUID_DEPTH = 4593;
+const HUD_DYNAMIC_DEPTH = 4601;
+const HUD_FRAME_DEPTH = 4602;
+
+// Beide Leisten bilden EINEN zentrierten Block (Runde 40, Autorwunsch
+// "mittig, skaliert nicht verrutschen"): Maus-Leiste links, Tastenleiste
+// rechts. Anker = linke Kante des Blocks, rechnet sich aus w/2 - bleibt also
+// auf jeder Fenstergröße zentriert. mausLeisteAnkerX wird auch vom
+// UI-Verschiebe-Griff genutzt.
+export function mausLeisteAnkerX(w: number): number {
+  return Math.round(hudLinks(w) + HUD_MOUSE_X * hudSkala(w));
+}
+// Mitte der Tastenleiste (für den UI-Verschiebe-Griff im Entwicklungskasten)
+export function tastenLeisteMitteX(w: number): number {
+  const s = hudSkala(w);
+  return Math.round(hudLinks(w) + ((HUD_KEYBOARD_SLOT_X[0] + HUD_KEYBOARD_SLOT_X[KB_SLOTS - 1]) / 2) * s);
+}
+// Alias fuer die Codex-Uebergabe: alte Nutzer von tastenLeisteMitteX bleiben
+// unveraendert, neue koennen den sprechenderen Namen verwenden.
+export function hotbarMitteX(w: number): number {
+  return tastenLeisteMitteX(w);
+}
+export function orbHpAnkerX(w: number): number {
+  const s = hudSkala(w);
+  return Math.round(hudLinks(w) + HUD_ORB_HP_X * s);
+}
+export function orbMpAnkerX(w: number): number {
+  const s = hudSkala(w);
+  return Math.round(hudLinks(w) + HUD_ORB_MP_X * s);
+}
+
+export class Hud {
+  private hpFluid: ArkaneFluessigkeit;
+  private mpFluid: ArkaneFluessigkeit;
+  private fluidBereit = false;
+  private menuGfx: Phaser.GameObjects.Graphics;
+  private gfx: Phaser.GameObjects.Graphics;
+  private keyboardPanel: Phaser.GameObjects.Image;
+  private mousePanel: Phaser.GameObjects.Image;
+  private statusPanel: Phaser.GameObjects.Image;
+  private hpFrame: Phaser.GameObjects.Image;
+  private mpFrame: Phaser.GameObjects.Image;
+  private potPanel: Phaser.GameObjects.Image;
+  private mpotPanel: Phaser.GameObjects.Image;
+  private hpImg: Phaser.GameObjects.Image;
+  private mpImg: Phaser.GameObjects.Image;
+  private hpText: Phaser.GameObjects.Text;
+  private mpText: Phaser.GameObjects.Text;
+  private potText: Phaser.GameObjects.Text;
+  private mpotText: Phaser.GameObjects.Text;
+  private infoText: Phaser.GameObjects.Text;
+  private statusTexts: Phaser.GameObjects.Text[] = [];
+  private mausInfo: Phaser.GameObjects.Text;
+  private slotTexts: Phaser.GameObjects.Text[] = [];
+  private slotKeyTexts: Phaser.GameObjects.Text[] = [];
+  private slotZones: Phaser.GameObjects.Zone[] = [];
+  private menuZones: Phaser.GameObjects.Zone[] = [];
+  private menuHover = -1;
+  private tooltip: Phaser.GameObjects.Container | null = null;
+  private slots: SlotDef[];
+  private aktionen: Array<[string, string, string, string]> = [];
+  private hudAssetsReady = false;
+  private destroyed = false;
+  onMenuAction: ((id: HudMenuId) => void) | null = null;
+
+  constructor(
+    private scene: Phaser.Scene,
+    private getP: () => PlayerState,
+    private getWeaponClass: () => WeaponClass,
+    // Klick auf einen Slot löst die Aktion aus (Runde 40, Autorwunsch)
+    private onActivate: (id: string) => void = () => {},
+  ) {
+    this.ensureOrbTextures();
+    // Arkane Fluessigkeit (Runde 194): eigene Ebenen unter dem Rahmenbild
+    // (HUD_FRAME_DEPTH), damit der Rahmen NIE von der Fuellstandsmaske
+    // beschnitten wird.
+    this.hpFluid = new ArkaneFluessigkeit(scene, { farbe: 'rot', tiefe: HUD_FLUID_DEPTH });
+    this.mpFluid = new ArkaneFluessigkeit(scene, { farbe: 'blau', tiefe: HUD_FLUID_DEPTH });
+    this.gfx = scene.add.graphics().setScrollFactor(0).setDepth(4600);
+    this.menuGfx = scene.add.graphics().setScrollFactor(0).setDepth(4604);
+    const hiddenImage = (depth: number) => scene.add.image(0, 0, '__WHITE')
+      .setScrollFactor(0).setDepth(depth).setVisible(false);
+    this.keyboardPanel = hiddenImage(HUD_PANEL_DEPTH);
+    this.mousePanel = hiddenImage(HUD_PANEL_DEPTH);
+    this.statusPanel = hiddenImage(HUD_PANEL_DEPTH);
+    this.hpFrame = hiddenImage(HUD_FRAME_DEPTH);
+    this.mpFrame = hiddenImage(HUD_FRAME_DEPTH);
+    this.potPanel = hiddenImage(HUD_DYNAMIC_DEPTH);
+    this.mpotPanel = hiddenImage(HUD_DYNAMIC_DEPTH);
+    const h = scene.scale.height;
+    this.hpImg = scene.add.image(28 + ORB_R, h - 24 - ORB_R, 'orb_rot').setScrollFactor(0).setDepth(4601);
+    this.mpImg = scene.add.image(scene.scale.width - 28 - ORB_R, h - 24 - ORB_R, 'orb_blau').setScrollFactor(0).setDepth(4601);
+    const txt = (size: string, col = '#f3e6c8') => scene.add.text(0, 0, '', {
+      fontFamily: HUD_TEXT_FONT,
+      fontSize: size,
+      fontStyle: 'bold',
+      color: col,
+      stroke: '#0a0704',
+      strokeThickness: 2,
+      padding: { x: 4, y: 3 },
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(4603).setResolution(2);
+    this.hpText = txt('15px');
+    this.mpText = txt('15px');
+    this.potText = txt('10px', '#d8c7a2').setFontStyle('normal').setStroke('#0a0704', 1);
+    this.mpotText = txt('10px', '#d8c7a2').setFontStyle('normal').setStroke('#0a0704', 1);
+    this.infoText = scene.add.text(0, 0, '', {
+      fontFamily: HUD_TEXT_FONT,
+      fontSize: '12px',
+      color: '#33271c',
+      strokeThickness: 0,
+      letterSpacing: 0,
+      padding: { x: 3, y: 2 },
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(4603).setResolution(2);
+    this.statusTexts.push(this.infoText);
+    for (let i = 1; i < HUD_STATUS_EDGES.length - 1; i++) {
+      this.statusTexts.push(scene.add.text(0, 0, '', {
+        fontFamily: HUD_TEXT_FONT,
+        fontSize: '12px',
+        color: '#33271c',
+        strokeThickness: 0,
+        letterSpacing: 0,
+        padding: { x: 3, y: 2 },
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(4603).setResolution(2));
+    }
+    this.mausInfo = scene.add.text(0, 0, '', {
+      fontFamily: HUD_TEXT_FONT,
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: '#3a2618',
+      letterSpacing: 0,
+      padding: { x: 3, y: 2 },
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(4603).setResolution(2);
+
+    // ALLE Slots sind frei belegbar (Runde 26, "wie bei WoW"): Rechtsklick
+    // öffnet die Aktionsliste, Ziehen tauscht zwei Slots
+    const p = this.getP;
+    const bogen = () => this.getWeaponClass() === 'bogen';
+    // ALLE belegbaren Aktionen [id, Symbol, Name, Farbe]. Icons (Runde 51):
+    // Blocken = Schild (vorher Kreuz-im-Schild, sah aus wie Heilung), Heilung =
+    // Kreuz, Heilende Hand = Hände, Markierter Tod = Fadenkreuz (war Doppel mit
+    // Bannkreis). Schriftrollen legt man EINZELN aus dem Inventar.
+    const AKTIONEN: Array<[string, string, string, string]> = [
+      ['leer', '·', '(leerer Platz)', '#5a4f3c'],
+      // Nahkampf (Krieger)
+      ['angriff', '⚔', 'Angriff (Waffe)', '#d8cfb8'], ['block', '🛡', 'Blocken (gedrückt halten)', '#aab4c0'],
+      ['wuchtschlag', '⤲', 'Wuchtschlag', '#e0b070'], ['rundumschlag', '↻', 'Rundumschlag', '#d8cfb8'],
+      ['blutdurst', '🩸', 'Blutdurst', '#c83838'], ['kriegsschrei', '⛉', 'Kriegsschrei', '#e0c060'],
+      ['sturmangriff', '⇒', 'Sturmangriff', '#d8cfb8'], ['erschuetterung', '⤓', 'Erschütternder Stoß', '#c89858'],
+      // R196 (Audit): 'hinrichtung' stand hier als belegbare Aktion, ist aber
+      // eine PASSIVE Wirkung (Bonus-Schaden gegen taumelnde Gegner, greift von
+      // selbst ab Nahkampf-Stufe 9). Auf einen Slot gelegt tat sie nichts -
+      // darum ist sie hier raus. Sichtbar bleibt sie im Faehigkeiten-Fenster.
+
+      // Zauber (Magier)
+      ['s1', '✦', 'Feuerball', '#f0883a'], ['s2', '☩', 'Heiliges Licht', '#f0e08a'], ['s3', '✚', 'Heilung', '#6ad06a'],
+      ['heilen', '🤲', 'Heilende Hand', '#9ad86a'],
+      ['kettenblitz', '⌁', 'Kettenblitz', '#9ae0f8'], ['frostnova', '❄', 'Frostnova', '#74aef0'], ['bannkreis', '◎', 'Bannkreis', '#d8b84a'],
+      // R196 (Audit): Frostball war gebaut, aber NICHT belegbar - er fehlte in
+      // dieser Liste und tauchte darum in keinem Slot-Menue auf.
+      ['frostball', '✻', 'Frostball', '#8ac8f0'],
+      ['feuerregen', '☄', 'Feuerregen (auf den Zielort)', '#e85a3a'],
+      ['aderlass', '⚱', 'Aderlass (Leben gegen Mana)', '#c04848'], ['lebenstausch', '❤', 'Lebenstausch (Mana gegen Leben)', '#e87a9a'],
+      ['atomschlag', '☢', 'Mobile Massenvernichtungseinheit (DEV, alle Zauber frei)', '#ffe000'],
+      // Bogen (Bogenschütze)
+      ['mehrfachschuss', '⫶', 'Mehrfachschuss', '#9ad86a'], ['hagel', '⇊', 'Hagel der Pfeile', '#8ac06a'],
+      ['splitterpfeil', '✸', 'Splitterpfeil', '#9ad86a'], ['durchschlag', '➶', 'Durchschlag', '#8ac06a'],
+      ['sprungpfeil', '⤴', 'Sprungpfeil', '#9ad86a'], ['fesselpfeil', '⛓', 'Fesselpfeil', '#8ac06a'],
+      ['markierterTod', '⌖', 'Markierter Tod', '#9ad86a'],
+      // Waffen-Slots (passen sich der getragenen Waffe an)
+      ['waffe1', '↻', 'Waffen-Fähigkeit I (je nach Waffe)', '#d8cfb8'], ['waffe2', '⇒', 'Waffen-Fähigkeit II (je nach Waffe)', '#d8cfb8'],
+      // Gegenstand
+      ['pot', '🧪', 'Heiltrank', '#e05a4a'], ['mpot', '⚗', 'Manatrank', '#5a7ae0'],
+      // Schriftrolle/Foliant aus dem Inventar belegbar (Autorbug R53: 'rolle'
+      // fehlte hier, darum ließen sich Rollen nicht auf die Leiste ziehen). Der
+      // Slot wirkt die OBERSTE Rolle/den Foliant im Inventar.
+      ['rolle', '📜', 'Schriftrolle/Foliant (oberste im Inventar)', '#c9a227'],
+      ['stadtportal', '⌂', 'Stadtportal (nach Boss-Sieg)', '#8aa6e8'],
+    ];
+    // Waffen-Slots zeigen die Fähigkeit der AKTUELLEN Waffe
+    const echteId = (id: string): string => (id === 'waffe1' ? (bogen() ? 'mehrfachschuss' : 'rundumschlag')
+      : id === 'waffe2' ? (bogen() ? 'markierterTod' : 'sturmangriff') : id);
+    const belegbar = (key: string, quelle: Belegung, tasteName: string): SlotDef => {
+      const aktId = () => (getSettings()[quelle.store] as Record<string, string>)[quelle.feld] ?? 'pot';
+      const eintrag = () => AKTIONEN.find((a) => a[0] === aktId()) ?? AKTIONEN[0];
+      const spellIdx = () => ['s1', 's2', 's3'].indexOf(aktId());
+      const fxVon = () => (ABILITY_FX as Record<string, { mana?: number; cd: number } | undefined>)[echteId(aktId())];
+      return {
+        key,
+        belegung: quelle,
+        aktion: aktId,
+        ico: () => (aktId() === 'waffe1' && bogen() ? '⫶' : aktId() === 'waffe2' && bogen() ? '◎' : eintrag()[1]),
+        farbe: () => eintrag()[3],
+        kategorie: () => SLOT_KAT[echteId(aktId())] ?? 'item',
+        name: () => `${eintrag()[2]} (${tasteName})`,
+        // Was der Skill tut + Schaden/Wirkung (Runde 49). Leer für Nicht-Skills.
+        info: () => [skillBeschreibung(echteId(aktId())), skillWirkungText(echteId(aktId()), p().level) ?? ''],
+        desc: () => 'Rechtsklick: Belegung wählen · Ziehen auf einen anderen Slot: tauschen',
+        kosten: () => {
+          const i = spellIdx();
+          if (i >= 0) return `${SPELLS[i].mana} Mana`;
+          const fx = fxVon();
+          return fx ? (fx.mana ? `${fx.mana} Mana` : 'kostenlos') : '';
+        },
+        cdFrac: () => {
+          const i = spellIdx();
+          if (i >= 0) return p().spellCds[i] > 0 ? p().spellCds[i] / SPELLS[i].cd : 0;
+          const fx = fxVon();
+          const cd = p().abilityCds[echteId(aktId())] ?? 0;
+          // Klemme auf 1: laeuft ein Cd je laenger als sein Nennwert (Dev-
+          // Eingriff), malt der Abkling-Schwung sonst UEBER den Knopf hinaus.
+          return fx && cd > 0 ? Math.min(1, cd / fx.cd) : 0;
+        },
+        cdSek: () => {
+          const i = spellIdx();
+          if (i >= 0) return p().spellCds[i];
+          return p().abilityCds[echteId(aktId())] ?? 0;
+        },
+        locked: () => {
+          if (TUNING.alleZauberFrei) return null;
+          const i = spellIdx();
+          if (i >= 0) return p().level < SPELLS[i].unlock ? `ab Spieler-Stufe ${SPELLS[i].unlock}` : null;
+          const def = ABILITIES.find((a) => a.id === echteId(aktId()));
+          if (!def) return null;
+          const schule = { nahkampf: 'Nahkampf', zauberei: 'Zauberei', bogen: 'Bogenschießen' }[def.school];
+          return p().schools[def.school].level < def.unlock ? `ab ${schule} Stufe ${def.unlock}` : null;
+        },
+      };
+    };
+    this.slots = [
+      belegbar('1', { store: 'tasten', feld: 't1' }, 'Taste 1'),
+      belegbar('2', { store: 'tasten', feld: 't2' }, 'Taste 2'),
+      belegbar('3', { store: 'tasten', feld: 't3' }, 'Taste 3'),
+      belegbar('4', { store: 'tasten', feld: 't4' }, 'Taste 4'),
+      belegbar('5', { store: 'tasten', feld: 't5' }, 'Taste 5'),
+      belegbar('6', { store: 'tasten', feld: 't6' }, 'Taste 6'),
+      belegbar('9', { store: 'tasten', feld: 't9' }, 'Taste 9'),
+      belegbar('0', { store: 'tasten', feld: 't0' }, 'Taste 0'),
+      belegbar('R', { store: 'tasten', feld: 'tr' }, 'Taste R'),
+      belegbar('T', { store: 'tasten', feld: 'tt' }, 'Taste T'),
+      belegbar('M1', { store: 'maus', feld: 'm1' }, 'Linke Maustaste'),
+      belegbar('M2', { store: 'maus', feld: 'm2' }, 'Rechte Maustaste'),
+      belegbar('M3', { store: 'maus', feld: 'm3' }, 'Maustaste Mitte'),
+      belegbar('M4', { store: 'maus', feld: 'm4' }, 'Daumentaste 1'),
+      belegbar('M5', { store: 'maus', feld: 'm5' }, 'Daumentaste 2'),
+    ];
+    this.aktionen = AKTIONEN;
+    this.buildSlotObjects();
+    this.buildMenuObjects();
+    this.loadHudAssets();
+  }
+
+  private ensureOrbTextures(): void {
+    const make = (key: string, c0: string, c1: string, c2: string) => {
+      if (this.scene.textures.exists(key)) return;
+      const size = ORB_R * 2;
+      const cv = document.createElement('canvas');
+      cv.width = size;
+      cv.height = size;
+      const ctx = cv.getContext('2d')!;
+      const g = ctx.createRadialGradient(size * 0.42, size * 0.34, 4, size / 2, size / 2, ORB_R);
+      g.addColorStop(0, c0);
+      g.addColorStop(0.55, c1);
+      g.addColorStop(1, c2);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(ORB_R, ORB_R, ORB_R - 1, 0, 6.283);
+      ctx.fill();
+      this.scene.textures.addCanvas(key, cv);
+    };
+    make('orb_rot', '#c5362d', '#8c1a1a', '#3e0b0b');
+    make('orb_blau', '#4d74c8', '#2c4884', '#0f1934');
+  }
+
+  private loadHudAssets(): void {
+    const missing = Object.values(HUD_TEXTURES)
+      .filter(({ key }) => !this.scene.textures.exists(key));
+    if (missing.length === 0) {
+      this.activateHudAssets();
+      return;
+    }
+    this.scene.load.once(Phaser.Loader.Events.COMPLETE, () => this.activateHudAssets());
+    for (const { key, url } of missing) this.scene.load.image(key, url);
+    this.scene.load.start();
+  }
+
+  private createHudPart(
+    sourceKey: string,
+    frameKey: string,
+    sx: number,
+    sw: number,
+    hole?: { x: number; y: number; radius: number },
+  ): void {
+    if (this.scene.textures.exists(frameKey)) return;
+    const source = this.scene.textures.get(sourceKey).getSourceImage() as CanvasImageSource & { width: number; height: number };
+    const canvas = document.createElement('canvas');
+    canvas.width = sw;
+    canvas.height = HUD_DESIGN_H;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(source, sx, 0, sw, HUD_DESIGN_H, 0, 0, sw, HUD_DESIGN_H);
+    if (hole) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.beginPath();
+      ctx.arc(hole.x, hole.y, hole.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    this.scene.textures.addCanvas(frameKey, canvas);
+  }
+
+  private activateHudAssets(): void {
+    if (this.destroyed) return;
+    for (const { key } of Object.values(HUD_TEXTURES)) {
+      if (!this.scene.textures.exists(key)) return;
+      this.scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    }
+    this.createHudPart(HUD_TEXTURES.unified.key, HUD_LIFE_FRAME, 0, HUD_LIFE_W);
+    this.createHudPart(HUD_TEXTURES.unified.key, HUD_MOUSE_FRAME, HUD_MOUSE_X, HUD_MOUSE_W);
+    this.createHudPart(HUD_TEXTURES.unified.key, HUD_KEYBOARD_FRAME, HUD_KEYBOARD_X, HUD_KEYBOARD_W);
+    this.createHudPart(HUD_TEXTURES.unified.key, HUD_MANA_FRAME, HUD_MANA_X, HUD_MANA_W);
+    for (const key of [HUD_LIFE_FRAME, HUD_MOUSE_FRAME, HUD_KEYBOARD_FRAME, HUD_MANA_FRAME]) {
+      this.scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    }
+
+    this.keyboardPanel.setTexture(HUD_KEYBOARD_FRAME).setOrigin(0).clearTint().setVisible(true);
+    this.mousePanel.setTexture(HUD_MOUSE_FRAME).setOrigin(0).clearTint().setVisible(true);
+    this.statusPanel.setVisible(false);
+    this.hpFrame.setTexture(HUD_LIFE_FRAME).setOrigin(0).setVisible(true);
+    this.mpFrame.setTexture(HUD_MANA_FRAME).setOrigin(0).setVisible(true);
+    this.potPanel.setVisible(false);
+    this.mpotPanel.setVisible(false);
+    this.hudAssetsReady = true;
+  }
+
+  private slotX(i: number): number {
+    const w = this.scene.scale.width;
+    const links = hudLinks(w);
+    const skala = hudSkala(w);
+    if (i < KB_SLOTS) {
+      return links + HUD_KEYBOARD_SLOT_X[i] * skala + getSettings().ui.hotbar.x;
+    }
+    const j = i - KB_SLOTS;
+    return links + HUD_MOUSE_SLOT_X[j] * skala + getSettings().ui.mausleiste.x;
+  }
+
+  private slotY(i: number): number {
+    const ui = getSettings().ui;
+    const skala = hudSkala(this.scene.scale.width);
+    const y = this.scene.scale.height - HUD_DESIGN_H * skala + HUD_SLOT_Y * skala;
+    return y + (i < KB_SLOTS ? ui.hotbar.y : ui.mausleiste.y);
+  }
+
+  private buildSlotObjects(): void {
+    // Erst ab ein paar Pixeln Bewegung gilt ein Klick als Ziehen, damit
+    // Rechtsklick-Menü und Tooltips normal funktionieren
+    this.scene.input.dragDistanceThreshold = 6;
+    for (let i = 0; i < this.slots.length; i++) {
+      const s = this.slots[i];
+      const x = this.slotX(i);
+      const ico = this.scene.add.text(x, this.slotY(i), '', {
+        fontFamily: HUD_ICON_FONT,
+        fontSize: '19px',
+        color: '#d8cfb8',
+        padding: { x: 2, y: 2 },
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(4602).setResolution(2);
+      this.slotTexts.push(ico);
+      const taste = this.scene.add.text(x, 0, '', {
+        fontFamily: HUD_TEXT_FONT,
+        fontSize: '11px',
+        fontStyle: 'bold',
+        color: '#e8d8b8',
+        stroke: '#0a0704',
+        strokeThickness: 2,
+        padding: { x: 2, y: 1 },
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(4603).setResolution(2);
+      this.slotKeyTexts.push(taste);
+      const zone = this.scene.add.zone(x, this.slotY(i), 42, 42).setOrigin(0.5).setScrollFactor(0).setInteractive();
+      zone.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showSlotTooltip(s, ptr));
+      zone.on('pointerout', () => this.hideTooltip());
+      zone.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
+        if (ptr.rightButtonDown()) {
+          // Rechtsklick: Belegungs-Menü (der Zauber wirkt dabei NICHT)
+          if (!s.belegung) return;
+          this.hideTooltip();
+          this.openBelegungsMenue(s, this.slotX(i), this.slotY(i));
+          this.klickSlot = -1;
+          return;
+        }
+        // Linksklick-Kandidat: löst beim Loslassen die Aktion aus, SOFERN nicht
+        // gezogen wurde (Ziehen verschiebt/tauscht, Klick castet - Autorwunsch R40)
+        this.klickSlot = i;
+        // Gedrückt-Optik (Runde 52): der Knopf sieht sofort "gedrückt" aus
+        this.gedruecktSlot = i;
+        this.gedruecktBis = this.scene.time.now + 140;
+      });
+      // Klick (ohne Ziehen) auf einen belegten Slot feuert die Aktion
+      zone.on('pointerup', (ptr: Phaser.Input.Pointer) => {
+        if (ptr.button !== 0 || this.klickSlot !== i) return;
+        this.klickSlot = -1;
+        const id = s.aktion?.();
+        if (id) { this.hideTooltip(); this.onActivate(id); }
+      });
+      // Drag & Drop (Runde 20): Zauber von der Tastenleiste auf einen
+      // Maus-Slot ziehen belegt ihn; zwischen Maus-Slots ziehen tauscht.
+      this.scene.input.setDraggable(zone);
+      zone.on('dragstart', (ptr: Phaser.Input.Pointer) => {
+        if (ptr.rightButtonDown()) return;
+        if (!s.aktion && !s.belegung) return;
+        this.klickSlot = -1; // es wird gezogen, kein Klick
+        this.gedruecktSlot = -1; // Ziehen ist kein Druck
+        this.hideTooltip();
+        this.dragVon = i;
+        this.dragGhost = this.scene.add.text(ptr.x, ptr.y, s.ico(), {
+          fontFamily: HUD_ICON_FONT,
+          fontSize: '24px',
+          color: '#f0dfa0',
+          stroke: '#000000',
+          strokeThickness: 2,
+          padding: { x: 3, y: 3 },
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(6000).setResolution(2);
+      });
+      zone.on('drag', (ptr: Phaser.Input.Pointer) => this.dragGhost?.setPosition(ptr.x, ptr.y));
+      zone.on('dragend', (ptr: Phaser.Input.Pointer) => this.endDrag(ptr));
+      this.slotZones.push(zone);
+    }
+  }
+
+  private buildMenuObjects(): void {
+    HUD_MENU_BUTTONS.forEach((def, index) => {
+      const zone = this.scene.add.zone(0, 0, HUD_MENU_SIZE, HUD_MENU_SIZE)
+        .setOrigin(0.5).setScrollFactor(0).setInteractive({ useHandCursor: true });
+      zone.on('pointerover', (ptr: Phaser.Input.Pointer) => {
+        this.menuHover = index;
+        this.showMenuTooltip(def.label, ptr);
+      });
+      zone.on('pointerout', () => {
+        this.menuHover = -1;
+        this.hideTooltip();
+      });
+      zone.on('pointerup', (ptr: Phaser.Input.Pointer) => {
+        if (ptr.button !== 0) return;
+        this.hideTooltip();
+        this.onMenuAction?.(def.id);
+      });
+      this.menuZones.push(zone);
+    });
+  }
+
+  private menuPosition(index: number): { x: number; y: number } {
+    const w = this.scene.scale.width;
+    const skala = hudSkala(w);
+    const links = hudLinks(w);
+    const oben = this.scene.scale.height - HUD_DESIGN_H * skala;
+    const versatz = getSettings().ui.orbMp;
+    const def = HUD_MENU_BUTTONS[index];
+    return {
+      x: links + def.x * skala + versatz.x,
+      y: oben + def.y * skala + versatz.y,
+    };
+  }
+
+  private slotTrefferHalbeBreite(): number {
+    return Math.max(18, HUD_MENU_SIZE * 0.62 * hudSkala(this.scene.scale.width));
+  }
+
+  // Erhabener 3D-Knopf im WoW-Stil (Runde 50): dunkler Körper, Glas-Glanz auf
+  // der oberen Hälfte, helle Glanzkante oben/links, Schattenkante unten/rechts
+  // und ein kategoriefarbener Außenrahmen. Gesperrte Slots bleiben matt.
+  // pressed (Runde 52, Autorwunsch): beim Anklicken sieht der Knopf "gedrückt"
+  // aus - Kanten vertauscht (Licht unten/rechts), kein Schlagschatten, dunkler.
+  private zeichne3dKnopf(g: Phaser.GameObjects.Graphics, x: number, y: number, size: number, katFarbe: number, locked: boolean, pressed = false): void {
+    const h = size / 2, r = 6;
+    const x0 = x - h, y0 = y - h;
+    if (!pressed) {
+      // Schlagschatten unter dem erhabenen Knopf
+      g.fillStyle(0x000000, 0.45);
+      g.fillRoundedRect(x0 + 1, y0 + 3, size, size, r);
+    }
+    // Körper (dunkles Metall) - gedrückt deutlich dunkler/eingesunken
+    g.fillStyle(locked ? 0x140f0a : pressed ? 0x0d0905 : 0x1b140c, 0.98);
+    g.fillRoundedRect(x0, y0, size, size, r);
+    if (!locked) {
+      // dezente Kategorie-Tönung + Glas-Glanz auf der oberen Hälfte
+      g.fillStyle(katFarbe, pressed ? 0.2 : 0.12);
+      g.fillRoundedRect(x0 + 2, y0 + 2, size - 4, size - 4, r - 2);
+      if (!pressed) {
+        g.fillStyle(0xffffff, 0.10);
+        g.fillRoundedRect(x0 + 3, y0 + 3, size - 6, size * 0.4, r - 3);
+      }
+    }
+    if (pressed) {
+      // Gedrückt: Lichtkante WANDERT nach unten/rechts, Schattenkante nach oben/links
+      g.lineStyle(2, 0x000000, 0.65);
+      g.lineBetween(x0 + 3, y0 + 2, x0 + size - 4, y0 + 2);
+      g.lineBetween(x0 + 2, y0 + 3, x0 + 2, y0 + size - 4);
+      g.lineStyle(2, locked ? 0x2a2218 : 0x6e5a36, 0.85);
+      g.lineBetween(x0 + 3, y0 + size - 2, x0 + size - 3, y0 + size - 2);
+      g.lineBetween(x0 + size - 2, y0 + 3, x0 + size - 2, y0 + size - 3);
+    } else {
+      // helle Glanzkante oben/links
+      g.lineStyle(2, locked ? 0x2a2218 : 0x6e5a36, locked ? 0.8 : 0.9);
+      g.lineBetween(x0 + 3, y0 + 2, x0 + size - 4, y0 + 2);
+      g.lineBetween(x0 + 2, y0 + 3, x0 + 2, y0 + size - 4);
+      // dunkle Schattenkante unten/rechts
+      g.lineStyle(2, 0x000000, 0.6);
+      g.lineBetween(x0 + 3, y0 + size - 2, x0 + size - 3, y0 + size - 2);
+      g.lineBetween(x0 + size - 2, y0 + 3, x0 + size - 2, y0 + size - 3);
+    }
+    // Außenrahmen in Kategoriefarbe (gedrückt heller, "leuchtet auf")
+    g.lineStyle(locked ? 1 : 2, locked ? 0x3a3228 : katFarbe, locked ? 1 : pressed ? 1 : 0.95);
+    g.strokeRoundedRect(x0, y0, size, size, r);
+  }
+
+  private positionHudAssets(): void {
+    if (!this.hudAssetsReady) return;
+    const w = this.scene.scale.width;
+    const skala = hudSkala(w);
+    const links = hudLinks(w);
+    const oben = this.scene.scale.height - HUD_DESIGN_H * skala;
+    const ui = getSettings().ui;
+
+    this.keyboardPanel
+      .setPosition(links + HUD_KEYBOARD_X * skala + ui.hotbar.x, oben + ui.hotbar.y)
+      .setDisplaySize(HUD_KEYBOARD_W * skala, HUD_DESIGN_H * skala);
+    this.mousePanel
+      .setPosition(links + HUD_MOUSE_X * skala + ui.mausleiste.x, oben + ui.mausleiste.y)
+      .setDisplaySize(HUD_MOUSE_W * skala, HUD_DESIGN_H * skala);
+    this.hpFrame
+      .setPosition(links + ui.orbHp.x, oben + ui.orbHp.y)
+      .setDisplaySize(HUD_LIFE_W * skala, HUD_DESIGN_H * skala);
+    this.mpFrame
+      .setPosition(links + HUD_MANA_X * skala + ui.orbMp.x, oben + ui.orbMp.y)
+      .setDisplaySize(HUD_MANA_W * skala, HUD_DESIGN_H * skala);
+  }
+
+  // --- Drag & Drop auf die Maus-Leiste (Runde 20) ------------------------------
+
+  private dragGhost: Phaser.GameObjects.Text | null = null;
+  private dragVon = -1;
+  private popupGhost: Phaser.GameObjects.Text | null = null;
+  private justDragged = false;
+  private klickSlot = -1; // welcher Slot gerade als Linksklick-Kandidat gilt
+  private gedruecktSlot = -1; // welcher Slot gerade "gedrückt" gezeichnet wird
+  private gedruecktBis = 0;   // bis wann (scene.time.now) die Gedrückt-Optik gilt
+
+  private endDrag(ptr: Phaser.Input.Pointer): void {
+    const ghost = this.dragGhost;
+    const von = this.dragVon;
+    this.dragGhost = null;
+    this.dragVon = -1;
+    if (!ghost) return;
+    ghost.destroy();
+    if (von < 0) return;
+    // Liegt unter dem Zeiger irgendein anderer Slot? Dann tauschen (R26)
+    let ziel = -1;
+    const halb = this.slotTrefferHalbeBreite();
+    for (let j = 0; j < this.slots.length; j++) {
+      if (Math.abs(ptr.x - this.slotX(j)) <= halb && Math.abs(ptr.y - this.slotY(j)) <= halb) { ziel = j; break; }
+    }
+    if (ziel < 0 || ziel === von) return;
+    const a = this.slots[von].belegung;
+    const b = this.slots[ziel].belegung;
+    if (!a || !b) return;
+    const s = getSettings();
+    const lese = (q: Belegung) => (s[q.store] as Record<string, string>)[q.feld];
+    const schreibe = (q: Belegung, wert: string) => { (s[q.store] as Record<string, string>)[q.feld] = wert; };
+    const merk = lese(a);
+    // Halten-Aktionen (Angriff/Blocken) funktionieren nur auf Maustasten
+    const haltAktion = (id: string) => id === 'angriff' || id === 'block';
+    if ((b.store === 'tasten' && haltAktion(merk)) || (a.store === 'tasten' && haltAktion(lese(b)))) return;
+    schreibe(a, lese(b));
+    schreibe(b, merk);
+    saveSettings();
+  }
+
+  // Einen Gegenstand aus dem Inventar auf den Slot unter (x,y) legen
+  // (Runde 40): das Inventar darf Schriftrollen/Tränke direkt auf die Leiste
+  // ziehen. Liegt dort ein belegbarer Slot, wird die Aktion gesetzt. Halten-
+  // Aktionen (Angriff/Blocken) sind hier nicht im Spiel.
+  belegeBeiPunkt(x: number, y: number, aktionId: string): boolean {
+    if (!this.aktionen.some(([id]) => id === aktionId)) return false;
+    const halb = this.slotTrefferHalbeBreite();
+    for (let j = 0; j < this.slots.length; j++) {
+      if (Math.abs(x - this.slotX(j)) > halb || Math.abs(y - this.slotY(j)) > halb) continue;
+      const feld = this.slots[j].belegung;
+      if (!feld) return false;
+      (getSettings()[feld.store] as Record<string, string>)[feld.feld] = aktionId;
+      saveSettings();
+      return true;
+    }
+    return false;
+  }
+
+  // --- Belegungs-Menü (Runde 14) ---------------------------------------------
+
+  private menue: Phaser.GameObjects.Container | null = null;
+
+  // Weltklicks blockieren, solange der Zeiger auf der Leiste liegt oder
+  // das Belegungs-Menü offen ist (sonst wirkt der Zauber beim Anklicken)
+  klickBlockiert(ptr: Phaser.Input.Pointer): boolean {
+    if (this.menue || this.dragGhost) return true;
+    const w = this.scene.scale.width;
+    const skala = hudSkala(w);
+    const links = hudLinks(w);
+    const oben = this.scene.scale.height - HUD_DESIGN_H * skala;
+    const ui = getSettings().ui;
+    const inTeil = (sx: number, sw: number, versatz: { x: number; y: number }): boolean => {
+      const x0 = links + sx * skala + versatz.x;
+      const y0 = oben + versatz.y;
+      return ptr.x >= x0 && ptr.x <= x0 + sw * skala
+        && ptr.y >= y0 && ptr.y <= y0 + HUD_DESIGN_H * skala;
+    };
+    return inTeil(0, HUD_LIFE_W, ui.orbHp)
+      || inTeil(HUD_MOUSE_X, HUD_MOUSE_W, ui.mausleiste)
+      || inTeil(HUD_KEYBOARD_X, HUD_KEYBOARD_W, ui.hotbar)
+      || inTeil(HUD_MANA_X, HUD_MANA_W, ui.orbMp);
+  }
+
+  private closeMenue(): void {
+    this.menue?.destroy();
+    this.menue = null;
+    this.popupGhost?.destroy();
+    this.popupGhost = null;
+  }
+
+  // Stufe (zum Sortieren) einer Aktion: Zauber/Fähigkeit -> Freischalt-Stufe, sonst 0.
+  private skillLevel(id: string): number {
+    const sp = SPELLS.find((s) => s.id === id); if (sp) return sp.unlock;
+    const ab = ABILITIES.find((a) => a.id === id); if (ab) return ab.unlock;
+    return 0;
+  }
+
+  // Ist die Aktion schon gelernt/freigeschaltet? (für das Belegungs-Menü:
+  // noch nicht lernbare Zauber werden ausgegraut - Autorwunsch R60). Items,
+  // Waffen-Slots und Rollen sind nicht schul-gebunden -> immer verfügbar.
+  private istGelernt(id: string): boolean {
+    if (TUNING.alleZauberFrei) return true;
+    if (id === 'atomschlag') return true;                 // DEV: immer verfügbar
+    const p = this.getP();
+    const i = ['s1', 's2', 's3'].indexOf(id);
+    if (i >= 0) return p.level >= SPELLS[i].unlock;
+    const def = ABILITIES.find((a) => a.id === id);
+    if (!def) return true;                                // kein Schul-Skill
+    return p.schools[def.school].level >= def.unlock;
+  }
+
+  // Action-Bar-Slot unter dem Zeiger (für Drag aus dem Belegungs-Menü).
+  private slotUnter(ptr: Phaser.Input.Pointer): number {
+    const halb = this.slotTrefferHalbeBreite();
+    for (let i = 0; i < this.slots.length; i++) {
+      if (Math.abs(ptr.x - this.slotX(i)) <= halb && Math.abs(ptr.y - this.slotY(i)) <= halb) return i;
+    }
+    return -1;
+  }
+
+  private belege(b: Belegung, id: string): void {
+    (getSettings()[b.store] as Record<string, string>)[b.feld] = id;
+    saveSettings();
+  }
+
+  // Belegungs-Menü (Runde 51, Autorwunsch): SPALTEN nebeneinander (Krieger /
+  // Magier / Bogen / Gegenstand) statt einer hohen Liste, die unten aus dem Bild
+  // läuft. Je Spalte nach STUFE sortiert, mit Symbol. Klick belegt diesen Slot,
+  // ZIEHEN auf einen beliebigen Slot belegt jenen.
+  private openBelegungsMenue(s: SlotDef, slotX: number, slotY: number): void {
+    this.closeMenue();
+    const feld = s.belegung!;
+    const c = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(5300);
+    this.menue = c;
+    const deckel = this.scene.add.rectangle(0, 0, this.scene.scale.width, this.scene.scale.height, 0x000000, 0.01)
+      .setOrigin(0).setScrollFactor(0).setInteractive();
+    deckel.on('pointerdown', () => this.closeMenue());
+    c.add(deckel);
+
+    const liste = feld.store === 'tasten' ? this.aktionen.filter(([id]) => id !== 'angriff' && id !== 'block') : this.aktionen;
+    const katVon = (id: string): SlotKat => (id === 'waffe1' || id === 'waffe2') ? 'kampf' : (SLOT_KAT[id] ?? 'item');
+    const katOrder: Array<[SlotKat, string]> = [
+      ['kampf', 'KRIEGER · Nahkampf'], ['zauber', 'MAGIER · Zauber'], ['bogen', 'BOGEN'], ['item', 'GEGENSTAND'],
+    ];
+    const spalten = katOrder
+      .map(([kat, titel]) => ({ kat, titel, eintr: liste.filter(([id]) => katVon(id) === kat).sort((a, b) => this.skillLevel(a[0]) - this.skillLevel(b[0])) }))
+      .filter((sp) => sp.eintr.length > 0);
+
+    const rowH = 19, hdrH = 22, padT = 28, padB = 12, padX = 12, gap = 10;
+    const maxRows = Math.max(...spalten.map((sp) => sp.eintr.length));
+    const maxW = this.scene.scale.width - 16;
+    let colW = 196;
+    if (spalten.length * colW + (spalten.length - 1) * gap + padX * 2 > maxW) {
+      colW = Math.floor((maxW - padX * 2 - (spalten.length - 1) * gap) / spalten.length);
+    }
+    const breite = spalten.length * colW + (spalten.length - 1) * gap + padX * 2;
+    const hoehe = padT + hdrH + maxRows * rowH + padB;
+    const mx = Math.min(Math.max(8, slotX - breite / 2), this.scene.scale.width - breite - 8);
+    const my = Math.max(8, slotY - 30 - hoehe);
+
+    const bg = this.scene.add.rectangle(mx, my, breite, hoehe, 0x171108, 0.98).setOrigin(0).setStrokeStyle(1, 0xc9a227);
+    bg.setInteractive();
+    c.add(bg);
+    c.add(this.scene.add.text(mx + padX, my + 8, `BELEGUNG ${s.key}  ·  klicken oder auf einen Slot ziehen`, {
+      fontFamily: HUD_TEXT_FONT, fontSize: '11px', color: '#c9a227', letterSpacing: 0,
+    }).setResolution(2));
+    const aktiv = (getSettings()[feld.store] as Record<string, string>)[feld.feld];
+
+    spalten.forEach((sp, ci) => {
+      const cx = mx + padX + ci * (colW + gap);
+      const katFarbe = '#' + SLOT_KAT_FARBE[sp.kat].toString(16).padStart(6, '0');
+      if (ci > 0) c.add(this.scene.add.rectangle(cx - gap / 2, my + padT, 1, hdrH + maxRows * rowH, 0x3a2f1c).setOrigin(0));
+      c.add(this.scene.add.rectangle(cx, my + padT + 2, 3, hdrH - 8, SLOT_KAT_FARBE[sp.kat]).setOrigin(0));
+      c.add(this.scene.add.text(cx + 8, my + padT, sp.titel, {
+        fontFamily: HUD_TEXT_FONT, fontSize: '11px', fontStyle: 'bold', color: katFarbe, letterSpacing: 0,
+      }).setResolution(2));
+      let zy = my + padT + hdrH;
+      for (const [id, ico, name] of sp.eintr) {
+        const lvl = this.skillLevel(id);
+        const gelernt = this.istGelernt(id);
+        const grau = '#5a5142';                                    // ausgegraut bis gelernt
+        const ruheFarbe = !gelernt ? grau : id === aktiv ? '#f0dca0' : katFarbe;
+        const kurz = name.replace(/\s*\(.*\)$/, '');               // Klammer-Zusatz weg -> kompakt
+        const eintrag = this.scene.add.text(cx + 4, zy, `${ico} ${kurz}${lvl ? `  ·${lvl}` : ''}`, {
+          fontFamily: HUD_TEXT_FONT, fontSize: '12px',
+          color: ruheFarbe,
+          backgroundColor: id === aktiv ? '#221808' : undefined,
+          padding: { x: 4, y: 1 },
+        }).setScrollFactor(0).setResolution(2).setInteractive({ useHandCursor: true });
+        eintrag.on('pointerover', () => eintrag.setColor(gelernt ? '#f8e8b8' : '#7a6f58'));
+        eintrag.on('pointerout', () => eintrag.setColor(ruheFarbe));
+        eintrag.on('pointerup', () => {
+          if (this.justDragged || this.popupGhost) { this.justDragged = false; return; } // war ein Ziehen
+          this.belege(feld, id); this.closeMenue();
+        });
+        // Ziehen auf einen Slot der Aktionsleiste belegt jenen Slot (Autorwunsch)
+        this.scene.input.setDraggable(eintrag);
+        eintrag.on('dragstart', (ptr: Phaser.Input.Pointer) => {
+          this.popupGhost = this.scene.add.text(ptr.x, ptr.y, ico, {
+            fontFamily: HUD_ICON_FONT, fontSize: '22px', color: katFarbe, padding: { x: 2, y: 2 },
+          }).setOrigin(0.5).setScrollFactor(0).setDepth(5400).setResolution(2);
+        });
+        eintrag.on('drag', (ptr: Phaser.Input.Pointer) => this.popupGhost?.setPosition(ptr.x, ptr.y));
+        eintrag.on('dragend', (ptr: Phaser.Input.Pointer) => {
+          this.popupGhost?.destroy(); this.popupGhost = null;
+          const idx = this.slotUnter(ptr);
+          const ziel = idx >= 0 ? this.slots[idx].belegung : feld;
+          if (ziel) this.belege(ziel, id);
+          this.justDragged = true;
+          this.closeMenue();
+        });
+        c.add(eintrag);
+        zy += rowH;
+      }
+    });
+  }
+
+  private showSlotTooltip(s: SlotDef, ptr: Phaser.Input.Pointer): void {
+    this.hideTooltip();
+    const lines: Array<[string, string]> = [
+      [`${s.name()}  [Taste ${s.key}]`, '#c9a227'],
+    ];
+    // Was der Skill tut + Schaden/Wirkung (Runde 49)
+    const info = s.info?.();
+    if (info?.[0]) lines.push([info[0], '#d8cfb8']);
+    if (info?.[1]) lines.push([info[1], '#e8b86a']);
+    const k = s.kosten();
+    if (k) lines.push([k, '#8aa6e8']);
+    lines.push([s.desc(), '#8a7a5a']);
+    const lock = s.locked();
+    if (lock) lines.push([`Gesperrt - ${lock}`, '#d96b5a']);
+    const c = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(5250);
+    let ty = 8;
+    const texts: Phaser.GameObjects.Text[] = [];
+    for (const [t2, col] of lines) {
+      const t = this.scene.add.text(10, ty, t2, {
+        fontFamily: HUD_TEXT_FONT,
+        fontSize: '12.5px',
+        color: col,
+        wordWrap: { width: 240 },
+        padding: { x: 1, y: 1 },
+      }).setResolution(2);
+      texts.push(t);
+      ty += t.height + 2;
+    }
+    const bgW = Math.max(...texts.map((t) => t.width)) + 20;
+    c.add(this.scene.add.rectangle(0, 0, bgW, ty + 6, 0x0e0a06, 0.97).setOrigin(0).setStrokeStyle(1, 0x4a3a26));
+    for (const t of texts) c.add(t);
+    c.setPosition(Math.min(ptr.x - bgW / 2, this.scene.scale.width - bgW - 8), this.scene.scale.height - 90 - ty - 16);
+    this.tooltip = c;
+  }
+
+  private showMenuTooltip(label: string, ptr: Phaser.Input.Pointer): void {
+    this.hideTooltip();
+    const text = this.scene.add.text(10, 7, label, {
+      fontFamily: HUD_TEXT_FONT,
+      fontSize: '12px',
+      color: '#ead9b4',
+      padding: { x: 1, y: 1 },
+    }).setResolution(2);
+    const breite = text.width + 20;
+    const hoehe = text.height + 14;
+    const c = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(5250);
+    c.add(this.scene.add.rectangle(0, 0, breite, hoehe, 0x0e0a06, 0.97)
+      .setOrigin(0).setStrokeStyle(1, 0x9b7a43));
+    c.add(text);
+    c.setPosition(
+      Phaser.Math.Clamp(ptr.x - breite / 2, 8, this.scene.scale.width - breite - 8),
+      Math.max(8, ptr.y - hoehe - 14),
+    );
+    this.tooltip = c;
+  }
+
+  private hideTooltip(): void {
+    this.tooltip?.destroy();
+    this.tooltip = null;
+  }
+
+  private passeEinzeiligEin(
+    text: Phaser.GameObjects.Text,
+    inhalt: string,
+    basisGroesse: number,
+    minGroesse: number,
+    maxBreite: number,
+  ): void {
+    text.setText(inhalt).setFontSize(basisGroesse);
+    if (text.width <= maxBreite) return;
+    const groesse = Math.max(minGroesse, Math.floor(basisGroesse * maxBreite / text.width));
+    text.setFontSize(groesse);
+  }
+
+  update(extra: string): void {
+    const p = this.getP();
+    const g = this.gfx;
+    const w = this.scene.scale.width, h = this.scene.scale.height;
+    const kb = getSettings().kb;
+    g.clear();
+    this.menuGfx.clear();
+
+    // Codex HUD-Uebergabe: die Anzeigen bleiben Teil der flachen Leiste.
+    // Anker folgt weiter den ECHTEN Leistenkanten (slotX bezieht die Benutzer-
+    // Versätze mit ein), damit F10-Griffe, Drag und Klickschutz stabil bleiben.
+    const skala = hudSkala(w);
+    const links = hudLinks(w);
+    const oben = h - HUD_DESIGN_H * skala;
+    const klemmX = (x: number) => Math.max(48 * skala, Math.min(w - 48 * skala, x));
+    const klemmY = (y: number) => Math.max(48 * skala, Math.min(h - 48 * skala, y));
+    const oh = getSettings().ui.orbHp, om = getSettings().ui.orbMp;
+    const hx = klemmX(orbHpAnkerX(w) + oh.x);
+    const hy = klemmY(oben + HUD_ORB_Y * skala + oh.y);
+    const mx = klemmX(orbMpAnkerX(w) + om.x);
+    const my = klemmY(oben + HUD_ORB_Y * skala + om.y);
+    const hpFrac = p.hp / p.stats.maxhp, mpFrac = p.mana / p.stats.maxmana;
+    const hpVal = String(Math.max(0, Math.ceil(p.hp))), mpVal = String(Math.ceil(p.mana));
+    const potT = `${keyLabel(kb.pot)} x${p.pot}`, mpotT = `${keyLabel(kb.mpot)} x${p.mpot}`;
+    this.positionHudAssets();
+    // Die Vorlage besitzt transparente, schmale Sichtfenster. Fuellstand und
+    // Zahl werden exakt dahinter gezeichnet; dadurch bleiben Rahmen und Balken
+    // auch bei jeder HUD-Skalierung deckungsgleich.
+    this.hpImg.setVisible(false);
+    this.mpImg.setVisible(false);
+    // Arkane Fluessigkeit (Runde 194, Autor-Referenz "rote/blaue Kugel"):
+    // dunkler Grund, zwei langsame Wolkenlagen, leuchtende Adern, Glasreflex,
+    // Innenschatten - alles in eigenen Ebenen unter dem Rahmen. Die Texturen
+    // entstehen EINMAL, hier wird nur noch bewegt und maskiert.
+    const jetzt = this.scene.time.now;
+    const fluidB = HUD_METER_W * skala, fluidH = HUD_METER_H * skala;
+    this.hpFluid.setGeometrie(hx, hy, fluidB, fluidH, skala);
+    this.mpFluid.setGeometrie(mx, my, fluidB, fluidH, skala);
+    if (!this.fluidBereit) {
+      this.fluidBereit = true;
+      this.hpFluid.setzeSofort(hpFrac);
+      this.mpFluid.setzeSofort(mpFrac);
+    } else {
+      this.hpFluid.setAnteil(hpFrac);
+      this.mpFluid.setAnteil(mpFrac);
+    }
+    const dtMs = this.scene.game.loop.delta;
+    this.hpFluid.update(jetzt, dtMs);
+    this.mpFluid.update(jetzt, dtMs);
+    this.hpFrame.setVisible(true);
+    this.mpFrame.setVisible(true);
+    const zahlGroesse = Math.max(16, Math.round(28 * skala));
+    this.hpText.setFontSize(zahlGroesse).setPosition(hx + HUD_NUMBER_OFFSET_X, hy).setText(hpVal);
+    this.mpText.setFontSize(zahlGroesse).setPosition(mx + HUD_NUMBER_OFFSET_X, my).setText(mpVal);
+    const trankGroesse = Math.max(10, Math.round(18 * skala));
+    this.passeEinzeiligEin(this.potText, potT, trankGroesse, 9, (HUD_LIFE_W - 22) * skala);
+    this.potText.setPosition(links + HUD_ORB_HP_X * skala + oh.x, oben + HUD_POTION_LABEL_Y * skala + oh.y);
+    this.passeEinzeiligEin(this.mpotText, mpotT, trankGroesse, 9, (HUD_MANA_W - 18) * skala);
+    this.mpotText.setPosition(links + HUD_ORB_MP_X * skala + om.x, oben + HUD_POTION_LABEL_Y * skala + om.y);
+
+    // Zwei getrennte Paneele (Runde 20): Tastenleiste und Maus-Leiste
+    const panel = (a: number, b: number) => {
+      const px0 = this.slotX(a) - 26, px1 = this.slotX(b) + 26;
+      const py0 = this.slotY(a) - 25;
+      if (!this.hudAssetsReady) {
+        g.fillStyle(0x514534, 0.97);
+        g.fillRoundedRect(px0, py0 - 4, px1 - px0, 58, 3);
+        g.lineStyle(2, 0x26231f, 1);
+        g.strokeRoundedRect(px0, py0 - 4, px1 - px0, 58, 3);
+        g.lineStyle(1, 0xa99a80, 0.72);
+        g.strokeRoundedRect(px0 + 3, py0 - 1, px1 - px0 - 6, 52, 2);
+      }
+    };
+    panel(0, KB_SLOTS - 1);
+    panel(KB_SLOTS, this.slots.length - 1);
+    for (let i = 0; i < this.slots.length; i++) {
+      const s = this.slots[i];
+      const x = this.slotX(i);
+      const y = this.slotY(i);
+      const slotBreite = Math.max(28, (i < KB_SLOTS ? 74 : 82) * skala);
+      const slotHoehe = slotBreite;
+      const klickGroesse = Math.max(32, 82 * skala);
+      this.slotZones[i].setPosition(x, y).setSize(klickGroesse, klickGroesse);
+      const locked = s.locked() !== null;
+      // Kategorie-Färbung (Runde 36): Rahmen + dezenter Schimmer je nach
+      // Kampf/Zauber/Bogen/Item - so unterscheidet man die Slots auf einen Blick
+      const katFarbe = SLOT_KAT_FARBE[s.kategorie?.() ?? 'item'];
+      // 3D-Knopf im WoW-Stil (Runde 50, Autorwunsch); gedrückt-Optik (Runde 52)
+      const pressed = !locked && this.gedruecktSlot === i && this.scene.time.now < this.gedruecktBis;
+      if (!this.hudAssetsReady) {
+        this.zeichne3dKnopf(g, x, y, Math.min(slotBreite, slotHoehe), katFarbe, locked, pressed);
+      } else if (locked || pressed) {
+        g.fillStyle(locked ? 0x090807 : 0xffffff, locked ? 0.56 : 0.08);
+        g.fillRect(x - slotBreite / 2, y - slotHoehe / 2, slotBreite, slotHoehe);
+      }
+      const cd = s.cdFrac();
+      if (cd > 0) {
+        // ganze Taste matt = "noch nicht aktiv" (Autorbug R60: Abklingen war nicht
+        // ausgegraut, nur der Schwung war zu sehen)
+        g.fillStyle(0x05030a, 0.5);
+        g.fillRect(x - slotBreite / 2, y - slotHoehe / 2, slotBreite, slotHoehe);
+        g.fillStyle(0x000000, 0.72);            // ablaufender Abkling-Schwung darüber
+        g.fillRect(
+          x - slotBreite / 2,
+          y - slotHoehe / 2 + slotHoehe * (1 - cd),
+          slotBreite,
+          slotHoehe * cd,
+        );
+      }
+      const cdS = s.cdSek();
+      this.slotTexts[i].setText(cdS > 0.5 ? String(Math.ceil(cdS)) : `${s.ico()}`)
+        .setFontFamily(cdS > 0.5 ? HUD_TEXT_FONT : HUD_ICON_FONT)
+        .setColor(cdS > 0.5 ? '#e0b53a' : (s.farbe?.() ?? '#d8cfb8'))
+        .setFontSize(Math.max(14, Math.round(28 * skala)))
+        .setAlpha(locked ? 0.3 : cd > 0 ? 0.5 : 1)
+        .setPosition(x, pressed ? y + Math.max(1, skala * 2) : y);
+      // Tastenkürzel klein oben links
+      const tastenWerte = [kb.s1, kb.s2, kb.s3, '4', '5', '6', '9', '0', kb.faehigkeit1, kb.faehigkeit2];
+      this.slotKeyTexts[i]
+        .setVisible(i < KB_SLOTS)
+        .setText(i < KB_SLOTS ? keyLabel(tastenWerte[i]) : '')
+        .setFontSize(Math.max(9, Math.round(18 * skala)))
+        .setPosition(x, oben + HUD_KEY_LABEL_Y * skala + getSettings().ui.hotbar.y);
+    }
+    for (let i = 0; i < HUD_MENU_BUTTONS.length; i++) {
+      const pos = this.menuPosition(i);
+      const groesse = HUD_MENU_SIZE * skala;
+      this.menuZones[i].setPosition(pos.x, pos.y).setSize(Math.max(30, groesse), Math.max(30, groesse));
+      if (this.menuHover === i) {
+        this.menuGfx.fillStyle(0xf0d28c, 0.09);
+        this.menuGfx.fillRect(pos.x - groesse / 2, pos.y - groesse / 2, groesse, groesse);
+        this.menuGfx.lineStyle(Math.max(1, 2 * skala), 0xd4ad63, 0.9);
+        this.menuGfx.strokeRect(pos.x - groesse / 2, pos.y - groesse / 2, groesse, groesse);
+      }
+    }
+    // Statuszeile (Runde 37): nur noch Stufe/Gold/Tag/Zeit - sauber, mit
+    // Abstand zur Leiste. Der frühere Slot-Hilfetext stand schon in den
+    // Tooltips ("Rechtsklick: belegen, Ziehen: tauschen") und überlud die Zeile.
+    const ui = getSettings().ui;
+    const statusW = HUD_STATUS_W * skala;
+    const statusX = links + HUD_STATUS_X * skala + ui.hotbar.x;
+    const statusY = oben + HUD_STATUS_Y * skala + ui.hotbar.y;
+    if (!this.hudAssetsReady) {
+      g.fillStyle(0x0c0804, 0.82);
+      g.fillRoundedRect(statusX, statusY, statusW, 38 * skala, 3);
+      g.lineStyle(1, 0x8f806a, 0.72);
+      g.strokeRoundedRect(statusX + 1, statusY + 1, statusW - 2, 38 * skala - 2, 2);
+    }
+    const teile = extra.split(' · ');
+    const statusInhalte = [
+      teile[0] ?? '',
+      teile[1] ?? '',
+      [teile[2], teile[3]].filter(Boolean).join(' · '),
+      teile[4] ?? '',
+      teile.slice(5).join(' · '),
+    ];
+    for (let i = 0; i < this.statusTexts.length; i++) {
+      const x0 = links + HUD_STATUS_EDGES[i] * skala + ui.hotbar.x;
+      const x1 = links + HUD_STATUS_EDGES[i + 1] * skala + ui.hotbar.x;
+      this.passeEinzeiligEin(
+        this.statusTexts[i],
+        statusInhalte[i],
+        Math.max(9, Math.round(17 * skala)),
+        8,
+        x1 - x0 - 12 * skala,
+      );
+      this.statusTexts[i].setPosition((x0 + x1) / 2, statusY + 28 * skala);
+    }
+    // Beschriftung ÜBER der Maus-Leiste, damit sie der Infozeile der
+    // Tastenleiste nicht in die Quere kommt
+    this.mausInfo.setVisible(false);
+
+    // XP-Leiste (R195, dritter "Statusbalken"): dieselbe Bildsprache wie die
+    // Kugeln, aber in klein - dunkles Bett, tiefer Sockel, hellere Oberhaelfte,
+    // Glas-Glanz und eine leuchtende Vorderkante, die ganz langsam pulst.
+    const xw = Math.min(420, w * 0.42);
+    const xh = XP_LEISTE.hoehe;
+    const x0 = w / 2 - xw / 2, y0 = h - 4 - xh;
+    g.fillStyle(XP_LEISTE.bett, 1);
+    g.fillRect(x0, y0, xw, xh);
+    const xf = Phaser.Math.Clamp(p.xp / p.xpNext, 0, 1);
+    const fw = xw * xf;
+    if (fw > 0.5) {
+      const puls = 0.5 + 0.5 * Math.sin(jetzt * XP_LEISTE.pulsTempo);
+      g.fillStyle(XP_LEISTE.tief, 1);
+      g.fillRect(x0, y0, fw, xh);
+      g.fillStyle(XP_LEISTE.mitte, 0.95);
+      g.fillRect(x0, y0, fw, xh * 0.55);
+      g.fillStyle(XP_LEISTE.glanz, XP_LEISTE.glanzAlpha);
+      g.fillRect(x0, y0 + 1, fw, 1);
+      // Vorderkante: der Fortschritt hat einen leuchtenden Kopf.
+      const kante = XP_LEISTE.kanteAlpha * (1 - XP_LEISTE.pulsAnteil + puls * XP_LEISTE.pulsAnteil * 2);
+      g.fillStyle(XP_LEISTE.glanz, Math.min(1, kante));
+      g.fillRect(x0 + fw - XP_LEISTE.kanteBreite, y0, XP_LEISTE.kanteBreite, xh);
+    }
+  }
+
+  destroy(): void {
+    this.destroyed = true;
+    this.hpFluid.destroy();
+    this.mpFluid.destroy();
+    this.gfx.destroy();
+    this.menuGfx.destroy();
+    for (const image of [
+      this.keyboardPanel, this.mousePanel, this.statusPanel,
+      this.hpFrame, this.mpFrame, this.potPanel, this.mpotPanel,
+    ]) image.destroy();
+    this.hpImg.destroy();
+    this.mpImg.destroy();
+    for (const t of [this.hpText, this.mpText, this.potText, this.mpotText, this.mausInfo]) t.destroy();
+    for (const t of this.statusTexts) t.destroy();
+    for (const t of this.slotTexts) t.destroy();
+    for (const t of this.slotKeyTexts) t.destroy();
+    for (const z of this.slotZones) z.destroy();
+    for (const z of this.menuZones) z.destroy();
+    this.dragGhost?.destroy();
+    this.dragGhost = null;
+    this.hideTooltip();
+    this.closeMenue();
+  }
+}

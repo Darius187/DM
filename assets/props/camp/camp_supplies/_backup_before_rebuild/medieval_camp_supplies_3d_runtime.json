@@ -1,0 +1,84 @@
+{
+  "asset": "medieval_camp_supplies_3d_runtime",
+  "label_de": "Freier Lagergutstapel",
+  "glb": "medieval_camp_supplies_3d_runtime.glb",
+  "runtime_mode": "static_exterior_prop",
+  "root_node": "CAMP_SUPPLIES_ROTATION_PIVOT",
+  "editable_blend": "C:\\Obsidian\\DM\\camp-props\\camp_supplies\\medieval_camp_supplies_3d_runtime.blend",
+  "original_blend_preserved": null,
+  "meters_per_blender_unit": 1.0,
+  "placement": {
+    "front_axis": "-Y",
+    "ground_z": 0.0,
+    "continuous_yaw_degrees": "0..360",
+    "no_global_ground_plate": true,
+    "world_placement": "open"
+  },
+  "bounds_m": {
+    "min": [
+      -2.585,
+      -2.03,
+      0.019
+    ],
+    "max": [
+      2.33,
+      1.027,
+      1.46
+    ],
+    "size": [
+      4.915,
+      3.057,
+      1.441
+    ]
+  },
+  "runtime": {
+    "visible_objects": 7,
+    "triangles": 6624,
+    "embedded_textured_materials": 7,
+    "static_material_batches": [
+      "CAMP_SUPPLIES_WOOD_DARK_BATCH",
+      "CAMP_SUPPLIES_WOOD_MID_BATCH",
+      "CAMP_SUPPLIES_WICKER_BATCH",
+      "CAMP_SUPPLIES_ROPE_BATCH",
+      "CAMP_SUPPLIES_IRON_BATCH",
+      "CAMP_SUPPLIES_CERAMIC_BATCH",
+      "CAMP_SUPPLIES_SACK_BATCH"
+    ],
+    "baked_cloth_panels": [],
+    "active_runtime_cloth_simulations": 0
+  },
+  "collision_guide": {
+    "shape": "box",
+    "size": [
+      4.9,
+      3.4
+    ],
+    "center": [
+      0,
+      -0.25
+    ]
+  },
+  "content": {
+    "crates": 7,
+    "barrels": 4,
+    "sacks": 4,
+    "basket": 1,
+    "rope_coil": true,
+    "global_ground_plate": false
+  },
+  "interactions": [
+    {
+      "id": "cargo_pickup_anchor",
+      "position": [
+        0,
+        -1.8,
+        0
+      ]
+    }
+  ],
+  "notes": [
+    "Eigenstaendiges Asset; nicht mit anderen Lager-Assets verschmelzen.",
+    "Keine Bodenplatte im GLB. Weltboden und Platzierung kommen aus Phaser.",
+    "Material-Farbtexturen sind im GLB eingebettet."
+  ]
+}

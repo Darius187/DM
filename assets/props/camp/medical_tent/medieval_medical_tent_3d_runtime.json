@@ -1,0 +1,294 @@
+{
+  "asset": "medieval_medical_tent_3d_runtime",
+  "label_de": "Lazarettzelt des Feldlagers",
+  "glb": "medieval_medical_tent_3d_runtime.glb",
+  "runtime_mode": "static_exterior_prop",
+  "root_node": "MEDICAL_TENT_ROTATION_PIVOT",
+  "editable_blend": "C:\\Obsidian\\DM\\camp-props\\medical_tent\\medieval_medical_tent_3d_runtime.blend",
+  "original_blend_preserved": null,
+  "meters_per_blender_unit": 1.0,
+  "placement": {
+    "front_axis": "-Y",
+    "ground_z": 0.0,
+    "continuous_yaw_degrees": "0..360",
+    "no_global_ground_plate": true,
+    "world_placement": "open"
+  },
+  "bounds_m": {
+    "min": [
+      -4.605,
+      -4.404,
+      -0.12
+    ],
+    "max": [
+      4.6,
+      4.404,
+      5.36
+    ],
+    "size": [
+      9.205,
+      8.807,
+      5.48
+    ]
+  },
+  "runtime": {
+    "visible_objects": 21,
+    "triangles": 119155,
+    "embedded_textured_materials": 21,
+    "static_material_batches": [
+      "MEDICAL_TENT_CLOTH_MED_CANOPY_END_-1",
+      "MEDICAL_TENT_CLOTH_MED_CANOPY_END_1",
+      "MEDICAL_TENT_CLOTH_MED_CANOPY_SIDE_-1",
+      "MEDICAL_TENT_CLOTH_MED_CANOPY_SIDE_1",
+      "MEDICAL_TENT_CLOTH_MED_REAR",
+      "MEDICAL_TENT_CLOTH_MED_SIDE_-1",
+      "MEDICAL_TENT_CLOTH_MED_FRONT_WING_-1",
+      "MEDICAL_TENT_CLOTH_MED_SIDE_1",
+      "MEDICAL_TENT_CLOTH_MED_FRONT_WING_1",
+      "MEDICAL_TENT_WOOD_DARK_BATCH",
+      "MEDICAL_TENT_WOOD_MID_BATCH",
+      "MEDICAL_TENT_ROPE_BATCH",
+      "MEDICAL_TENT_CANVAS_DARK_BATCH",
+      "MEDICAL_TENT_IRON_BATCH",
+      "MEDICAL_TENT_MEDICAL_LINEN_BATCH",
+      "MEDICAL_TENT_MEDICAL_CANVAS_BATCH",
+      "MEDICAL_TENT_CERAMIC_BATCH",
+      "MEDICAL_TENT_MEDICINE_GLASS_BATCH",
+      "MEDICAL_TENT_HERALDRY_BLUE_BATCH",
+      "MEDICAL_TENT_HERALDRY_GOLD_BATCH",
+      "MEDICAL_TENT_WAX_BATCH"
+    ],
+    "baked_cloth_panels": [
+      {
+        "panel": "MED_CANOPY_END_-1",
+        "frames": 78,
+        "quad_grid": [
+          60,
+          44
+        ],
+        "source_quads": 2640,
+        "average_edge_m": 0.0792,
+        "pinned_vertices": 495,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.06544,
+        "average_displacement_m": 0.0302,
+        "maximum_displacement_m": 0.06544,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      },
+      {
+        "panel": "MED_CANOPY_END_1",
+        "frames": 78,
+        "quad_grid": [
+          60,
+          44
+        ],
+        "source_quads": 2640,
+        "average_edge_m": 0.0792,
+        "pinned_vertices": 495,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.0654,
+        "average_displacement_m": 0.02853,
+        "maximum_displacement_m": 0.0654,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      },
+      {
+        "panel": "MED_CANOPY_SIDE_-1",
+        "frames": 78,
+        "quad_grid": [
+          58,
+          46
+        ],
+        "source_quads": 2668,
+        "average_edge_m": 0.0776,
+        "pinned_vertices": 501,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.07213,
+        "average_displacement_m": 0.03577,
+        "maximum_displacement_m": 0.07213,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      },
+      {
+        "panel": "MED_CANOPY_SIDE_1",
+        "frames": 78,
+        "quad_grid": [
+          58,
+          46
+        ],
+        "source_quads": 2668,
+        "average_edge_m": 0.0776,
+        "pinned_vertices": 501,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.07312,
+        "average_displacement_m": 0.03447,
+        "maximum_displacement_m": 0.07312,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      },
+      {
+        "panel": "MED_REAR",
+        "frames": 78,
+        "quad_grid": [
+          88,
+          36
+        ],
+        "source_quads": 3168,
+        "average_edge_m": 0.0777,
+        "pinned_vertices": 345,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.0145,
+        "average_displacement_m": 0.00244,
+        "maximum_displacement_m": 0.0145,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      },
+      {
+        "panel": "MED_SIDE_-1",
+        "frames": 78,
+        "quad_grid": [
+          84,
+          36
+        ],
+        "source_quads": 3024,
+        "average_edge_m": 0.0772,
+        "pinned_vertices": 333,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.01833,
+        "average_displacement_m": 0.00277,
+        "maximum_displacement_m": 0.01833,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      },
+      {
+        "panel": "MED_FRONT_WING_-1",
+        "frames": 72,
+        "quad_grid": [
+          26,
+          38
+        ],
+        "source_quads": 988,
+        "average_edge_m": 0.0471,
+        "pinned_vertices": 81,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.51152,
+        "average_displacement_m": 0.04871,
+        "maximum_displacement_m": 0.08,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      },
+      {
+        "panel": "MED_SIDE_1",
+        "frames": 78,
+        "quad_grid": [
+          84,
+          36
+        ],
+        "source_quads": 3024,
+        "average_edge_m": 0.0772,
+        "pinned_vertices": 333,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.01833,
+        "average_displacement_m": 0.00277,
+        "maximum_displacement_m": 0.01833,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      },
+      {
+        "panel": "MED_FRONT_WING_1",
+        "frames": 72,
+        "quad_grid": [
+          26,
+          38
+        ],
+        "source_quads": 988,
+        "average_edge_m": 0.0471,
+        "pinned_vertices": 81,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.5074,
+        "average_displacement_m": 0.05336,
+        "maximum_displacement_m": 0.08,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      }
+    ],
+    "active_runtime_cloth_simulations": 0
+  },
+  "collision_guide": {
+    "shape": "box",
+    "size": [
+      7.2,
+      6.8
+    ],
+    "center": [
+      0,
+      0.05
+    ],
+    "front_open": true,
+    "walkable_entry_width_m": 5.1
+  },
+  "content": {
+    "open_front": true,
+    "patient_cots": 2,
+    "treatment_table": true,
+    "open_bandage_chest": true,
+    "medicine_table": true,
+    "wash_station": true,
+    "hanging_lantern": true,
+    "period_cross_device": true,
+    "guy_ropes": 4,
+    "center_entry_obstructions": 0,
+    "central_peak_canopy": true,
+    "central_support_pole": true,
+    "decorative_finials": 5,
+    "scalloped_valance": true,
+    "cloth_simulation": "baked_static_mesh",
+    "cloth_material": "MAT_MEDICAL_TENT_CANVAS",
+    "cloth_panels": 9
+  },
+  "interactions": [],
+  "notes": [
+    "Eigenstaendiges Asset; nicht mit den beiden anderen Lager-Assets verschmelzen.",
+    "Keine Bodenplatte im GLB. Weltboden und Platzierung kommen aus Phaser.",
+    "Material-Farbtexturen sind im GLB eingebettet.",
+    "Blender-Cloth wurde 72 bis 80 Frames mit weichen CLOTH_PIN-Gewichten berechnet und als statisches Runtime-Mesh gebacken; Phaser braucht keine Cloth-Physik.",
+    "Neu aufgebautes Cloth-Asset; BACKUP_ORIGINAL_TENTS bleibt als leere, ausgeblendete Sicherungs-Collection fuer spaetere Revisionen erhalten."
+  ]
+}

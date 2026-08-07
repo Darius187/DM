@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ravensmoor · Dorf im Wald (Regen, Wind, Leben)</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #060a07; font-family: Georgia, 'Times New Roman', serif; }
+    #view { position: fixed; inset: 0; display: block; }
+    #hud { position: fixed; left: 16px; top: 12px; color: #e8dcc0; text-shadow: 0 2px 6px #000; pointer-events: none; max-width: 660px; }
+    #hud h1 { margin: 0; font-size: 16px; letter-spacing: 2px; color: #8fbf7a; font-weight: 600; }
+    #hud p { margin: 5px 0 0; font-size: 12px; color: #a4b294; line-height: 1.45; }
+    #regler { position: fixed; left: 16px; bottom: 14px; color: #cdd8c4; font-size: 12px; text-shadow: 0 1px 3px #000; background: rgba(8,14,10,0.5); padding: 7px 10px; border-radius: 6px; }
+    #regler input { vertical-align: middle; width: 160px; }
+  </style>
+</head>
+<body>
+  <canvas id="view"></canvas>
+  <div id="regler">
+    <div><span id="lblGroesse">Baumgröße</span> <input id="groesse" type="range" min="0.5" max="2.2" step="0.05" value="0.85"> <span id="groesseVal">0.85×</span></div>
+    <div style="margin-top:5px"><span id="lblWegbreite">Weg-Breite</span> <input id="wegbreite" type="range" min="0.5" max="1.8" step="0.05" value="1"> <span id="wegbreiteVal">1.0×</span></div>
+    <div style="margin-top:5px"><span id="lblFalltempo">Fall-Tempo</span> <input id="falltempo" type="range" min="0.12" max="2" step="0.02" value="1"> <span id="falltempoVal">1.0×</span></div>
+    <div style="margin-top:5px"><span id="lblBewuchs">Bewuchs</span> <input id="bewuchs" type="range" min="0" max="1.4" step="0.05" value="1"> <span id="bewuchsVal">1.0×</span></div>
+    <div style="margin-top:5px"><span id="lblTageszeit">Tageszeit</span> <input id="tageszeit" type="range" min="0" max="24" step="0.25" value="9"> <span id="tageszeitVal">9:00</span></div>
+    <div style="margin-top:5px"><span id="lblTagtempo">Tag-Tempo</span> <input id="tagtempo" type="range" min="0" max="3" step="0.1" value="1"> <span id="tagtempoVal">1.0×</span></div>
+    <div style="margin-top:5px"><span id="lblSturm">Sturm-Stärke</span> <input id="sturmregler" type="range" min="0" max="4" step="0.1" value="1.5"> <span id="sturmVal">1.5×</span></div>
+    <div style="margin-top:5px"><span id="lblSicht">Sicht-Fenster</span> <input id="sicht" type="range" min="80" max="220" step="10" value="124"> <span id="sichtVal">124</span></div>
+  </div>
+  <!-- Texte werden aus src/data/i18n.ts via t() gesetzt (i18n-Vorbereitung) -->
+  <div id="hud">
+    <h1 id="titel">RAVENSMOOR · DORF IM WALD</h1>
+    <p id="beschreibung">…</p>
+  </div>
+  <script type="module" src="/src/demo3d/dorfSim.ts"></script>
+</body>
+</html>

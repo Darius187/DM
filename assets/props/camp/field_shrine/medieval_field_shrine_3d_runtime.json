@@ -1,0 +1,178 @@
+{
+  "asset": "medieval_field_shrine_3d_runtime",
+  "label_de": "Tragbarer Feldschrein",
+  "glb": "medieval_field_shrine_3d_runtime.glb",
+  "runtime_mode": "static_exterior_prop",
+  "root_node": "FIELD_SHRINE_ROTATION_PIVOT",
+  "editable_blend": "C:\\Obsidian\\DM\\Darius187-DM\\assets\\props\\camp\\field_shrine\\medieval_field_shrine_1349_rebuilt.blend",
+  "meters_per_blender_unit": 1.0,
+  "placement": {
+    "front_axis": "-Y",
+    "ground_z": 0.0,
+    "continuous_yaw_degrees": "0..360",
+    "no_global_ground_plate": true,
+    "world_placement": "open"
+  },
+  "bounds_m": {
+    "min": [
+      -0.899,
+      -0.751,
+      -0.008
+    ],
+    "max": [
+      0.903,
+      0.625,
+      2.583
+    ],
+    "size": [
+      1.801,
+      1.376,
+      2.591
+    ]
+  },
+  "runtime": {
+    "visible_objects": 8,
+    "triangles": 18814,
+    "embedded_textured_materials": 6,
+    "pbr_materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_DARK_WEATHERED_PLANKS_PBR",
+      "MAT_FIELD_STONE_PBR",
+      "MAT_LOW_FIRE_FLAME_CARD",
+      "MAT_WEATHERED_NATURAL_LINEN_PBR",
+      "MAT_WORN_BRONZE_PBR"
+    ],
+    "active_runtime_cloth_simulations": 0,
+    "lod_policy": "LOD0 authored; Phaser distance culling/LOD integration remains external"
+  },
+  "collision_guide": {
+    "shape": "box",
+    "size": [
+      1.75,
+      1.25
+    ],
+    "center": [
+      0,
+      0
+    ]
+  },
+  "content": {
+    "historical_period": "Central Europe circa 1349",
+    "portable_timber_shrine": true,
+    "roof_shingles": 48,
+    "altar": true,
+    "latin_crosses": 2,
+    "candles": 2,
+    "kneeler": 1,
+    "not_a_large_building": true
+  },
+  "interactions": [
+    {
+      "id": "pray",
+      "position": [
+        0,
+        -0.78,
+        0.0
+      ]
+    }
+  ],
+  "quality_contract": {
+    "preview": "1536x1536 transparent RGBA, 62 mm perspective camera",
+    "texture_maps": "ambientCG CC0 2K BaseColor/Roughness/NormalGL; Metalness where applicable",
+    "uv_unwrapped": true,
+    "visible_edge_bevels": true,
+    "glb_reimport_required": true
+  },
+  "notes": [
+    "Rebuilt from scratch for a rural Central European field camp circa 1349.",
+    "No global ground plate is included; localized ash belongs to the cooking-fire prop.",
+    "Same GLB and root-node names are retained for Phaser/Claude Code compatibility."
+  ],
+  "reimport_audit": {
+    "status": "passed",
+    "root_ok": true,
+    "mesh_objects": 8,
+    "triangles": 18814,
+    "embedded_images": {
+      "Wood035_aged_dark_oak_2K_Color": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Planks021_dark_weathered_planks_2K_Color": [
+        2048,
+        2048
+      ],
+      "Planks021_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Planks021_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Rock027_field_stone_2K_Color": [
+        2048,
+        1024
+      ],
+      "Rock027_2K-JPG_Roughness": [
+        2048,
+        1024
+      ],
+      "Rock027_2K-JPG_NormalGL": [
+        2048,
+        1024
+      ],
+      "camp_fire_flame_rgba": [
+        512,
+        512
+      ],
+      "Fabric019_weathered_natural_linen_2K_Color": [
+        2048,
+        2048
+      ],
+      "Fabric019_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Fabric019_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Metal008_worn_bronze_2K_Color": [
+        2048,
+        2048
+      ],
+      "Metal008_2K-JPG_Metalness-Metal008_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Metal008_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ]
+    },
+    "materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_BEESWAX",
+      "MAT_CHARCOAL",
+      "MAT_DARK_WEATHERED_PLANKS_PBR",
+      "MAT_FIELD_STONE_PBR",
+      "MAT_LOW_FIRE_FLAME_CARD",
+      "MAT_WEATHERED_NATURAL_LINEN_PBR",
+      "MAT_WORN_BRONZE_PBR"
+    ],
+    "missing_uv_objects": [],
+    "active_cloth_modifiers": [],
+    "global_ground_plates": [],
+    "preview_rendered_from_reimported_glb": "medieval_field_shrine_3d_runtime_preview.png",
+    "errors": []
+  }
+}

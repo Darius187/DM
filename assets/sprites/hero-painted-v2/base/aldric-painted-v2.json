@@ -1,0 +1,110 @@
+{
+  "format": "ravenmoor-painted-character-v2",
+  "revision": "2.2",
+  "status": "live-integrated",
+  "frameSize": [
+    128,
+    128
+  ],
+  "sheetSize": [
+    4096,
+    1024
+  ],
+  "directions": [
+    "south",
+    "southwest",
+    "west",
+    "northwest",
+    "north",
+    "northeast",
+    "east",
+    "southeast"
+  ],
+  "engineDirectionOrder": {
+    "0": "south",
+    "1": "southwest",
+    "2": "west",
+    "3": "northwest",
+    "4": "north",
+    "5": "northeast",
+    "6": "east",
+    "7": "southeast"
+  },
+  "frames": [
+    "idle",
+    "walk_1",
+    "walk_2",
+    "walk_3",
+    "walk_4",
+    "walk_5",
+    "walk_6",
+    "walk_7",
+    "walk_8",
+    "walk_9",
+    "walk_10",
+    "walk_11",
+    "walk_12",
+    "walk_13",
+    "walk_14",
+    "walk_15",
+    "walk_16",
+    "walk_17",
+    "walk_18",
+    "walk_19",
+    "walk_20",
+    "walk_21",
+    "walk_22",
+    "walk_23",
+    "walk_24",
+    "attack_windup",
+    "attack_early",
+    "attack_impact",
+    "attack_late",
+    "attack_followthrough",
+    "attack_recover",
+    "block"
+  ],
+  "timingMs": {
+    "idle": 240,
+    "walk": 40,
+    "attack": [
+      90,
+      50,
+      45,
+      50,
+      75,
+      110
+    ],
+    "block": 160
+  },
+  "walkConstruction": {
+    "keyPosesPerDirection": 8,
+    "inbetweensPerTransition": 2,
+    "framesPerDirection": 24,
+    "method": "bidirectional-motion-flow",
+    "footY": 123
+  },
+  "asset": "aldric-abenteurer-schwert-painted-32x8.png",
+  "proofs": {
+    "allFrames": "proofs/proof-v2-all-frames.png",
+    "walk8Directions": "proofs/proof-v2-walk-8dir.gif",
+    "attack8Directions": "proofs/proof-v2-attack-8dir.gif",
+    "directions": "proofs/proof-v2-directions.png"
+  },
+  "variant": {
+    "bodyAppearance": "lean-rugged-adventurer",
+    "weapon": "arming-sword",
+    "cape": "weathered-forest-green",
+    "composition": "vollstaendig gemalte Figur; keine Paperdoll-Overlays"
+  },
+  "fallbacks": [
+    "empty hand",
+    "axe",
+    "polearm",
+    "blunt",
+    "mace",
+    "bow",
+    "staff",
+    "mounted"
+  ]
+}

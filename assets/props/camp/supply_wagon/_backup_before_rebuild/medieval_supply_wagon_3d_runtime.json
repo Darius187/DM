@@ -1,0 +1,92 @@
+{
+  "asset": "medieval_supply_wagon_3d_runtime",
+  "label_de": "Lastwagen des Feldlagers",
+  "glb": "medieval_supply_wagon_3d_runtime.glb",
+  "runtime_mode": "static_exterior_prop",
+  "root_node": "SUPPLY_WAGON_ROTATION_PIVOT",
+  "editable_blend": "C:\\Obsidian\\DM\\camp-props\\supply_wagon\\medieval_supply_wagon_3d_runtime.blend",
+  "original_blend_preserved": null,
+  "meters_per_blender_unit": 1.0,
+  "placement": {
+    "front_axis": "-Y",
+    "ground_z": 0.0,
+    "continuous_yaw_degrees": "0..360",
+    "no_global_ground_plate": true,
+    "world_placement": "open"
+  },
+  "bounds_m": {
+    "min": [
+      -1.96,
+      -3.605,
+      -0.06
+    ],
+    "max": [
+      1.96,
+      1.74,
+      2.02
+    ],
+    "size": [
+      3.92,
+      5.345,
+      2.08
+    ]
+  },
+  "runtime": {
+    "visible_objects": 6,
+    "triangles": 6988,
+    "embedded_textured_materials": 6,
+    "static_material_batches": [
+      "SUPPLY_WAGON_WOOD_DARK_BATCH",
+      "SUPPLY_WAGON_WOOD_MID_BATCH",
+      "SUPPLY_WAGON_WICKER_BATCH",
+      "SUPPLY_WAGON_ROPE_BATCH",
+      "SUPPLY_WAGON_IRON_BATCH",
+      "SUPPLY_WAGON_SACK_BATCH"
+    ],
+    "baked_cloth_panels": [],
+    "active_runtime_cloth_simulations": 0
+  },
+  "collision_guide": {
+    "shape": "box",
+    "size": [
+      2.55,
+      4.3
+    ],
+    "center": [
+      0,
+      -0.4
+    ]
+  },
+  "content": {
+    "wheels": 4,
+    "tow_shafts": 2,
+    "cargo_bed": true,
+    "barrels": 2,
+    "sacks": 3,
+    "basket": 1,
+    "crate": 1
+  },
+  "interactions": [
+    {
+      "id": "hitch_anchor",
+      "position": [
+        0,
+        -3.7,
+        0.44
+      ]
+    },
+    {
+      "id": "cargo_anchor",
+      "position": [
+        0,
+        0,
+        1.85
+      ]
+    }
+  ],
+  "notes": [
+    "Eigenstaendiges Asset; nicht mit anderen Lager-Assets verschmelzen.",
+    "Keine Bodenplatte im GLB. Weltboden und Platzierung kommen aus Phaser.",
+    "Material-Farbtexturen sind im GLB eingebettet."
+  ]
+}

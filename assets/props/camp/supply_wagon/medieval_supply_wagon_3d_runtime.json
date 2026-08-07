@@ -1,0 +1,170 @@
+{
+  "asset": "medieval_supply_wagon_3d_runtime",
+  "label_de": "Mittelalterlicher Versorgungswagen",
+  "glb": "medieval_supply_wagon_3d_runtime.glb",
+  "runtime_mode": "static_exterior_prop",
+  "root_node": "SUPPLY_WAGON_ROTATION_PIVOT",
+  "editable_blend": "C:\\Obsidian\\DM\\Darius187-DM\\assets\\props\\camp\\supply_wagon\\medieval_supply_wagon_1349_rebuilt.blend",
+  "meters_per_blender_unit": 1.0,
+  "placement": {
+    "front_axis": "-Y",
+    "ground_z": 0.0,
+    "continuous_yaw_degrees": "0..360",
+    "no_global_ground_plate": true,
+    "world_placement": "open"
+  },
+  "bounds_m": {
+    "min": [
+      -1.11,
+      -3.312,
+      -0.035
+    ],
+    "max": [
+      1.11,
+      1.895,
+      2.248
+    ],
+    "size": [
+      2.22,
+      5.207,
+      2.283
+    ]
+  },
+  "runtime": {
+    "visible_objects": 11,
+    "triangles": 50374,
+    "embedded_textured_materials": 4,
+    "pbr_materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_COARSE_LINEN_PBR",
+      "MAT_DARK_WEATHERED_PLANKS_PBR",
+      "MAT_FORGED_IRON_PBR"
+    ],
+    "active_runtime_cloth_simulations": 0,
+    "lod_policy": "LOD0 authored; Phaser distance culling/LOD integration remains external"
+  },
+  "collision_guide": {
+    "shape": "box",
+    "size": [
+      2.18,
+      4.02
+    ],
+    "center": [
+      0,
+      0
+    ]
+  },
+  "content": {
+    "historical_period": "Central Europe circa 1349",
+    "functional_wheels": 4,
+    "wooden_spokes_per_wheel": 10,
+    "continuous_axles": 2,
+    "iron_tyres": 4,
+    "grounded_wheels": true,
+    "attached_drawbar": true,
+    "cargo": [
+      "crate",
+      "barrel",
+      "three sacks",
+      "rope lashings"
+    ]
+  },
+  "interactions": [
+    {
+      "id": "wagon_hitch",
+      "position": [
+        0,
+        -3.28,
+        0.4
+      ]
+    },
+    {
+      "id": "cargo_access",
+      "position": [
+        0,
+        1.72,
+        1.2
+      ]
+    }
+  ],
+  "quality_contract": {
+    "preview": "1536x1536 transparent RGBA, 62 mm perspective camera",
+    "texture_maps": "ambientCG CC0 2K BaseColor/Roughness/NormalGL; Metalness where applicable",
+    "uv_unwrapped": true,
+    "visible_edge_bevels": true,
+    "glb_reimport_required": true
+  },
+  "notes": [
+    "Rebuilt from scratch for a rural Central European field camp circa 1349.",
+    "No global ground plate is included; localized ash belongs to the cooking-fire prop.",
+    "Same GLB and root-node names are retained for Phaser/Claude Code compatibility."
+  ],
+  "reimport_audit": {
+    "status": "passed",
+    "root_ok": true,
+    "mesh_objects": 11,
+    "triangles": 50374,
+    "embedded_images": {
+      "Wood035_aged_dark_oak_2K_Color": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Fabric019_coarse_linen_2K_Color": [
+        2048,
+        2048
+      ],
+      "Fabric019_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Fabric019_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Planks021_dark_weathered_planks_2K_Color": [
+        2048,
+        2048
+      ],
+      "Planks021_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Planks021_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Metal008_forged_iron_2K_Color": [
+        2048,
+        2048
+      ],
+      "Metal008_2K-JPG_Metalness-Metal008_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Metal008_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ]
+    },
+    "materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_COARSE_LINEN_PBR",
+      "MAT_DARK_WEATHERED_PLANKS_PBR",
+      "MAT_FORGED_IRON_PBR",
+      "MAT_HEMP_ROPE"
+    ],
+    "missing_uv_objects": [],
+    "active_cloth_modifiers": [],
+    "global_ground_plates": [],
+    "preview_rendered_from_reimported_glb": "medieval_supply_wagon_3d_runtime_preview.png",
+    "errors": []
+  }
+}

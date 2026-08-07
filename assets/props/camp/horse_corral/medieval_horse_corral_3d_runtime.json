@@ -1,0 +1,163 @@
+{
+  "asset": "medieval_horse_corral_3d_runtime",
+  "label_de": "Pferch des Feldlagers",
+  "glb": "medieval_horse_corral_3d_runtime.glb",
+  "runtime_mode": "static_exterior_prop",
+  "root_node": "HORSE_CORRAL_ROTATION_PIVOT",
+  "editable_blend": "C:\\Obsidian\\DM\\Darius187-DM\\assets\\props\\camp\\horse_corral\\medieval_horse_corral_1349_rebuilt.blend",
+  "meters_per_blender_unit": 1.0,
+  "placement": {
+    "front_axis": "-Y",
+    "ground_z": 0.0,
+    "continuous_yaw_degrees": "0..360",
+    "no_global_ground_plate": true,
+    "world_placement": "open"
+  },
+  "bounds_m": {
+    "min": [
+      -2.898,
+      -3.581,
+      -0.357
+    ],
+    "max": [
+      2.935,
+      2.238,
+      1.441
+    ],
+    "size": [
+      5.832,
+      5.819,
+      1.798
+    ]
+  },
+  "runtime": {
+    "visible_objects": 6,
+    "triangles": 40072,
+    "embedded_textured_materials": 3,
+    "pbr_materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_DARK_WEATHERED_PLANKS_PBR",
+      "MAT_FORGED_IRON_PBR"
+    ],
+    "active_runtime_cloth_simulations": 0,
+    "lod_policy": "LOD0 authored; Phaser distance culling/LOD integration remains external"
+  },
+  "collision_guide": {
+    "shape": "outline_with_gate",
+    "size": [
+      5.7,
+      4.4
+    ],
+    "gate_width": 2.18,
+    "gate_center": [
+      0,
+      -2.12
+    ]
+  },
+  "content": {
+    "historical_period": "Central Europe circa 1349",
+    "irregular_fence_posts": 17,
+    "recognizable_gate": true,
+    "gate_opens_outward": true,
+    "clear_gate_width_m": 2.18,
+    "water_trough": true,
+    "fodder_hay": true,
+    "tether_rail_with_rings": 4,
+    "global_floor": false
+  },
+  "interactions": [
+    {
+      "id": "gate",
+      "position": [
+        -1.08,
+        -2.12,
+        0.0
+      ]
+    },
+    {
+      "id": "water_trough",
+      "position": [
+        1.62,
+        1.18,
+        0.64
+      ]
+    },
+    {
+      "id": "horse_parking",
+      "position": [
+        0,
+        0.75,
+        0.0
+      ],
+      "capacity": 4
+    }
+  ],
+  "quality_contract": {
+    "preview": "1536x1536 transparent RGBA, 62 mm perspective camera",
+    "texture_maps": "ambientCG CC0 2K BaseColor/Roughness/NormalGL; Metalness where applicable",
+    "uv_unwrapped": true,
+    "visible_edge_bevels": true,
+    "glb_reimport_required": true
+  },
+  "notes": [
+    "Rebuilt from scratch for a rural Central European field camp circa 1349.",
+    "No global ground plate is included; localized ash belongs to the cooking-fire prop.",
+    "Same GLB and root-node names are retained for Phaser/Claude Code compatibility."
+  ],
+  "reimport_audit": {
+    "status": "passed",
+    "root_ok": true,
+    "mesh_objects": 6,
+    "triangles": 40072,
+    "embedded_images": {
+      "Wood035_aged_dark_oak_2K_Color": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Planks021_dark_weathered_planks_2K_Color": [
+        2048,
+        2048
+      ],
+      "Planks021_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Planks021_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Metal008_forged_iron_2K_Color": [
+        2048,
+        2048
+      ],
+      "Metal008_2K-JPG_Metalness-Metal008_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Metal008_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ]
+    },
+    "materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_DARK_WATER",
+      "MAT_DARK_WEATHERED_PLANKS_PBR",
+      "MAT_DRY_STRAW",
+      "MAT_FORGED_IRON_PBR"
+    ],
+    "missing_uv_objects": [],
+    "active_cloth_modifiers": [],
+    "global_ground_plates": [],
+    "preview_rendered_from_reimported_glb": "medieval_horse_corral_3d_runtime_preview.png",
+    "errors": []
+  }
+}

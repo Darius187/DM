@@ -1,0 +1,190 @@
+// Kampfsystem-Werte aus RABENMOOR-2D-MASTERPROMPT.md Teil 4.
+// KONFLIKTREGEL: Diese Werte schlagen die Referenzdatei (dort z. B. Parade 250ms,
+// Riposte x1,5, Rolle 180ms - hier gelten die Masterprompt-Werte).
+// KEINE Ausdauer-Mechanik - nirgends.
+
+export const PLAYER = {
+  speed: 178,          // Referenz
+  radius: 11,          // Referenz
+  blockSpeedMult: 0.45, // Referenz: Blocken verlangsamt
+  heavyWalkMult: 0.5,  // beim schweren Schlag (Umschalt) bedächtig weitergehen
+} as const;
+
+// Leichter Angriff: 3er-Kombo mit Finisher
+export const LIGHT_ATTACK = {
+  comboLength: 3,
+  finisherDmgBonus: 0.45,   // 3. Hieb: +45% Schaden
+  finisherKnockback: 12,    // mehr Rückstoß (Referenz: 12 statt 6)
+  normalKnockback: 6,
+  inputBufferMs: 250,       // Eingabe-Puffer 250 ms
+  comboWindowS: 0.9,        // Referenz comboT
+  recoveryS: 0.34,          // Erholzeit normaler Hieb (Referenz atkCd)
+  recoveryFinisherS: 0.52,  // Erholzeit Finisher (Referenz)
+  cancelPct: 0.5,           // Erholphase ab 50% durch Rolle oder Block abbrechbar
+  // Runde 16: Hieb präziser - kleinerer Kegel, etwas kürzere Reichweite
+  range: 50,
+  rangeFinisher: 60,
+  arc: 0.85,                // Trefferkegel (rad, halbe Breite)
+  arcFinisher: 1.2,         // breiterer Bogen beim Finisher
+  dmgVarianceMin: 0.85,
+  dmgVarianceMax: 1.2,
+} as const;
+
+// Schwerer Hieb: volles Commitment
+export const HEAVY_ATTACK = {
+  windupS: 0.6,        // 0,6 s Ausholzeit, nicht abbrechbar
+  dmgMult: 2.2,        // ca. 2,2x Schaden
+  recoveryS: 0.7,      // eigene Erholzeit (Annahme, siehe DECISIONS.md)
+  range: 64,
+  arc: 1.0,
+  knockback: 16,
+  breaksPosture: true, // durchbricht Gegner-Haltung
+  postureStunS: 0.6,   // Annahme: kurzes Taumeln beim Haltungsbruch
+} as const;
+
+// Blocken und perfekte Parade
+export const BLOCK = {
+  dmgTakenPct: 0.30,    // reduziert Schaden auf 30% - MIT Schild (Runde 27)
+  // Waffenparade ohne Schild (Runde 27): Elite drücken mehr durch,
+  // und auch gewöhnliche Gegner kommen mit einem Rest durch
+  ohneSchildElitePct: 0.55,
+  ohneSchildNormalPct: 0.20,
+  arcRad: 1.35,         // Blockwinkel (Referenz)
+  parryWindowMs: 300,   // Block in den ersten 300 ms -> perfekte Parade
+  parryStunS: 0.9,      // Gegner taumelt 0,9 s
+  riposteBonus: 1.0,    // nächster Hieb +100% Schaden
+  riposteWindowS: 1.3,  // Zeitfenster für die Riposte (Referenz)
+} as const;
+
+// Ausweichrolle - schwächer als die Referenz (Autorwunsch Runde 40: "nur
+// Ausweichrolle, aber nicht so stark wie davor"): kürzerer Satz statt weitem Hechtsprung
+export const ROLL = {
+  iFramesMs: 260,       // Unverwundbarkeit (= Rolldauer)
+  cooldownS: 0.9,       // Abklingzeit 0,9 s
+  speed: 400,           // kürzerer Satz (vorher 560)
+  durationS: 0.26,      // Rolldauer = Unverwundbarkeitsfenster
+} as const;
+
+// Hit-Stop bei Treffern (Masterprompt: leicht 50 / Finisher 80 / schwer+Parade 100)
+export const HITSTOP_MS = { light: 50, finisher: 80, heavy: 100, parry: 100, playerHurt: 50 } as const;
+export const HITSTOP_TIMESCALE = 0.15; // Referenz: dt*0.15 während Hit-Stop
+
+// Gegnerschaden: ein normaler Treffer kostet 10-16% der Spieler-Maximal-HP (Masterprompt 4.3).
+// Wird in der DebugArena gegen die Basiswerte geprüft.
+export const ENEMY_HIT_PCT = { min: 0.10, max: 0.16 } as const;
+
+// Waffenklassen-Movesets (Masterprompt 4.2 + Zauberstab aus Feedback-Runde 1)
+export const WEAPON_MOVESETS = {
+  schwert: { comboLength: 3, speedMult: 1.0 },
+  axt:     { comboLength: 2, sweep360: true, speedMult: 0.9 },   // 3. Eingabe = Rundumschlag
+  // Hellebarde (Runde 44): präziser STICH statt Schwung - schmaler Trefferkegel
+  // (arc 0,35 -> 0,20), dafür mehr Reichweite (96 -> 116). Spürbarer Stoß-Schub.
+  stange:  { comboLength: 1, thrust: true, range: 116, arc: 0.20, knockback: 18, speedMult: 0.95 },
+  // Hammer/Streitkolben (Runde 47): SCHWER und langsam. recoverS 0,82 s -> man
+  // holt deutlich aus, kein schnelles Dauer-Hämmern mehr (Autorkritik "schlägt
+  // zu schnell, fast unbesiegbar"). Die Wucht/der Rückstoß bleibt, nur die
+  // Kadenz sinkt - so erholen sich die Gegner zwischen den Schlägen wieder.
+  wucht:   { comboLength: 1, overhead: true, aoeRadius: 40, postureDmgMult: 2.0, speedMult: 0.7, recoverS: 0.82, miniShake: true },
+  // Runde 27/40: Bogen-Flugtempo auf Feuerball-Niveau gebracht (Autorwunsch:
+  // "Schussgeschwindigkeit ungefähr wie der Feuerball" = 390)
+  bogen:   { drawTimeMaxS: 0.95, dmgMultFull: 2.4, projSpeed: 390, speedMult: 1.0 },   // voll gespannt = sich lohnender (Autorwunsch R53: langer Zug muss mehr bringen als zwei Schnellschüsse)
+  // Zauberstab: manafreies Arkangeschoss, skaliert mit der Zauberei-Schule,
+  // und verstärkt gewirkte Zauber (halber Stabwert als Bonus). Flugtempo wie
+  // der Feuerball (Runde 40), das Geschoss glüht und wirft Licht.
+  // recoverS (Runde 41/42): eigene, langsamere Schuss-Erholung. 0,34 -> 0,55 war
+  // noch "wie ein Maschinengewehr" (Autorkritik R42) - jetzt 0,9 s, also gut
+  // 1 Schuss/Sek: ein bedächtiger Zauberschuss, kein Dauerfeuer. Schaden bleibt
+  // (gefällt dem Autor), nur die KADENZ sinkt.
+  stab:    { projSpeed: 390, dmgMult: 0.75, spellBonusFaktor: 0.5, zaubereiBonusJeStufe: 0.05, recoverS: 0.9 },
+} as const;
+
+// Ein- oder Zweihand (Runde 49): Zweihand-Waffen lassen KEINEN Schild/Block zu
+// (man hat keine Hand frei). Steht am Item dran.
+export const WEAPON_HAND: Record<string, 'ein' | 'zwei'> = {
+  schwert: 'ein', axt: 'ein', kolben: 'ein',
+  wucht: 'zwei', stange: 'zwei', bogen: 'zwei', stab: 'zwei',
+};
+
+// Nahkampf-Feinwerte je Einhand-Klasse (Runde 49): Reichweite/Schaden/Wucht.
+// Schwert = ausgewogen; Axt = kurz & scharf (mehr Schaden); Streitkolben =
+// kurz, mit kleinem "Hammer-lite"-Stoß und kurzem Taumeln.
+export const NAHKAMPF: Record<string, { reich: number; dmg: number; knockback: number; stunS: number }> = {
+  schwert: { reich: 1.0, dmg: 1.0, knockback: 0, stunS: 0 },
+  axt:     { reich: 0.82, dmg: 1.18, knockback: 0, stunS: 0 },
+  kolben:  { reich: 0.84, dmg: 1.04, knockback: 165, stunS: 0.2 },
+};
+
+// Gedeckter Schlag: Angriff aus dem Block heraus (Feedback-Runde 1) -
+// leicht abgeschwächt, da man hinter dem Schild gedeckt bleibt
+export const GUARDED_ATTACK = { dmgMult: 0.8, recoveryMult: 1.25 } as const;
+
+// Wucht-Rückstoß (Runde 44, Autorwunsch "krasser Wuchteffekt"): Impuls (px/s),
+// mit dem schwere Waffen Gegner zurückschleudern, plus kurze Betäubung danach.
+// Hammer/Streitkolben = brachial, Axt(-Rundumschlag) = spürbar.
+export const KNOCKBACK = {
+  hammer: 380, hammerStunS: 0.55,
+  axt: 250, axtStunS: 0.3,
+} as const;
+
+// Wucht der Waffe für den Todes-Gore (Runde 35): wie weit die Teile/Partikel
+// vom Treffer wegfliegen. Hammer/Streitkolben (wucht) schlägt am härtesten,
+// Axt drückt mit, Schwert mittig, Bogen/Stab wenig. Leicht änderbar.
+export const GORE_WUCHT: Record<string, number> = {
+  wucht: 1.7, axt: 1.3, stange: 1.05, schwert: 1.0, bogen: 0.7, stab: 0.7,
+};
+
+// Schiebe-Physik für Fässer/Kisten (Runde 35, nur im Physik-Test). schub =
+// Tempo, mit dem der Spieler sie wegschiebt; stoss = Impuls Kiste-an-Kiste;
+// reibung = Ausgleiten pro Frame; prall = Rückstoß an der Wand. Tunbar.
+// Gewicht der schiebbaren Objekte (Runde 39): schwerer = langsamer zu schieben
+// UND bremst den Helden mehr. So fühlen sich Fässer/Kisten nicht mehr wie Luft an.
+export const BREAKABLE_MASSE: Record<string, number> = {
+  fass: 1.6, kiste: 1.4, knochenhaufen: 1.1, krug: 0.7, heuhaufen: 0.6,
+};
+
+// Pfeil-an-Wand-Physik (Runde 40, nur im Physik-Test): ein Pfeil bleibt
+// entweder in der Wand stecken ODER prallt ab - beides soll vorkommen.
+// steckChance = Anteil steckenbleibender Pfeile; maxPraller = nach so vielen
+// Abprallern bleibt er stecken; prallDaempfung = Tempo direkt nach dem Abprall;
+// prallReibung = starke Bremse je Sekunde NACH dem Abprall, damit ein
+// abgeprallter Pfeil nur kurz wegspringt statt endlos durch den Raum zu
+// fliegen (Autorwunsch Runde 40); steckDauerS = Liegedauer eines steckenden
+// Pfeils; minPrallTempo = darunter kommt er zur Ruhe und bleibt liegen.
+export const PFEIL_PHYSIK = {
+  steckChance: 0.5, maxPraller: 1, prallDaempfung: 0.6, prallReibung: 0.02, steckDauerS: 4, minPrallTempo: 80,
+} as const;
+
+export const PHYSIK = {
+  schub: 150, stoss: 26, reibung: 0.86, prall: 0.3,
+  // Gegner-Rückstoß im Physik-Test (Runde 36): Treffer geben einen Impuls,
+  // der Gegner gleitet/prallt, statt nur kurz zu zucken. gegnerStoss wandelt
+  // die Rückstoß-Weite in Tempo, gegnerReibung bremst, gegnerKvMax deckelt.
+  gegnerStoss: 16, gegnerReibung: 0.85, gegnerKvMax: 720,
+} as const;
+
+// Tod und Rasten (Masterprompt 4.4 - schlägt Referenz: dort 20% Goldverlust)
+export const DEATH = {
+  goldLossPct: 0.10,    // R145 (Autor): 10% Goldverlust - der EINZIGE Preis des Todes
+  // R138: Erwachen nach dem Tod in Dungeons/Innenraeumen fuehrt HIERHIN
+  // (neues Rabenmoor). Regel selbst: src/logic/respawn.ts.
+  respawnKarte: 'stadt',
+} as const;
+
+// Kerzenschreine: Rasten heilt voll, füllt Flaschen, setzt KEINE Gegner zurück
+export const SHRINE = { healsFull: true, refillsFlasks: true, resetsEnemies: false } as const;
+
+// Flaschensystem (Masterprompt 6.2)
+export const FLASKS = { start: 3, healPct: 0.45 } as const;
+
+// Angriffs-Slots (R135d, Dok 05 L7 / Dok 06 Teil H, Massnahme 2): Nahkaempfer
+// bekommen reservierte Plaetze auf einem Ring um ihr Ziel, statt alle denselben
+// Punkt anzustuermen. So kann der Held (oder jede Einheit) UMZINGELT werden.
+export const ANGRIFFSSLOTS = {
+  anzahl: 12,          // so viele Nahkaempfer koennen EIN Ziel gleichzeitig umringen
+  ringLuecke: 13,      // Slot-Radius = Zielradius + Angreiferradius + dies (~34 px = im Melee-Band)
+  engagierRadius: 210, // nur Nahkaempfer naeher als dies bekommen einen Slot
+  neuZuweisenS: 0.3,   // Slots nur alle 0,3 s neu verteilen (kein Zappeln, vgl. L8)
+} as const;
+
+// Debug-Flag: Debug-Ausgaben nur hinter diesem Schalter
+export const DEBUG = false;

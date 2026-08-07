@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fluss - Bach-Look</title>
+<style>
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html,body{ width:100%; height:100%; overflow:hidden; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; background:#05060d; }
+  #fluss{ position:fixed; inset:0; width:100%; height:100%; display:block; cursor:crosshair; }
+  #fluss.platzieren{ cursor:copy; }
+  .panel{ position:fixed; top:20px; left:20px; z-index:10; width:264px; max-height:calc(100vh - 40px); overflow-y:auto; padding:18px;
+    background:rgba(10,12,22,0.55); border:1px solid rgba(255,255,255,0.10); border-radius:14px; backdrop-filter:blur(14px) saturate(120%); -webkit-backdrop-filter:blur(14px) saturate(120%);
+    box-shadow:0 12px 40px rgba(0,0,0,0.45); color:#dfe3f0; transition:transform .35s cubic-bezier(.2,.8,.2,1), opacity .35s; }
+  .panel::-webkit-scrollbar{ width:8px; } .panel::-webkit-scrollbar-thumb{ background:rgba(255,255,255,0.14); border-radius:8px; }
+  .panel.zu{ transform:translateX(-292px); opacity:0; pointer-events:none; }
+  .panel h1{ font-size:15px; font-weight:650; letter-spacing:.3px; margin-bottom:2px; color:#fff; }
+  .panel .sub{ font-size:11.5px; line-height:1.45; color:#9aa3bd; margin-bottom:14px; }
+  .sektion{ font-size:10px; text-transform:uppercase; letter-spacing:1.3px; color:#6f78a0; margin:16px 0 10px; padding-bottom:5px; border-bottom:1px solid rgba(255,255,255,0.07); }
+  .gruppe{ margin-bottom:12px; }
+  .gruppe > label{ display:block; font-size:10.5px; text-transform:uppercase; letter-spacing:1.1px; color:#7d86a3; margin-bottom:7px; }
+  .zeile{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .wert{ font-size:11px; color:#8fb4ff; min-width:34px; text-align:right; font-variant-numeric:tabular-nums; }
+  .btnreihe{ display:flex; gap:6px; }
+  .btn{ flex:1; padding:8px 0; font-size:12px; font-weight:550; color:#c4cae0; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius:9px; cursor:pointer; transition:.18s; font-family:inherit; }
+  .btn:hover{ background:rgba(255,255,255,0.10); color:#fff; }
+  .btn.aktiv{ background:rgba(96,150,230,0.28); border-color:rgba(120,170,255,0.55); color:#fff; }
+  .btn.gross{ width:100%; padding:9px 0; background:rgba(96,150,230,0.22); border-color:rgba(120,170,255,0.4); }
+  .btn.platzaktiv{ background:rgba(110,200,140,0.30); border-color:rgba(130,220,160,0.6); color:#fff; }
+  input[type=range]{ width:100%; height:4px; -webkit-appearance:none; appearance:none; background:rgba(255,255,255,0.14); border-radius:4px; outline:none; }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:15px; height:15px; border-radius:50%; background:#8fb4ff; cursor:pointer; box-shadow:0 0 0 3px rgba(120,170,255,0.22); }
+  input[type=range]::-moz-range-thumb{ width:15px; height:15px; border:none; border-radius:50%; background:#8fb4ff; cursor:pointer; box-shadow:0 0 0 3px rgba(120,170,255,0.22); }
+  input[type=color]{ width:46px; height:27px; padding:0; border:1px solid rgba(255,255,255,0.18); border-radius:7px; background:none; cursor:pointer; }
+  input[type=color]::-webkit-color-swatch-wrapper{ padding:2px; } input[type=color]::-webkit-color-swatch{ border:none; border-radius:5px; }
+  input[type=color]::-moz-color-swatch{ border:none; border-radius:5px; }
+  .colzeile{ display:flex; align-items:center; justify-content:space-between; }
+  .colzeile span{ font-size:11.5px; color:#c4cae0; }
+  .info{ font-size:11px; color:#9aa3bd; margin:8px 0; }
+  .griff{ position:fixed; top:20px; left:20px; z-index:11; width:38px; height:38px; border-radius:10px; background:rgba(10,12,22,0.55); border:1px solid rgba(255,255,255,0.10); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); color:#dfe3f0; cursor:pointer; display:none; align-items:center; justify-content:center; font-size:18px; }
+  .griff.sichtbar{ display:flex; }
+  .hinweis{ position:fixed; bottom:22px; left:50%; transform:translateX(-50%); z-index:10; padding:8px 16px; font-size:12px; color:#aeb6cf; background:rgba(10,12,22,0.45); border:1px solid rgba(255,255,255,0.08); border-radius:999px; backdrop-filter:blur(10px); transition:opacity .4s; pointer-events:none; }
+  .hinweis.weg{ opacity:0; }
+  .fehler{ position:fixed; inset:0; z-index:30; display:none; align-items:center; justify-content:center; padding:24px; background:rgba(5,6,13,0.92); color:#e7d4d4; text-align:center; }
+  .fehler.an{ display:flex; } .fehler .box{ max-width:440px; } .fehler h2{ font-size:17px; color:#fff; margin-bottom:10px; } .fehler p{ font-size:13.5px; line-height:1.6; color:#b7c0d8; }
+</style>
+</head>
+<body>
+  <canvas id="fluss"></canvas>
+  <button class="griff" id="griff" title="Bedienfeld zeigen">›</button>
+  <div class="panel" id="panel">
+    <h1>Fluss - Bach-Look</h1>
+    <p class="sub">Automatische Kiesel, Sand im Bett, Fließrichtung umschaltbar. Maus = Held-Effekt.</p>
+    <button class="btn gross" id="fillKnopf">Befüllen abspielen</button>
+    <div class="gruppe" style="margin-top:14px;"><label>Stimmung (setzt Licht + Wasserfarbe)</label><div class="btnreihe">
+      <button class="btn" data-mood="tag">Tag</button><button class="btn" data-mood="abend">Abend</button><button class="btn" data-mood="nacht">Nacht</button></div></div>
+
+    <div class="sektion">Wasser</div>
+    <div class="gruppe"><div class="colzeile"><span>Wasserfarbe</span><input type="color" id="waterColor" value="#143d45"></div></div>
+    <div class="gruppe"><label>Farbintensität (gesamt)</label><div class="zeile"><input type="range" id="tint" min="0.1" max="1.0" step="0.05" value="0.65"><span class="wert" id="wTint"></span></div></div>
+    <div class="gruppe"><label>Trübung (Farbe in flachem Wasser)</label><div class="zeile"><input type="range" id="turbidity" min="0" max="1.0" step="0.05" value="0.4"><span class="wert" id="wTurbidity"></span></div></div>
+    <div class="gruppe"><label>Glanz (hoch = Meer)</label><div class="zeile"><input type="range" id="gloss" min="0" max="1.5" step="0.05" value="0.4"><span class="wert" id="wGloss"></span></div></div>
+
+    <div class="sektion">Oberfläche / Wellen</div>
+    <div class="gruppe"><label>Wellenfeinheit (klein = großflächig)</label><div class="zeile"><input type="range" id="wavescale" min="2.5" max="9" step="0.5" value="5"><span class="wert" id="wWavescale"></span></div></div>
+    <div class="gruppe"><label>Wellen-Kippung</label><div class="zeile"><input type="range" id="nscale" min="0.02" max="0.25" step="0.01" value="0.10"><span class="wert" id="wNscale"></span></div></div>
+    <div class="gruppe"><label>Brechung</label><div class="zeile"><input type="range" id="refract" min="0" max="0.10" step="0.005" value="0.05"><span class="wert" id="wRefract"></span></div></div>
+    <div class="gruppe"><label>Fließgeschwindigkeit</label><div class="zeile"><input type="range" id="speed" min="0.02" max="0.5" step="0.01" value="0.13"><span class="wert" id="wSpeed"></span></div></div>
+    <div class="gruppe"><label>Turbulenz</label><div class="zeile"><input type="range" id="turb" min="0" max="0.5" step="0.01" value="0"><span class="wert" id="wTurb"></span></div></div>
+    <button class="btn" id="flowKnopf" style="width:100%; margin-bottom:12px;">Fließrichtung: abwärts</button>
+    <div class="gruppe"><label>Wellen um Held</label><div class="zeile"><input type="range" id="wake" min="0" max="0.6" step="0.02" value="0.2"><span class="wert" id="wWake"></span></div></div>
+
+    <div class="sektion">Flussbett</div>
+    <div class="gruppe"><div class="colzeile"><span>Bett hell (flach)</span><input type="color" id="bedShallowColor" value="#665e4c"></div></div>
+    <div class="gruppe"><div class="colzeile"><span>Bett tief</span><input type="color" id="bedDeepColor" value="#212929"></div></div>
+    <div class="gruppe"><label>Bett-Struktur</label><div class="zeile"><input type="range" id="bed" min="0" max="1.4" step="0.05" value="1.0"><span class="wert" id="wBed"></span></div></div>
+    <div class="gruppe"><label>Sand-Beimischung</label><div class="zeile"><input type="range" id="sand" min="0" max="1.0" step="0.05" value="0.5"><span class="wert" id="wSand"></span></div></div>
+
+    <div class="sektion">Steine - automatisch</div>
+    <div class="gruppe"><label>Dichte (0 = aus)</label><div class="zeile"><input type="range" id="procDensity" min="0" max="0.7" step="0.05" value="0.35"><span class="wert" id="wProcDensity"></span></div></div>
+    <div class="gruppe"><label>Kieselgröße</label><div class="zeile"><input type="range" id="procSize" min="0.025" max="0.11" step="0.005" value="0.05"><span class="wert" id="wProcSize"></span></div></div>
+
+    <div class="sektion">Steine - selbst setzen</div>
+    <button class="btn" id="platzKnopf" style="width:100%;">Steine platzieren: AUS</button>
+    <p class="info">Im An-Modus klickst du Steine ins Bild. <span id="stoneCount">0</span> gesetzt.</p>
+    <div class="gruppe"><label>Steingröße</label><div class="zeile"><input type="range" id="stoneSize" min="0.008" max="0.06" step="0.003" value="0.026"><span class="wert" id="wStoneSize"></span></div></div>
+    <div class="gruppe"><label>Steine über Wasser</label><div class="zeile"><input type="range" id="emerge" min="0" max="1.5" step="0.1" value="0.4"><span class="wert" id="wEmerge"></span></div></div>
+    <div class="gruppe"><div class="colzeile"><span>Steinfarbe (alle)</span><input type="color" id="stoneColor" value="#58544c"></div></div>
+    <div class="btnreihe" style="margin-top:6px;"><button class="btn" id="undoStone">Letzten entfernen</button><button class="btn" id="clearStones">Alle entfernen</button></div>
+
+    <div class="sektion">Ufer</div>
+    <div class="gruppe"><label>Uferbreite</label><div class="zeile"><input type="range" id="shore" min="0.02" max="0.12" step="0.005" value="0.05"><span class="wert" id="wShore"></span></div></div>
+    <div class="gruppe"><label>Nasser Uferstreifen</label><div class="zeile"><input type="range" id="bank" min="0" max="1.0" step="0.05" value="0.45"><span class="wert" id="wBank"></span></div></div>
+
+    <button class="btn" id="zuKnopf" style="margin-top:12px;">Ausblenden ‹</button>
+  </div>
+  <div class="hinweis" id="hinweis">Fahre mit der Maus durchs Wasser - das ist der Held-Effekt</div>
+  <div class="fehler" id="fehler"><div class="box"><h2>Fluss nicht verfügbar</h2><p id="fehlerText"></p></div></div>
+
+<script>
+(function(){
+  "use strict";
+  function fehler(msg){ document.getElementById('fehlerText').textContent=msg; document.getElementById('fehler').classList.add('an'); }
+  var canvas=document.getElementById('fluss');
+  var gl=canvas.getContext('webgl')||canvas.getContext('experimental-webgl');
+  if(!gl){ fehler('Dein Browser unterstützt kein WebGL. Probiere einen aktuellen Chrome, Firefox oder Edge.'); return; }
+
+  var VERT=['attribute vec2 a_pos;','varying vec2 vUv;','void main(){ vUv=a_pos*0.5+0.5; gl_Position=vec4(a_pos,0.0,1.0); }'].join('\n');
+
+  var FRAG=[
+    '#ifdef GL_FRAGMENT_PRECISION_HIGH','precision highp float;','#else','precision mediump float;','#endif',
+    'uniform float u_time; uniform vec2 u_res;',
+    'uniform float u_speed,u_turb,u_wake,u_bed,u_refract,u_tint,u_fill,u_shore,u_wavescale,u_nscale,u_gloss,u_turbidity,u_bank,u_emerge,u_sand,u_procDensity,u_procSize,u_flowDir;',
+    'uniform vec3 u_deep,u_sky,u_spec,u_bedShallow,u_bedDeep,u_stoneCol; uniform vec2 u_light; uniform float u_ambient;',
+    'uniform vec3 u_points[8]; uniform vec4 u_stones[24];','varying vec2 vUv;',
+    'float sdSeg(vec2 p, vec2 a, vec2 b, float r){ vec2 pa=p-a,ba=b-a; float h=clamp(dot(pa,ba)/dot(ba,ba),0.0,1.0); return length(pa-ba*h)-r; }',
+    'float smin(float a,float b,float k){ float h=clamp(0.5+0.5*(b-a)/k,0.0,1.0); return mix(b,a,h)-k*h*(1.0-h); }',
+    'float sdMain(vec2 p){ float d=sdSeg(p,vec2(0.44,1.06),vec2(0.48,0.82),0.050); d=min(d,sdSeg(p,vec2(0.48,0.82),vec2(0.56,0.60),0.055)); d=min(d,sdSeg(p,vec2(0.56,0.60),vec2(0.52,0.40),0.060)); return d; }',
+    'float sdBrook(vec2 p){ float d=sdSeg(p,vec2(-0.06,0.82),vec2(0.18,0.76),0.024); d=min(d,sdSeg(p,vec2(0.18,0.76),vec2(0.40,0.66),0.027)); d=min(d,sdSeg(p,vec2(0.40,0.66),vec2(0.54,0.60),0.030)); return d; }',
+    'float sdOutlet(vec2 p){ return sdSeg(p,vec2(0.38,0.13),vec2(0.33,-0.06),0.030); }',
+    'float sdLake(vec2 p){ float d=length(p-vec2(0.48,0.18))-0.18; d=smin(d,length(p-vec2(0.66,0.15))-0.12,0.10); d=smin(d,length(p-vec2(0.32,0.14))-0.12,0.10); d=smin(d,length(p-vec2(0.56,0.075))-0.10,0.09); return d; }',
+    'vec3 mod289(vec3 x){ return x-floor(x*(1.0/289.0))*289.0; } vec2 mod289(vec2 x){ return x-floor(x*(1.0/289.0))*289.0; }',
+    'vec3 permute(vec3 x){ return mod289(((x*34.0)+1.0)*x); }',
+    'float snoise(vec2 v){ const vec4 C=vec4(0.211324865405187,0.366025403784439,-0.577350269189626,0.024390243902439);',
+    '  vec2 i=floor(v+dot(v,C.yy)); vec2 x0=v-i+dot(i,C.xx); vec2 i1=(x0.x>x0.y)?vec2(1.0,0.0):vec2(0.0,1.0);',
+    '  vec4 x12=x0.xyxy+C.xxzz; x12.xy-=i1; i=mod289(i);',
+    '  vec3 p=permute(permute(i.y+vec3(0.0,i1.y,1.0))+i.x+vec3(0.0,i1.x,1.0));',
+    '  vec3 m=max(0.5-vec3(dot(x0,x0),dot(x12.xy,x12.xy),dot(x12.zw,x12.zw)),0.0); m=m*m; m=m*m;',
+    '  vec3 x=2.0*fract(p*C.www)-1.0; vec3 h=abs(x)-0.5; vec3 ox=floor(x+0.5); vec3 a0=x-ox;',
+    '  m*=1.79284291400159-0.85373472095314*(a0*a0+h*h); vec3 g; g.x=a0.x*x0.x+h.x*x0.y; g.yz=a0.yz*x12.xz+h.yz*x12.yw; return 130.0*dot(m,g); }',
+    'float fbm4(vec2 p){ float s=0.0,a=0.5; for(int i=0;i<4;i++){ s+=a*snoise(p); p*=2.0; a*=0.5; } return s; }',
+    'float fbm2(vec2 p){ float s=0.0,a=0.6; for(int i=0;i<2;i++){ s+=a*snoise(p); p*=2.2; a*=0.5; } return s; }',
+    'float sdWater(vec2 p){ float d=sdMain(p); d=smin(d,sdBrook(p),0.045); d=smin(d,sdLake(p),0.09); d=smin(d,sdOutlet(p),0.05); d+=fbm2(p*5.0)*0.006; return d; }',
+    'vec2 hash2(vec2 p){ p=vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3))); return fract(sin(p)*43758.5453); }',
+    'float hash11(float p){ return fract(sin(p*127.1)*43758.5453); }',
+    'vec2 vor(vec2 p){ p+=0.35*vec2(fbm2(p*1.6),fbm2(p*1.6+7.3)); vec2 n=floor(p),f=fract(p); float f1=8.0,f2=8.0;',
+    '  for(int j=-1;j<=1;j++){ for(int i=-1;i<=1;i++){ vec2 g=vec2(float(i),float(j)); vec2 o=hash2(n+g); float d=dot(g+o-f,g+o-f);',
+    '    if(d<f1){ f2=f1; f1=d; } else if(d<f2){ f2=d; } } } return vec2(sqrt(f1),sqrt(f2)); }',
+    'vec2 flowDir(vec2 p){ float wM=1.0/(abs(sdMain(p))+0.05); float wB=1.0/(abs(sdBrook(p))+0.05); float wO=1.0/(abs(sdOutlet(p))+0.05);',
+    '  vec2 dir=normalize(vec2(0.0,-1.0)*wM + normalize(vec2(0.8,-0.45))*wB + normalize(vec2(-0.25,-1.0))*wO);',
+    '  float ang=snoise(p*1.3+u_time*0.04)*0.4*u_turb; float c=cos(ang),s=sin(ang); return mat2(c,-s,s,c)*dir*u_flowDir; }',
+    'float wh(vec2 p, vec2 dir, float spd){ float t=u_time*u_speed; float p0=fract(t),p1=fract(t+0.5); float w0=1.0-abs(2.0*p0-1.0),w1=1.0-abs(2.0*p1-1.0); float dist=0.55*spd;',
+    '  float b0=fbm4(p*u_wavescale+dir*p0*dist); float b1=fbm4(p*u_wavescale+dir*p1*dist); float big=(b0*w0+b1*w1)/(w0+w1);',
+    '  float fine=fbm2(p*u_wavescale*2.6+dir*(u_time*u_speed*2.2*spd)); return big*0.65 + fine*0.35*u_turb; }',
+    'float inter(vec2 uv){ float aspect=u_res.x/u_res.y; float add=0.0;',
+    '  for(int i=0;i<8;i++){ vec3 pt=u_points[i]; if(pt.z<0.0) continue; vec2 pos=pt.xy+vec2(0.0,-1.0)*pt.z*0.08; vec2 d=uv-pos; d.x*=aspect; float r=length(d);',
+    '    float ring=sin(r*75.0-pt.z*30.0); float env=exp(-r*30.0)*(1.0-pt.z); add+=ring*env; } return add*u_wake; }',
+    'vec3 normalAt(vec2 uv, vec2 dir, float spd){ float e=1.6/u_res.y;',
+    '  float hL=wh(uv-vec2(e,0.0),dir,spd)+inter(uv-vec2(e,0.0)); float hR=wh(uv+vec2(e,0.0),dir,spd)+inter(uv+vec2(e,0.0));',
+    '  float hD=wh(uv-vec2(0.0,e),dir,spd)+inter(uv-vec2(0.0,e)); float hU=wh(uv+vec2(0.0,e),dir,spd)+inter(uv+vec2(0.0,e));',
+    '  float gx=(hR-hL)/(2.0*e); float gy=(hU-hD)/(2.0*e); return normalize(vec3(-gx*u_nscale,-gy*u_nscale,1.0)); }',
+    'vec3 riverbed(vec2 p, float deepness){ vec3 base=mix(u_bedShallow,u_bedDeep,deepness);',
+    '  vec2 vB=vor(p*7.5); float stoneB=smoothstep(0.34,0.04,vB.x); float fugeB=smoothstep(0.0,0.11,vB.y-vB.x);',
+    '  base=mix(base, base*1.32, stoneB*0.45*u_bed); base*=mix(1.0, 0.62+0.38*fugeB, u_bed);',
+    '  vec2 vL=vor(p*19.0); float kies=smoothstep(0.0,0.26,vL.x); base*=mix(1.0, 0.80+0.32*kies, u_bed);',
+    '  float sandPatch=smoothstep(0.44,0.78,fbm4(p*6.0+30.0)*0.5+0.5); base=mix(base, base*1.18+vec3(0.05,0.043,0.022), sandPatch*u_sand*(1.0-deepness*0.55));',
+    '  base*=0.9+0.2*fbm4(p*44.0)*u_bed; return base; }',
+    'vec3 land(vec2 p){ float n=fbm4(p*7.0)*0.5+0.5; vec3 g=mix(vec3(0.13,0.19,0.09),vec3(0.22,0.28,0.13),n); g+=fbm4(p*30.0)*0.04;',
+    '  float dirt=smoothstep(0.62,0.82, fbm4(p*5.0+10.0)*0.5+0.5); g=mix(g, vec3(0.19,0.15,0.10), dirt*0.30); return g; }',
+    'vec3 landFull(vec2 p, float sd){ vec3 c=land(p); float bank=smoothstep(u_shore*3.0,-u_shore,sd)*u_bank; c=mix(c, mix(c,vec3(0.29,0.24,0.17),0.62), bank); return c; }',
+    // --- eine Stein-Instanz: trägt zur Höhe/Normale/Farbe bei, wenn sie der höchste Stein am Pixel ist ---
+    'void stoneInstance(vec2 uv, vec2 center, float aspect, float R, float seed, inout float maxH, inout vec3 sN, inout vec3 sCol, inout float sMask){',
+    '  vec2 d=(uv-center); d.x*=aspect; if(length(d)>R*1.25) return;',
+    '  float rot=hash11(seed)*6.2831; float c=cos(rot),si=sin(rot); vec2 dl=mat2(c,-si,si,c)*d;',
+    '  float stretch=0.72+0.56*hash11(seed+3.1); dl=vec2(dl.x/stretch, dl.y*stretch);',
+    '  float rr=length(dl)/R; float a=atan(dl.y,dl.x);',
+    '  float wob=0.14*sin(a*4.0+seed*6.28)+0.08*sin(a*7.0+seed*3.0+1.7)+0.05*sin(a*11.0+seed*9.0); rr*=(1.0+wob);',
+    '  if(rr>=1.0) return; float hfac=0.42+0.58*hash11(seed+5.7); float bumps=fbm2(uv*82.0+center*9.0+seed*15.0);',
+    '  float h=sqrt(max(0.0,1.0-rr*rr))*hfac + bumps*0.04;',
+    '  if(h>maxH){ maxH=h; float rl=length(d); vec2 rdir=(rl>0.0001)?d/rl:vec2(0.0);',
+    '    sN=normalize(vec3(rdir*rr*1.4 + vec2(bumps*0.28,bumps*0.2), 1.0));',
+    '    float cv=(hash11(seed+7.3)-0.5)*0.28; sCol=clamp(u_stoneCol*(1.0+cv)*(0.86+0.28*(bumps*0.5+0.5)),0.0,1.0);',
+    '    sMask=smoothstep(1.0,0.84,rr); } }',
+    // --- prozedurales Kiesel-Streufeld auf einem Gitter, nur im/nahe Wasser ---
+    'void procStones(vec2 uv, float aspect, float sd, inout float maxH, inout vec3 sN, inout vec3 sCol, inout float sMask){',
+    '  if(u_procDensity<=0.0) return; float wz=smoothstep(u_shore*2.5,-u_shore,sd); if(wz<0.02) return;',
+    '  float cs=u_procSize; vec2 gp=vec2(uv.x*aspect,uv.y)/cs; vec2 cf=floor(gp);',
+    '  for(int j=-1;j<=1;j++){ for(int i=-1;i<=1;i++){ vec2 cc=cf+vec2(float(i),float(j)); vec2 rnd=hash2(cc);',
+    '    if(rnd.x>u_procDensity) continue; float seed=fract(rnd.y*13.37)*10.0+0.21;',
+    '    vec2 ctr=(cc+vec2(0.25+0.5*rnd.x,0.25+0.5*rnd.y))*cs; ctr=vec2(ctr.x/aspect,ctr.y);',
+    '    float R=cs*(0.16+0.20*hash11(dot(cc,vec2(7.1,3.3)))); stoneInstance(uv,ctr,aspect,R,seed,maxH,sN,sCol,sMask); } } }',
+    'float stoneField(vec2 uv, float aspect, float sd, out vec3 sCol, out vec3 sN, out float sMask){',
+    '  float maxH=0.0; sCol=vec3(0.5); sN=vec3(0.0,0.0,1.0); sMask=0.0;',
+    '  for(int i=0;i<24;i++){ vec4 s=u_stones[i]; if(s.z<=0.0) continue; stoneInstance(uv,s.xy,aspect,s.z,s.w,maxH,sN,sCol,sMask); }',
+    '  procStones(uv,aspect,sd,maxH,sN,sCol,sMask); return maxH; }',
+    'vec3 stoneLit(vec3 sN, vec3 sCol){ vec3 L=normalize(vec3(u_light,0.8)); float lam=max(dot(sN,L),0.0)*0.76+0.24;',
+    '  float spc=pow(max(dot(sN,normalize(L+vec3(0.0,0.0,1.0))),0.0),22.0)*0.16; return sCol*lam+spc; }',
+    'void main(){ vec2 uv=vUv; float sd=sdWater(uv); float aspect=u_res.x/u_res.y;',
+    '  float fillWet=smoothstep(u_fill-0.03,u_fill+0.03,uv.y);',
+    '  float waterDepth=smoothstep(u_shore,-u_shore,sd)*fillWet; float deepness=smoothstep(0.0,-0.20,sd);',
+    '  vec3 sCol,sN; float sMask; float sH=stoneField(uv,aspect,sd,sCol,sN,sMask);',
+    '  float emerged=clamp(sH*(0.5+u_emerge) - deepness*0.55, 0.0, 1.0);',
+    '  vec3 finalCol;',
+    '  if(waterDepth<0.003){ vec3 c=landFull(uv,sd); c=mix(c, stoneLit(sN,sCol), sMask); finalCol=c*u_ambient; }',
+    '  else { float localDepth=waterDepth*(1.0-emerged*0.95);',
+    '    vec2 dir=flowDir(uv); float spd=mix(1.0,0.4,deepness); vec3 n=normalAt(uv,dir,spd);',
+    '    vec2 refrUV=uv+n.xy*u_refract*localDepth; vec3 bed=riverbed(refrUV,deepness)*u_ambient;',
+    '    bed=mix(bed, stoneLit(sN,sCol)*u_ambient, sMask);',
+    '    vec3 col=mix(bed,u_deep, localDepth*mix(u_turbidity,1.0,deepness)*u_tint);',
+    '    float fres=pow(1.0-clamp(n.z,0.0,1.0),4.0); col=mix(col,u_sky,fres*0.4*localDepth);',
+    '    vec3 V=vec3(0.0,0.0,1.0),H=normalize(normalize(vec3(u_light,0.9))+V); float sp=max(dot(n,H),0.0);',
+    '    col+=pow(sp,90.0)*u_spec*localDepth*0.9*u_gloss; col+=pow(sp,340.0)*u_spec*localDepth*1.6*u_gloss;',
+    '    float slope=length(n.xy); float foam=smoothstep(0.18,0.42,slope)*localDepth; col=mix(col,vec3(0.90,0.94,0.95),foam*0.5*clamp(u_turb,0.0,1.0));',
+    '    vec3 dryStone=stoneLit(sN,sCol)*1.08*u_ambient; col=mix(col, dryStone, sMask*emerged);',
+    '    float waterline=sMask*smoothstep(0.0,0.32,emerged)*(1.0-smoothstep(0.32,0.62,emerged));',
+    '    col=mix(col, vec3(0.92,0.95,0.96), clamp(waterline,0.0,1.0)*(0.16+0.34*u_turb));',
+    '    float front=smoothstep(0.05,0.0,abs(uv.y-u_fill))*step(-0.05,u_fill)*step(u_fill,1.0)*smoothstep(u_shore,-u_shore,sd); col=mix(col,vec3(0.90,0.94,0.95),front*0.5);',
+    '    finalCol=mix(landFull(uv,sd)*u_ambient, col, waterDepth); }',
+    '  vec2 q=uv-0.5; finalCol*=1.0-dot(q,q)*0.35; gl_FragColor=vec4(finalCol,1.0); }'
+  ].join('\n');
+
+  function compile(type,src){ var s=gl.createShader(type); gl.shaderSource(s,src); gl.compileShader(s); if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){ console.error(gl.getShaderInfoLog(s)); fehler('Shader-Fehler: '+gl.getShaderInfoLog(s)); return null; } return s; }
+  var vs=compile(gl.VERTEX_SHADER,VERT), fs=compile(gl.FRAGMENT_SHADER,FRAG); if(!vs||!fs) return;
+  var prog=gl.createProgram(); gl.attachShader(prog,vs); gl.attachShader(prog,fs); gl.linkProgram(prog);
+  if(!gl.getProgramParameter(prog,gl.LINK_STATUS)){ fehler('Programm konnte nicht gelinkt werden.'); return; } gl.useProgram(prog);
+  var buf=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,buf); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+  var aPos=gl.getAttribLocation(prog,'a_pos'); gl.enableVertexAttribArray(aPos); gl.vertexAttribPointer(aPos,2,gl.FLOAT,false,0,0);
+  var U={}; ['u_time','u_res','u_speed','u_turb','u_wake','u_bed','u_refract','u_tint','u_fill','u_shore','u_wavescale','u_nscale','u_gloss','u_turbidity','u_bank','u_emerge','u_sand','u_procDensity','u_procSize','u_flowDir','u_deep','u_sky','u_spec','u_bedShallow','u_bedDeep','u_stoneCol','u_light','u_ambient','u_points','u_stones'].forEach(function(n){ U[n]=gl.getUniformLocation(prog,n); });
+
+  function hexToRgb(hex){ var n=parseInt(hex.slice(1),16); return [((n>>16)&255)/255, ((n>>8)&255)/255, (n&255)/255]; }
+  function rgbToHex(rgb){ function h(v){ var s=Math.round(Math.max(0,Math.min(1,v))*255).toString(16); return s.length<2?'0'+s:s; } return '#'+h(rgb[0])+h(rgb[1])+h(rgb[2]); }
+
+  var P={ speed:0.13, turb:0.0, wake:0.2, bed:1.0, refract:0.05, tint:0.65, shore:0.05, wavescale:5.0, nscale:0.10, gloss:0.4, turbidity:0.4, bank:0.45, emerge:0.4, sand:0.5, procDensity:0.35, procSize:0.05 };
+  var waterCol=hexToRgb('#143d45'), bedShallow=hexToRgb('#665e4c'), bedDeep=hexToRgb('#212929'), stoneCol=hexToRgb('#58544c');
+  var flowSign=1;
+  var moods={ tag:{deep:[0.08,0.24,0.27],sky:[0.55,0.75,0.92],spec:[1.0,0.97,0.88],light:[0.25,0.65],ambient:1.05},
+    abend:{deep:[0.14,0.20,0.18],sky:[0.95,0.60,0.42],spec:[1.0,0.82,0.60],light:[0.15,0.25],ambient:0.95},
+    nacht:{deep:[0.03,0.07,0.14],sky:[0.30,0.40,0.65],spec:[0.80,0.88,1.0],light:[0.55,0.55],ambient:0.50} };
+  var cur={sky:moods.tag.sky, spec:moods.tag.spec, light:moods.tag.light, ambient:moods.tag.ambient};
+  var fillActive=false, fillStart=0, fillDur=6.0;
+
+  var stones=[]; var placeMode=false; var stoneSize=0.026;
+  var stoneArr=new Float32Array(24*4);
+  function updateCount(){ document.getElementById('stoneCount').textContent=stones.length; }
+
+  var points=[], LIFE=2.5, lastAdd=0;
+  function addPoint(cx,cy){ var now=performance.now(); if(now-lastAdd<55) return; lastAdd=now; points.push({x:cx/canvas.clientWidth, y:1-cy/canvas.clientHeight, t:now/1000}); if(points.length>8) points.shift(); }
+  canvas.addEventListener('pointermove',function(e){ if(!placeMode) addPoint(e.clientX,e.clientY); });
+  canvas.addEventListener('pointerdown',function(e){
+    if(placeMode){ if(stones.length<24){ stones.push({x:e.clientX/canvas.clientWidth, y:1-e.clientY/canvas.clientHeight, r:stoneSize*(0.78+Math.random()*0.44), seed:Math.random()*10+0.13}); updateCount(); } }
+    else { lastAdd=0; addPoint(e.clientX,e.clientY); }
+  });
+
+  function bindSlider(id,key,fmt){ var el=document.getElementById(id), out=document.getElementById('w'+id.charAt(0).toUpperCase()+id.slice(1));
+    function upd(){ P[key]=parseFloat(el.value); if(out) out.textContent=(fmt?fmt(P[key]):P[key]); } el.addEventListener('input',upd); upd(); }
+  bindSlider('speed','speed',function(v){return v.toFixed(2);}); bindSlider('turb','turb',function(v){return v.toFixed(2);}); bindSlider('wake','wake',function(v){return v.toFixed(2);});
+  bindSlider('bed','bed',function(v){return v.toFixed(2);}); bindSlider('refract','refract',function(v){return v.toFixed(3);});
+  bindSlider('tint','tint',function(v){return v.toFixed(2);}); bindSlider('shore','shore',function(v){return v.toFixed(3);});
+  bindSlider('wavescale','wavescale',function(v){return v.toFixed(1);}); bindSlider('nscale','nscale',function(v){return v.toFixed(2);}); bindSlider('gloss','gloss',function(v){return v.toFixed(2);});
+  bindSlider('turbidity','turbidity',function(v){return v.toFixed(2);}); bindSlider('bank','bank',function(v){return v.toFixed(2);}); bindSlider('emerge','emerge',function(v){return v.toFixed(1);});
+  bindSlider('sand','sand',function(v){return v.toFixed(2);}); bindSlider('procDensity','procDensity',function(v){return v.toFixed(2);}); bindSlider('procSize','procSize',function(v){return v.toFixed(3);});
+  var ssEl=document.getElementById('stoneSize'), ssOut=document.getElementById('wStoneSize');
+  function ssUpd(){ stoneSize=parseFloat(ssEl.value); ssOut.textContent=stoneSize.toFixed(3); } ssEl.addEventListener('input',ssUpd); ssUpd();
+
+  document.getElementById('waterColor').addEventListener('input',function(e){ waterCol=hexToRgb(e.target.value); });
+  document.getElementById('bedShallowColor').addEventListener('input',function(e){ bedShallow=hexToRgb(e.target.value); });
+  document.getElementById('bedDeepColor').addEventListener('input',function(e){ bedDeep=hexToRgb(e.target.value); });
+  document.getElementById('stoneColor').addEventListener('input',function(e){ stoneCol=hexToRgb(e.target.value); });
+
+  var platzKnopf=document.getElementById('platzKnopf'), hinweis=document.getElementById('hinweis');
+  platzKnopf.addEventListener('click',function(){ placeMode=!placeMode; platzKnopf.textContent='Steine platzieren: '+(placeMode?'AN':'AUS'); platzKnopf.classList.toggle('platzaktiv',placeMode); canvas.classList.toggle('platzieren',placeMode);
+    hinweis.classList.remove('weg'); hinweis.textContent=placeMode?'Klicke ins Bild, um Steine zu setzen':'Fahre mit der Maus durchs Wasser - das ist der Held-Effekt'; if(!placeMode) setTimeout(function(){ hinweis.classList.add('weg'); },2500); });
+  document.getElementById('undoStone').addEventListener('click',function(){ stones.pop(); updateCount(); });
+  document.getElementById('clearStones').addEventListener('click',function(){ stones=[]; updateCount(); });
+  var flowKnopf=document.getElementById('flowKnopf');
+  flowKnopf.addEventListener('click',function(){ flowSign*=-1; flowKnopf.textContent='Fließrichtung: '+(flowSign>0?'abwärts':'aufwärts'); });
+
+  function setMood(name){ var m=moods[name]; cur={sky:m.sky, spec:m.spec, light:m.light, ambient:m.ambient};
+    waterCol=m.deep.slice(); document.getElementById('waterColor').value=rgbToHex(m.deep);
+    document.querySelectorAll('.btn[data-mood]').forEach(function(b){ b.classList.toggle('aktiv',b.getAttribute('data-mood')===name); }); }
+  document.querySelectorAll('.btn[data-mood]').forEach(function(b){ b.addEventListener('click',function(){ setMood(b.getAttribute('data-mood')); }); });
+  document.getElementById('fillKnopf').addEventListener('click',function(){ fillActive=true; fillStart=performance.now()/1000; hinweis.classList.add('weg'); });
+  var panel=document.getElementById('panel'),griff=document.getElementById('griff');
+  document.getElementById('zuKnopf').addEventListener('click',function(){ panel.classList.add('zu'); griff.classList.add('sichtbar'); });
+  griff.addEventListener('click',function(){ panel.classList.remove('zu'); griff.classList.remove('sichtbar'); });
+  setTimeout(function(){ if(!placeMode) hinweis.classList.add('weg'); },5000);
+
+  var rt=null; function resize(){ canvas.width=Math.max(2,canvas.clientWidth); canvas.height=Math.max(2,canvas.clientHeight); gl.viewport(0,0,canvas.width,canvas.height); }
+  window.addEventListener('resize',function(){ clearTimeout(rt); rt=setTimeout(resize,200); });
+
+  var ptArr=new Float32Array(8*3);
+  function frame(ms){ var t=ms*0.001, now=performance.now()/1000;
+    points=points.filter(function(p){ return (now-p.t)<LIFE; });
+    for(var i=0;i<8;i++){ var p=points[i]; if(p){ ptArr[i*3]=p.x; ptArr[i*3+1]=p.y; ptArr[i*3+2]=(now-p.t)/LIFE; } else { ptArr[i*3+2]=-1.0; } }
+    for(var k=0;k<24;k++){ var s=stones[k]; if(s){ stoneArr[k*4]=s.x; stoneArr[k*4+1]=s.y; stoneArr[k*4+2]=s.r; stoneArr[k*4+3]=s.seed; } else { stoneArr[k*4+2]=0.0; } }
+    var uFill=-1.0; if(fillActive){ var pr=Math.min(Math.max((now-fillStart)/fillDur,0),1); uFill=1.05-pr*1.15; if(pr>=1.0) fillActive=false; }
+    gl.uniform1f(U.u_time,t); gl.uniform2f(U.u_res,canvas.width,canvas.height);
+    gl.uniform1f(U.u_speed,P.speed); gl.uniform1f(U.u_turb,P.turb); gl.uniform1f(U.u_wake,P.wake); gl.uniform1f(U.u_bed,P.bed); gl.uniform1f(U.u_refract,P.refract); gl.uniform1f(U.u_tint,P.tint); gl.uniform1f(U.u_fill,uFill); gl.uniform1f(U.u_shore,P.shore);
+    gl.uniform1f(U.u_wavescale,P.wavescale); gl.uniform1f(U.u_nscale,P.nscale); gl.uniform1f(U.u_gloss,P.gloss); gl.uniform1f(U.u_turbidity,P.turbidity); gl.uniform1f(U.u_bank,P.bank); gl.uniform1f(U.u_emerge,P.emerge);
+    gl.uniform1f(U.u_sand,P.sand); gl.uniform1f(U.u_procDensity,P.procDensity); gl.uniform1f(U.u_procSize,P.procSize); gl.uniform1f(U.u_flowDir,flowSign);
+    gl.uniform3fv(U.u_deep,waterCol); gl.uniform3fv(U.u_sky,cur.sky); gl.uniform3fv(U.u_spec,cur.spec); gl.uniform3fv(U.u_bedShallow,bedShallow); gl.uniform3fv(U.u_bedDeep,bedDeep); gl.uniform3fv(U.u_stoneCol,stoneCol);
+    gl.uniform2fv(U.u_light,cur.light); gl.uniform1f(U.u_ambient,cur.ambient); gl.uniform3fv(U.u_points,ptArr); gl.uniform4fv(U.u_stones,stoneArr);
+    gl.drawArrays(gl.TRIANGLE_STRIP,0,4); requestAnimationFrame(frame);
+  }
+  setMood('tag'); updateCount(); resize(); requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

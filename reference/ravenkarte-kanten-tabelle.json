@@ -1,0 +1,466 @@
+[
+  {
+    "id": "kloster",
+    "gx": 5,
+    "gy": 0,
+    "nord": [
+      {
+        "feature": "fluss",
+        "pos": 9.6
+      }
+    ],
+    "ost": [],
+    "sued": [
+      {
+        "feature": "fluss",
+        "pos": 22.6
+      },
+      {
+        "feature": "weg",
+        "pos": 57.9
+      }
+    ],
+    "west": [],
+    "seen": null
+  },
+  {
+    "id": "hochland",
+    "gx": 2,
+    "gy": 1,
+    "nord": [],
+    "ost": [
+      {
+        "feature": "weg",
+        "pos": 83.5
+      }
+    ],
+    "sued": [
+      {
+        "feature": "fluss",
+        "pos": 58.3
+      }
+    ],
+    "west": [],
+    "seen": null
+  },
+  {
+    "id": "wald_nw",
+    "gx": 3,
+    "gy": 1,
+    "nord": [
+      {
+        "feature": "fluss",
+        "pos": 75.6
+      }
+    ],
+    "ost": [],
+    "sued": [
+      {
+        "feature": "weg",
+        "pos": 48.6
+      },
+      {
+        "feature": "fluss",
+        "pos": 76.7
+      }
+    ],
+    "west": [
+      {
+        "feature": "weg",
+        "pos": 83.5
+      }
+    ],
+    "seen": null
+  },
+  {
+    "id": "wald_ne",
+    "gx": 4,
+    "gy": 1,
+    "nord": [
+      {
+        "feature": "weg",
+        "pos": 44.4
+      },
+      {
+        "feature": "fluss",
+        "pos": 74.2
+      }
+    ],
+    "ost": [],
+    "sued": [
+      {
+        "feature": "fluss",
+        "pos": 17.8
+      },
+      {
+        "feature": "weg",
+        "pos": 49.4
+      }
+    ],
+    "west": [],
+    "seen": null
+  },
+  {
+    "id": "schlacht",
+    "gx": 5,
+    "gy": 1,
+    "nord": [
+      {
+        "feature": "fluss",
+        "pos": 22.6
+      },
+      {
+        "feature": "weg",
+        "pos": 57.9
+      }
+    ],
+    "ost": [],
+    "sued": [
+      {
+        "feature": "weg",
+        "pos": 58.2
+      },
+      {
+        "feature": "fluss",
+        "pos": 76.8
+      }
+    ],
+    "west": [],
+    "seen": null
+  },
+  {
+    "id": "wald_n",
+    "gx": 2,
+    "gy": 2,
+    "nord": [
+      {
+        "feature": "fluss",
+        "pos": 58.3
+      }
+    ],
+    "ost": [],
+    "sued": [
+      {
+        "feature": "fluss",
+        "pos": 72.9
+      }
+    ],
+    "west": [],
+    "seen": null
+  },
+  {
+    "id": "wald_m",
+    "gx": 3,
+    "gy": 2,
+    "nord": [
+      {
+        "feature": "weg",
+        "pos": 48.6
+      },
+      {
+        "feature": "fluss",
+        "pos": 76.7
+      }
+    ],
+    "ost": [
+      {
+        "feature": "fluss",
+        "pos": 47.1
+      }
+    ],
+    "sued": [
+      {
+        "feature": "weg",
+        "pos": 46.7
+      },
+      {
+        "feature": "fluss",
+        "pos": 55.3
+      }
+    ],
+    "west": [],
+    "seen": null
+  },
+  {
+    "id": "lager",
+    "gx": 4,
+    "gy": 2,
+    "nord": [
+      {
+        "feature": "fluss",
+        "pos": 17.8
+      },
+      {
+        "feature": "weg",
+        "pos": 49.4
+      }
+    ],
+    "ost": [
+      {
+        "feature": "weg",
+        "pos": 39.5
+      },
+      {
+        "feature": "fluss",
+        "pos": 61.8
+      }
+    ],
+    "sued": [
+      {
+        "feature": "weg",
+        "pos": 43.1
+      },
+      {
+        "feature": "fluss",
+        "pos": 81.9
+      }
+    ],
+    "west": [
+      {
+        "feature": "fluss",
+        "pos": 47.1
+      }
+    ],
+    "seen": {
+      "cx": 19,
+      "cy": 47,
+      "rx": 46,
+      "ry": 41
+    }
+  },
+  {
+    "id": "stadt2",
+    "gx": 5,
+    "gy": 2,
+    "nord": [
+      {
+        "feature": "weg",
+        "pos": 58.2
+      },
+      {
+        "feature": "fluss",
+        "pos": 76.8
+      }
+    ],
+    "ost": [
+      {
+        "feature": "weg",
+        "pos": 42
+      }
+    ],
+    "sued": [
+      {
+        "feature": "weg",
+        "pos": 50
+      }
+    ],
+    "west": [
+      {
+        "feature": "weg",
+        "pos": 39.5
+      },
+      {
+        "feature": "fluss",
+        "pos": 61.8
+      }
+    ],
+    "seen": null
+  },
+  {
+    "id": "burg",
+    "gx": 0,
+    "gy": 3,
+    "nord": [],
+    "ost": [
+      {
+        "feature": "weg",
+        "pos": 60
+      },
+      {
+        "feature": "fluss",
+        "pos": 85.7
+      }
+    ],
+    "sued": [],
+    "west": [
+      {
+        "feature": "fluss",
+        "pos": 31.7
+      }
+    ],
+    "seen": null
+  },
+  {
+    "id": "wald_w",
+    "gx": 1,
+    "gy": 3,
+    "nord": [],
+    "ost": [
+      {
+        "feature": "weg",
+        "pos": 59.1
+      },
+      {
+        "feature": "fluss",
+        "pos": 78.7
+      }
+    ],
+    "sued": [],
+    "west": [
+      {
+        "feature": "weg",
+        "pos": 60
+      },
+      {
+        "feature": "fluss",
+        "pos": 85.7
+      }
+    ],
+    "seen": null
+  },
+  {
+    "id": "start",
+    "gx": 2,
+    "gy": 3,
+    "nord": [
+      {
+        "feature": "fluss",
+        "pos": 72.9
+      }
+    ],
+    "ost": [
+      {
+        "feature": "fluss",
+        "pos": 47
+      },
+      {
+        "feature": "weg",
+        "pos": 77
+      }
+    ],
+    "sued": [],
+    "west": [
+      {
+        "feature": "weg",
+        "pos": 59.1
+      },
+      {
+        "feature": "fluss",
+        "pos": 78.7
+      }
+    ],
+    "seen": null
+  },
+  {
+    "id": "wald_o",
+    "gx": 3,
+    "gy": 3,
+    "nord": [
+      {
+        "feature": "weg",
+        "pos": 46.7
+      },
+      {
+        "feature": "fluss",
+        "pos": 55.3
+      }
+    ],
+    "ost": [
+      {
+        "feature": "weg",
+        "pos": 53
+      },
+      {
+        "feature": "fluss",
+        "pos": 81.7
+      }
+    ],
+    "sued": [],
+    "west": [
+      {
+        "feature": "fluss",
+        "pos": 47
+      },
+      {
+        "feature": "weg",
+        "pos": 77
+      }
+    ],
+    "seen": null
+  },
+  {
+    "id": "stadt",
+    "gx": 4,
+    "gy": 3,
+    "nord": [
+      {
+        "feature": "weg",
+        "pos": 43.1
+      },
+      {
+        "feature": "fluss",
+        "pos": 81.9
+      }
+    ],
+    "ost": [
+      {
+        "feature": "weg",
+        "pos": 55.7
+      },
+      {
+        "feature": "fluss",
+        "pos": 81.7
+      }
+    ],
+    "sued": [],
+    "west": [
+      {
+        "feature": "weg",
+        "pos": 53
+      },
+      {
+        "feature": "fluss",
+        "pos": 81.7
+      }
+    ],
+    "seen": null
+  },
+  {
+    "id": "wald_se",
+    "gx": 5,
+    "gy": 3,
+    "nord": [
+      {
+        "feature": "weg",
+        "pos": 50
+      }
+    ],
+    "ost": [
+      {
+        "feature": "weg",
+        "pos": 57.8
+      },
+      {
+        "feature": "fluss",
+        "pos": 74.3
+      }
+    ],
+    "sued": [],
+    "west": [
+      {
+        "feature": "weg",
+        "pos": 55.7
+      },
+      {
+        "feature": "fluss",
+        "pos": 81.7
+      }
+    ],
+    "seen": {
+      "cx": 28,
+      "cy": 73,
+      "rx": 46,
+      "ry": 11
+    }
+  }
+]

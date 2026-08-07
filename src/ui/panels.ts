@@ -1,0 +1,2035 @@
+// Charakter + Inventar in EINEM Fenster (Feedback-Runde 1), mit Maus-Rad-
+// Blättern, Typ-Icons, Tooltip mit farbigen Wert-Differenzen zum angelegten
+// Gegenstand und Tagebuch. Grafik kommt ausschließlich vom SpriteProvider.
+
+import Phaser from 'phaser';
+import { getSettings, saveSettings } from '../logic/settings';
+import type { Item, GemItem, Rarity } from '../data/types';
+import { RARITY_COLORS, RARITY_NAMES } from '../data/items';
+import { itemStatLine, weaponDamageRange } from '../logic/loot';
+import { recalc, type PlayerState } from '../logic/playerState';
+import { heldTier } from '../data/helden';
+import { calcStats, type Stats } from '../logic/progression';
+import { MELDUNGEN } from '../data/texte';
+import { SCHOOLS, ABILITIES, SPELLS } from '../data/balancing';
+import { WEAPON_HAND } from '../data/kampf';
+import { SKILL_ICONS, skillBeschreibung } from '../data/skills';
+import { RTS_EINHEITEN, MORAL, RTS_RANG } from '../data/rts';
+import { PFLANZEN } from '../data/pflanzen';
+import type { MaterialId } from '../data/crafting';
+import { setVerfolgtWunsch, type QuestSicht } from '../logic/questLog';
+import { TUNING } from '../logic/tuning';
+import { charBox, charFest, setCharFest, setCharBox, resetCharLayout, exportCharLayout, charSchrift, setzeCharSchrift, baukastenPos, setzeBaukastenPos, CHAR_LAYOUT_LABEL, CHAR_LAYOUT_VERSATZ, type CharBox } from './charLayout';
+import type { SpriteProvider } from '../gfx/SpriteProvider';
+import type { SoundProvider } from '../gfx/SoundProvider';
+import { fixUiScroll } from './dialog';
+import portraitAldricUrl from '../../assets/ui/character/aldric-portrait-ohne-wappen-1300.png';
+import characterShellUrl from '../../assets/ui/character/character-inventory-shell-gpt2-1300.png';
+import parchmentUrl from '../../assets/ui/parchment.png';
+import woodUrl from '../../assets/ui/wood.png';
+
+const PANEL_BG = 0x171108;
+const LINE = 0x4a3a26;
+const GOLD = '#c9a227';
+const BONE = '#d8cfb8';
+const INK = '#2b2118';
+const INK_SOFT = '#62503b';
+// R195 (Autor: "der Kontrast ist zu gering"): eigene Toene fuer Ueberschriften
+// und Nebentext - vorher lief beides ueber INK_SOFT und verschwand im Pergament.
+const INK_TITEL = '#3a2c1e';
+const INK_ZWEIT = '#59493a';
+const UI_PARCHMENT = 'ui_1300_parchment';
+const UI_WOOD = 'ui_1300_wood';
+const UI_ALDRIC = 'ui_1300_aldric_portrait';
+const UI_CHARACTER_SHELL = 'ui_1300_character_inventory_shell';
+const RARITY_INK = ['#2b2118', '#285778', '#583778', '#78317b'] as const;
+
+const TYP_NAMEN: Record<string, string> = {
+  weapon: 'Waffe', armor: 'Rüstung', ring: 'Ring', gem: 'Edelstein', schild: 'Schild',
+  potion: 'Trank', scroll: 'Zauberrolle', food: 'Proviant', material: 'Material', tool: 'Werkzeug',
+};
+const KLASSEN_NAMEN: Record<string, string> = {
+  schwert: 'Schwert', axt: 'Axt', stange: 'Stangenwaffe', wucht: 'Kriegshammer', kolben: 'Streitkolben', bogen: 'Bogen', stab: 'Zauberstab',
+};
+// Einhand/Zweihand-Hinweis für die Item-Anzeige (Runde 49)
+const handLabel = (cls?: string): string => WEAPON_HAND[cls ?? 'schwert'] === 'zwei' ? 'Zweihand' : 'Einhand';
+
+// Welche Inventar-Gegenstände sich auf die Aktionsleiste ziehen lassen und
+// welche Leisten-Aktion sie belegen (Runde 40). Schriftrollen waren der
+// Auslöser - der Autor konnte sie nicht unten ins Menü ziehen.
+const SLOT_AKTION: Record<string, string> = {
+  scroll: 'rolle', potion: 'pot', mpotion: 'mpot',
+};
+const ZIEH_GLYPH: Record<string, string> = {
+  scroll: '📜', potion: '🧪', mpotion: '⚗',
+};
+
+// Basis-Tooltip-Zeilen eines Gegenstands (Name in Raritätsfarbe, Typ, Werte,
+// Boni) - OHNE Spielervergleich. Geteilt vom Inventar UND der Bodenbeute
+// (Hover über liegende Gegenstände, Runde 58), damit beide identisch aussehen.
+export function itemTooltipLines(it: Item): Array<[string, string]> {
+  const rar = (it.rarity ?? 0) as Rarity;
+  const typ = it.kind === 'weapon' ? `Waffe - ${KLASSEN_NAMEN[it.weaponClass ?? 'schwert']} (${handLabel(it.weaponClass)})` : TYP_NAMEN[it.kind] ?? '';
+  const lines: Array<[string, string]> = [
+    [it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), RARITY_COLORS[rar]],
+    [`${RARITY_NAMES[rar]}${typ ? ' · ' + typ : ''}`, '#8a7a5a'],
+    [itemStatLine(it, false), BONE],
+  ];
+  // Bonus-Werte IMMER grün (Runde 29)
+  for (const b of it.boni) lines.push([`+ ${b.t.replace('#', String(b.v)).replace(/^\+/, '')}`, '#6ad06a']);
+  return lines;
+}
+
+export class UIPanels {
+  private open_ = false;
+  // BAUKASTEN-Editor fuers Charakterfenster (Autor): Element waehlen, Groesse/
+  // Position nudgen, Werte exportieren. charEditBoxen wird je Aufbau gefuellt.
+  private charEditor = false;
+  private charSel: string | null = null;
+  private charEditBoxen: Array<{ id: string; cx: number; cy: number; w: number; h: number }> = [];
+  // R199: Zustand des Maus-Ziehens im Layout-Baukasten
+  private charDrag: { id: string; zx: number; zy: number; x0: number; y0: number } | null = null;
+  /** R217: eine Sammelstelle fuer ALLE Baukasten-Elemente (alle drei Spalten). */
+  private merkeEditBox(id: string, cx: number, cy: number, w: number, h: number): void {
+    this.charEditBoxen.push({ id, cx, cy, w, h });
+  }
+  private charDragHaken = false;
+  private charZiehTick = false;
+  private charScale = 1;   // panelScale zum Zeitpunkt des letzten Aufbaus (Editor rechnet Quell<->Schirm)
+  private container: Phaser.GameObjects.Container | null = null;
+  private tooltip: Phaser.GameObjects.Container | null = null;
+  private scroll = 0;
+  private selectedItem: Item | null = null;
+  private compareItem: Item | null = null;
+  private panelScale = 1;
+  private klickMerker: { it: Item; t: number } | null = null;   // R140: Doppelklick-Ausruesten
+  onChanged: (() => void) | null = null;
+  onUseScroll: ((scrollSkill: string) => void) | null = null;
+  // Inventar -> Aktionsleiste ziehen (Runde 40): legt eine Schriftrolle/einen
+  // Trank auf den Slot unter (x,y). Gibt true zurück, wenn ein Slot belegt wurde.
+  onAssignToSlot: ((x: number, y: number, aktionId: string) => boolean) | null = null;
+  private dragGhost: Phaser.GameObjects.Text | null = null;
+  getJournal: (() => string[]) | null = null;
+  // Quest-Logbuch (Runde 52): die Aufgaben kommen aus dem Quest-System; der
+  // Spieler kann hier die verfolgte Quest wählen (getVerfolgtId = aktuell verfolgt).
+  getQuestLog: (() => QuestSicht[]) | null = null;
+  getVerfolgtId: (() => string | null) | null = null;
+  // Tab-Fenster (Runde 31): Album und Statistik wohnen mit im Fenster
+  getAlbumZeilen: (() => Array<[string, string]>) | null = null;
+  getStatistikZeilen: (() => Array<[string, string]>) | null = null;
+  getKontakteZeilen: (() => Array<[string, string]>) | null = null;
+  // Karte des Fürstentums (Runde 51)
+  // R152: punkte = LIVE-Marker (Held/Truppen/NPCs) an ihren echten Stellungen.
+  getKarte: (() => { aufgedeckt: boolean; gebiete: Array<{ id: string; name: string; gx: number; gy: number; sichtbar: boolean; lage?: 'frei' | 'umkaempft' | 'besetzt'; thumb: { w: number; h: number; farben: number[][] } | null }>; punkte?: Array<{ karte: string; u: number; v: number; art: 'held' | 'truppe' | 'npc' }> }) | null = null;
+  // Großansicht (Runde 74, Autorwunsch): liefert die Minimap eines Gebiets in
+  // voller Kachel-Auflösung - für die Klick-Vergrößerung im KARTE-Tab.
+  getGebietGross: ((id: string) => { w: number; h: number; farben: number[][] }) | null = null;
+  private karteGross: string | null = null;   // id des vergrößerten Gebiets (null = Raster)
+  // R142: Truppen-Verlegung auf der Karte: Quelle waehlen (⚔-Schild), Menge,
+  // dann Ziel-Karte anklicken.
+  private truppenQuelle: string | null = null;
+  private truppenMenge: number = 99;
+  toggleKarteDev: (() => void) | null = null;
+  // Aufgedeckte Karte der AKTUELLEN Ebene (Runde 53, Autorwunsch): zeigt das
+  // Erkundete samt Treppen (hinab/hinauf). null = keine (Dorf/Wald, nicht dunkel).
+  getEbeneKarte: (() => { name: string; w: number; h: number; zellen: Array<[number, number, number]>; spieler: [number, number] | null } | null) | null = null;
+  private hauptTab: 'held' | 'faehigkeiten' | 'aufgaben' | 'album' | 'statistik' | 'kontakte' | 'karte' | 'ebene' | 'heer' = 'held';
+  // R87: Umschalten in den RTS-Modus (WorldScene hängt sich hier ein)
+  onRtsModus?: () => void;
+  // R141/R142: Blick ins persistente Heer (Roster + Standorte + Maersche).
+  onGetArmee?: () => { einheiten: Array<{ id: number; name: string; typ: string; hp: number; kills: number; ort: string }>; gefallene: string[]; maersche: Array<{ ids: number[]; route: string[]; beiKarte: number }> };
+  // R142: Trupps kartenweise verlegen (Jagged-Alliance-Prinzip). Gibt die
+  // tatsaechlich losgeschickte Kopfzahl zurueck.
+  onSendeTruppen?: (von: string, nach: string, anzahl: number) => number;
+
+  // Fenster direkt auf einem Reiter öffnen (B = Album, HUD-Knöpfe = held/faehigkeiten/karte)
+  openTab(tab: 'held' | 'faehigkeiten' | 'aufgaben' | 'album' | 'statistik' | 'kontakte' | 'karte' | 'ebene' | 'heer'): void {
+    this.hauptTab = tab;
+    if (!this.open_) {
+      this.open_ = true;
+      this.sfx.play('klick');
+    }
+    this.build();
+  }
+
+  constructor(
+    private scene: Phaser.Scene,
+    private provider: SpriteProvider,
+    private sfx: SoundProvider,
+    private getPlayer: () => PlayerState,
+  ) {
+    this.ensurePanelAssets();
+    // Maus-Rad blättert die Inventarliste
+    scene.input.on('wheel', (_p: Phaser.Input.Pointer, _o: unknown, _dx: number, dy: number) => {
+      if (!this.open_) return;
+      this.scroll = Math.max(0, this.scroll + (dy > 0 ? 1 : -1));
+      this.build();
+    });
+  }
+
+  private ensurePanelAssets(): void {
+    const assets = [
+      { key: UI_PARCHMENT, url: parchmentUrl },
+      { key: UI_WOOD, url: woodUrl },
+      { key: UI_ALDRIC, url: portraitAldricUrl },
+      { key: UI_CHARACTER_SHELL, url: characterShellUrl },
+    ].filter(({ key }) => !this.scene.textures.exists(key));
+    if (!assets.length) return;
+    this.scene.load.once(Phaser.Loader.Events.COMPLETE, () => {
+      for (const { key } of assets) this.scene.textures.get(key)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+      if (this.open_) this.build();
+    });
+    for (const { key, url } of assets) this.scene.load.image(key, url);
+    if (!this.scene.load.isLoading()) this.scene.load.start();
+  }
+
+  get blocked(): boolean {
+    return this.open_;
+  }
+
+  // I und C öffnen dasselbe kombinierte Fenster
+  toggleInventory(): void {
+    this.open_ = !this.open_;
+    if (this.open_) this.build();
+    else this.close();
+    this.sfx.play('klick');
+  }
+
+  toggleCharacter(): void {
+    this.toggleInventory();
+  }
+
+  closeAll(): void {
+    if (this.open_) {
+      this.close();
+      this.sfx.play('klick');
+    }
+  }
+
+  refresh(): void {
+    if (this.open_) this.build();
+  }
+
+  private close(): void {
+    this.container?.destroy();
+    this.container = null;
+    this.hideTooltip();
+    this.open_ = false;
+  }
+
+  private build(): void {
+    this.container?.destroy();
+    const sw = this.scene.scale.width, sh = this.scene.scale.height;
+    const w = Math.min(1672, sw - 12, (sh - 12) * (1672 / 941));
+    const h = w * (941 / 1672);
+    this.panelScale = w / 1672;
+    const off = getSettings().ui.fenster;
+    const c = this.scene.add.container((sw - w) / 2 + off.x, (sh - h) / 2 + off.y).setScrollFactor(0).setDepth(5100);
+    this.container = c;
+    c.add(this.scene.add.rectangle(-sw, -sh, sw * 3, sh * 3, 0x050403, 0.58).setOrigin(0).setInteractive());
+    const shellAktiv = this.scene.textures.exists(UI_CHARACTER_SHELL);
+    if (shellAktiv) {
+      c.add(this.scene.add.image(0, 0, UI_CHARACTER_SHELL).setOrigin(0).setDisplaySize(w, h));
+    } else {
+      c.add(this.scene.add.rectangle(4, 6, w, h, 0x000000, 0.48).setOrigin(0));
+    }
+    if (!shellAktiv && this.scene.textures.exists(UI_PARCHMENT)) {
+      c.add(this.scene.add.tileSprite(0, 0, w, h, UI_PARCHMENT).setOrigin(0).setTint(0xd6c39d));
+    } else if (!shellAktiv) {
+      c.add(this.scene.add.rectangle(0, 0, w, h, 0xc9b58c, 0.98).setOrigin(0));
+    }
+    if (!shellAktiv && this.scene.textures.exists(UI_WOOD)) {
+      c.add(this.scene.add.tileSprite(0, 0, w, 55, UI_WOOD).setOrigin(0).setTint(0x58432f));
+    } else if (!shellAktiv) {
+      c.add(this.scene.add.rectangle(0, 0, w, 55, 0x302016, 1).setOrigin(0));
+    }
+    const bg = this.scene.add.rectangle(0, 0, w, h, 0x000000, 0.001).setOrigin(0);
+    if (!shellAktiv) bg.setStrokeStyle(3, 0x21170f);
+    bg.setInteractive();
+    c.add(bg);
+    if (!shellAktiv) c.add(this.scene.add.rectangle(5, 5, w - 10, h - 10, 0x000000, 0).setOrigin(0).setStrokeStyle(1, 0x8a6840, 0.85));
+    // Fenster direkt greifen (Runde 23, oft gewünscht): die obere Leiste
+    // zieht das Fenster, der Versatz landet dauerhaft in den Einstellungen
+    // (ui.fenster - gilt damit auch für Handel und Chronik)
+    // R-Fix (Autor "das Charakterfenster C sollte man verschieben koennen"):
+    // der Griff war nur ein ~13px-Streifen direkt unter den Reitern - kaum zu
+    // treffen. Jetzt ein breites Greif-Band unter den Reitern (die Reiter und
+    // Inhalts-Elemente liegen DARUEBER und bleiben klickbar; nur Leerraum zieht).
+    const griffY = shellAktiv ? h * (60 / 941) : 0;
+    const griffH = shellAktiv ? Math.max(28, h * (52 / 941)) : 26;
+    const griff = this.scene.add.rectangle(0, griffY, w - 30, griffH, 0xffffff, 0.02).setOrigin(0)
+      .setInteractive({ draggable: true, useHandCursor: true });
+    griff.on('pointerover', () => griff.setFillStyle(0xc9a227, 0.08));
+    griff.on('pointerout', () => griff.setFillStyle(0xffffff, 0.02));
+    // WICHTIG: Schirmkoordinaten des Zeigers nutzen, NICHT die lokalen
+    // drag-Werte - die verschieben sich mit dem Container mit und
+    // schaukeln sich auf (übersteuertes Fenster, Runde 23)
+    let startZeiger: { x: number; y: number } | null = null;
+    let startPos = { x: 0, y: 0 };
+    griff.on('dragstart', (p: Phaser.Input.Pointer) => {
+      startZeiger = { x: p.x, y: p.y };
+      startPos = { x: c.x, y: c.y };
+    });
+    griff.on('drag', (p: Phaser.Input.Pointer) => {
+      if (!startZeiger) return;
+      c.x = startPos.x + (p.x - startZeiger.x);
+      c.y = startPos.y + (p.y - startZeiger.y);
+      const off = getSettings().ui.fenster;
+      off.x = Math.round(c.x - (sw - w) / 2);
+      off.y = Math.round(c.y - (sh - h) / 2);
+    });
+    griff.on('dragend', () => {
+      startZeiger = null;
+      saveSettings();
+    });
+    c.add(griff);
+    // Haupt-Reiter (Runde 38: eigene Tabs für Fähigkeiten und Aufgaben,
+    // damit der Charakter-Tab nicht mehr überladen ist und nichts überlappt)
+    const reiter: Array<[typeof this.hauptTab, string]> = [
+      ['held', 'CHARAKTER'], ['faehigkeiten', 'FÄHIGKEITEN'], ['heer', 'HEER'], ['karte', 'KARTE'], ['aufgaben', 'AUFGABEN'],
+      ['kontakte', 'KONTAKTE'], ['album', 'ALBUM'], ['statistik', 'STATISTIK'],
+    ];
+    // R161 (Autor "alles versetzt"): die Bildschale malt ihre EIGENEN Tab-
+    // Kaesten - Positionen aus dem Bild vermessen (dunkle Pixel-Laeufe bei
+    // y=37). Die alte Gleichverteilung driftete bis 39px neben die Kaesten.
+    const SHELL_TAB_BOXEN: ReadonlyArray<readonly [number, number]> = [
+      [126, 304], [321, 512], [529, 688], [705, 862], [879, 1038], [1054, 1214], [1231, 1386], [1402, 1552],
+    ];
+    const shellTabs = shellAktiv && SHELL_TAB_BOXEN.length === reiter.length;
+    const tabLinks = w * (120 / 1672);
+    const tabRechts = w * (1558 / 1672);
+    const gleichBreite = (tabRechts - tabLinks) / reiter.length;
+    const tabY = h * (37 / 941);
+    for (const [index, [id, lbl]] of reiter.entries()) {
+      const tx = shellTabs ? w * (SHELL_TAB_BOXEN[index][0] / 1672) : tabLinks + index * gleichBreite;
+      const tabBreite = shellTabs ? w * ((SHELL_TAB_BOXEN[index][1] - SHELL_TAB_BOXEN[index][0]) / 1672) : gleichBreite;
+      if (this.hauptTab === id) {
+        c.add(this.scene.add.rectangle(tx + 2, h * (15 / 941), tabBreite - 4, h * (45 / 941), 0x68281f, 0.74).setOrigin(0));
+      }
+      const hit = this.scene.add.rectangle(tx, h * (12 / 941), tabBreite, h * (50 / 941), 0xffffff, 0)
+        .setOrigin(0).setInteractive({ useHandCursor: true });
+      const t = this.scene.add.text(tx + tabBreite / 2, tabY, lbl, {
+        fontFamily: 'serif', fontSize: `${Math.max(8, Math.round(w * 13 / 1672))}px`, letterSpacing: 1,
+        color: this.hauptTab === id ? '#f0dfbd' : '#b9a98b',
+      }).setOrigin(0.5);
+      hit.on('pointerdown', () => {
+        this.hauptTab = id;
+        this.build();
+        this.sfx.play('klick');
+      });
+      c.add([hit, t]);
+    }
+    // Trennlinie unter den Reitern - der Inhalt beginnt klar darunter (kein
+    // Überlappen der Sektionstitel mehr, Autorkritik Runde 38)
+    if (!shellAktiv) c.add(this.scene.add.rectangle(0, 54, w, 2, 0x21170f).setOrigin(0));
+    const inhaltY = Math.round(h * (79 / 941));
+    const inhalt = this.scene.add.container(0, inhaltY);
+    c.add(inhalt);
+    if (this.hauptTab === 'heer') {
+      inhalt.add(this.scene.add.rectangle(7, 5, w - 14, h - 70, PANEL_BG, 0.94).setOrigin(0));
+      this.buildHeerTab(inhalt, w, h);
+    } else if (this.hauptTab === 'held') {
+      const linksW = Math.round(w * (592 / 1672));
+      const mitteW = Math.round(w * (609 / 1672));
+      const rechtsX = linksW + mitteW;
+      if (!shellAktiv) {
+        inhalt.add(this.scene.add.rectangle(linksW, 0, 1, h - inhaltY, 0x71583b, 0.8).setOrigin(0));
+        inhalt.add(this.scene.add.rectangle(rechtsX, 0, 1, h - inhaltY, 0x71583b, 0.8).setOrigin(0));
+      }
+      // R217: EINE Sammelliste fuer alle drei Spalten - der Editor wird erst
+      // NACH allen Spalten gezeichnet, damit auch Rucksack und Vergleich
+      // anklickbare Elemente haben (Autor: "unter Rucksack geht gar nichts").
+      this.charEditBoxen = [];
+      this.buildCharacterSide(inhalt, linksW, h - inhaltY);
+      this.buildInventorySide(inhalt, linksW + 10, mitteW - 20, h - inhaltY - 6);
+      this.buildItemDetailSide(inhalt, rechtsX + 10, w - rechtsX - 20, h - inhaltY - 6);
+      this.zeichneCharEditor(inhalt);
+    } else if (this.hauptTab === 'faehigkeiten') {
+      inhalt.add(this.scene.add.rectangle(7, 5, w - 14, h - 70, PANEL_BG, 0.94).setOrigin(0));
+      this.buildSkillsTab(inhalt, w, h - 62);
+    } else if (this.hauptTab === 'karte') {
+      inhalt.add(this.scene.add.rectangle(7, 5, w - 14, h - 70, PANEL_BG, 0.94).setOrigin(0));
+      this.buildMapTab(inhalt, w, h - 62);
+    } else if (this.hauptTab === 'ebene') {
+      inhalt.add(this.scene.add.rectangle(7, 5, w - 14, h - 70, PANEL_BG, 0.94).setOrigin(0));
+      this.buildEbeneTab(inhalt, w, h - 62);
+    } else if (this.hauptTab === 'aufgaben') {
+      inhalt.add(this.scene.add.rectangle(7, 5, w - 14, h - 70, PANEL_BG, 0.94).setOrigin(0));
+      this.buildTasksTab(inhalt, w, h - 62);
+    } else {
+      inhalt.add(this.scene.add.rectangle(7, 5, w - 14, h - 70, PANEL_BG, 0.94).setOrigin(0));
+      const quelle = this.hauptTab === 'album' ? this.getAlbumZeilen
+        : this.hauptTab === 'kontakte' ? this.getKontakteZeilen
+        : this.getStatistikZeilen;
+      const zeilen = quelle?.() ?? [['Keine Daten.', '#6a5f4c']];
+      let zy = 8;
+      for (const [text, col] of zeilen) {
+        if (text) inhalt.add(this.scene.add.text(18, zy, text, { fontFamily: 'serif', fontSize: '13px', color: col }));
+        zy += 19;
+        if (zy > h - 76) break;
+      }
+    }
+    // Phaser-Falle: Kinder des Unter-Containers brauchen die Hitbox-Korrektur
+    // SELBST, sonst tote Knöpfe bei gescrollter Kamera
+    fixUiScroll(inhalt);
+    const closeBtn = this.scene.add.text(w * (1635 / 1672), h * (36 / 941), 'X', {
+      fontFamily: 'serif', fontSize: `${Math.max(11, Math.round(w * 17 / 1672))}px`, color: '#d6bea0',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    closeBtn.on('pointerdown', () => this.closeAll());
+    c.add(closeBtn);
+    fixUiScroll(c);
+  }
+
+  // --- linke Seite: Charakter ------------------------------------------------
+
+  // HEER-Tab (R87, Autorauftrag "RTS-Hybrid"): Doktrin des Banners um 1300,
+  // Moral-Regeln und der Umschalter in den RTS-Modus (Schlachtfeld-Steuerung).
+  private buildHeerTab(c: Phaser.GameObjects.Container, w: number, _h: number): void {
+    const TYP_NAMEN_HEER: Record<string, string> = { schild: 'Schildträger', nahkampf: 'Gewappneter', bogen: 'Bogenschütze', heiler: 'Feldscher', reiter: 'Ritter' };
+    c.add(this.scene.add.text(16, 6, 'DAS BANNER - Aufgebot um 1300', { fontFamily: 'serif', fontSize: '15px', color: GOLD, letterSpacing: 2 }));
+    c.add(this.scene.add.text(16, 28, 'Ein Banneret führt Gleven, Fußvolk und Schützen unter seiner Standarte.\nSie ist Sammelpunkt und Moral-Anker - fällt das Banner, bricht der Haufen.', { fontFamily: 'serif', fontSize: '11px', color: '#9a8a6a', lineSpacing: 3 }));
+    let y = 84;
+    // R141 (Dok 03, 2.1): DEIN HEER - das persistente Roster (benannte Leute,
+    // Permadeath). Erst die eigenen Maenner, dann die Doktrin-Tabelle.
+    const armee = this.onGetArmee?.();
+    if (armee) {
+      this.zierLinie(c, 12, y - 6, w - 24, `DEIN HEER (${armee.einheiten.length} Mann)`);
+      if (!armee.einheiten.length) {
+        c.add(this.scene.add.text(20, y, 'Noch niemand unter deinem Banner - Einheiten entstehen im RTS-Modus (TEST-Tab) und bleiben dir erhalten.', { fontFamily: 'serif', fontSize: '11px', color: '#8a7a5a', fontStyle: 'italic', wordWrap: { width: w - 40 } }));
+        y += 30;
+      }
+      for (const e of armee.einheiten.slice(0, 10)) {
+        const rang = Math.min(3, Math.floor(e.kills / 3));
+        c.add(this.scene.add.text(20, y, `${e.name}${rang ? ' ' + '▲'.repeat(rang) : ''}`, { fontFamily: 'serif', fontSize: '12px', color: rang ? GOLD : '#e8dcc0' }));
+        c.add(this.scene.add.text(w * 0.42, y, `${TYP_NAMEN_HEER[e.typ] ?? e.typ} · ${Math.round(e.hp)} LP · ${e.kills} Gegner`, { fontFamily: 'serif', fontSize: '11px', color: BONE }));
+        y += 20;
+      }
+      if (armee.einheiten.length > 10) { c.add(this.scene.add.text(20, y, `... und ${armee.einheiten.length - 10} weitere`, { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a' })); y += 18; }
+      if (armee.gefallene.length) {
+        c.add(this.scene.add.text(20, y, `Gefallen: ${armee.gefallene.slice(-4).join(' · ')}${armee.gefallene.length > 4 ? ' ...' : ''}`, { fontFamily: 'serif', fontSize: '10px', color: '#a06a5a', fontStyle: 'italic', wordWrap: { width: w - 40 } }));
+        y += 22;
+      }
+      y += 10;
+    }
+    this.zierLinie(c, 12, y - 6, w - 24, 'EINHEITEN');
+    for (const e of RTS_EINHEITEN) {
+      c.add(this.scene.add.text(20, y, e.name, { fontFamily: 'serif', fontSize: '12px', color: '#e8dcc0' }));
+      c.add(this.scene.add.text(w * 0.34, y, `${e.hp} LP · ${e.dmg} Schaden`, { fontFamily: 'serif', fontSize: '11px', color: BONE }));
+      c.add(this.scene.add.text(w * 0.56, y + 1, e.beschreibung, { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a', wordWrap: { width: w * 0.42 } }));
+      y += 26;
+    }
+    y += 10;
+    this.zierLinie(c, 12, y - 6, w - 24, 'MORAL & RANG');
+    c.add(this.scene.add.text(20, y, `Grundmut ${MORAL.basis} · Standarte +${MORAL.standarteBonus} · Banneret bei der Truppe +${MORAL.anfuehrerNahBonus} · Flucht unter ${MORAL.fluchtUnter}`, { fontFamily: 'serif', fontSize: '11px', color: BONE }));
+    c.add(this.scene.add.text(20, y + 18, `Einheiten steigen im Rang (je ${RTS_RANG.killsProRang} Gegner): +${Math.round(RTS_RANG.dmgJeRang * 100)}% Schaden, +${Math.round(RTS_RANG.hpJeRang * 100)}% Leben je Rang. Ausrüstung kommt indirekt über die Fürsten-Kiste.`, { fontFamily: 'serif', fontSize: '11px', color: BONE, wordWrap: { width: w - 40 } }));
+    y += 56;
+    const btn = this.scene.add.text(20, y, '⚔  RTS-MODUS: SCHLACHTFELD-STEUERUNG', { fontFamily: 'serif', fontSize: '13px', color: '#9ad86a', backgroundColor: '#221808', padding: { x: 10, y: 6 } }).setInteractive({ useHandCursor: true });
+    btn.on('pointerdown', () => { this.onRtsModus?.(); });
+    c.add(btn);
+    c.add(this.scene.add.text(20, y + 32, 'Frei-Kamera, Formations- und Bau-Leiste. Die großen Feldschlachten (500 gegen 500) folgen auf eigenen Karten - die Schlacht-Probe im Hauptmenü ist die Blaupause.', { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a', wordWrap: { width: w - 40 } }));
+  }
+
+  // Zier-Element (R87, Autor "klassisch RPG, hübsch"): Doppelrahmen mit
+  // goldenen Eck-Nieten - für Portrait, Ausrüstungs-Slots und Sektionen.
+  private zierRahmen(c: Phaser.GameObjects.Container, bx: number, by: number, bw: number, bh: number, aktiv = false): void {
+    c.add(this.scene.add.rectangle(bx, by, bw, bh, 0x000000, 0).setOrigin(0).setStrokeStyle(1, 0x1a130a));
+    c.add(this.scene.add.rectangle(bx + 1, by + 1, bw - 2, bh - 2, 0x000000, 0).setOrigin(0).setStrokeStyle(1, aktiv ? 0xc9a227 : 0x6a5636));
+    for (const [ex, ey] of [[bx, by], [bx + bw - 3, by], [bx, by + bh - 3], [bx + bw - 3, by + bh - 3]] as const) {
+      c.add(this.scene.add.rectangle(ex, ey, 3, 3, aktiv ? 0xc9a227 : 0x8a6f3c).setOrigin(0));
+    }
+  }
+
+  // Trennlinie mit Mittel-Ornament (◆)
+  private zierLinie(c: Phaser.GameObjects.Container, x: number, y: number, breite: number, titel?: string, aufPergament = false): void {
+    if (this.hauptTab === 'held' && this.scene.textures.exists(UI_CHARACTER_SHELL)) {
+      if (titel) c.add(this.scene.add.text(x + breite / 2, y - 13 * this.panelScale, titel, {
+        fontFamily: 'serif', fontSize: `${Math.max(8, Math.round(13 * this.panelScale))}px`,
+        color: INK_SOFT, letterSpacing: Math.max(1, Math.round(2 * this.panelScale)),
+      }).setOrigin(0.5, 0));
+      return;
+    }
+    c.add(this.scene.add.rectangle(x, y, breite, 1, aufPergament ? 0x806746 : 0x4a3a26).setOrigin(0));
+    c.add(this.scene.add.text(x + breite / 2, y - 5, '◆', { fontFamily: 'serif', fontSize: '9px', color: aufPergament ? INK_SOFT : '#8a6f3c' }).setOrigin(0.5, 0));
+    // R195 (Autor: "zu weit gesperrt und zu klein - wirkt duenn"): groesser,
+    // weniger Sperrung, kraeftigere Tinte auf Pergament.
+    if (titel) c.add(this.scene.add.text(x + 2, y - 17, titel, { fontFamily: 'serif', fontSize: '14px', color: aufPergament ? INK_TITEL : GOLD, letterSpacing: 1 }));
+  }
+
+  // R140 (Autor: "das Bild des Spielers ist verzerrt"): setCrop + setDisplaySize
+  // arbeiten GEGENEINANDER - DisplaySize misst den VOLLEN Frame, der Crop zeigt
+  // nur einen Ausschnitt; das Portraet wirkte gestaucht und sass daneben.
+  // Stattdessen: Skala aus dem CROP-Ausschnitt rechnen, Ausschnitt zentrieren.
+  private passePortraitEin(img: Phaser.GameObjects.Image, cx: number, cy: number, zielW: number, zielH: number): void {
+    const cropX = 80, cropY = 48, cropW = 864, cropH = 1160;
+    img.setCrop(cropX, cropY, cropW, cropH);
+    const sk = Math.min(zielW / cropW, zielH / cropH);
+    img.setScale(sk);
+    const dx = (cropX + cropW / 2 - img.width / 2) * sk;
+    const dy = (cropY + cropH / 2 - img.height / 2) * sk;
+    img.setPosition(cx - dx, cy - dy);
+  }
+
+  private buildCharacterSideShell(c: Phaser.GameObjects.Container, w: number): void {
+    const p = this.getPlayer();
+    const s = this.panelScale;
+    this.charScale = s;   // BAUKASTEN: Editor rechnet Quell<->Schirm mit dieser Skala
+    const y = (sourceY: number): number => (sourceY - 79) * s;
+    // R195 (Autor: "fast saemtliche Schriften sind zu klein"): EIN Faktor auf
+    // alle Texte des Fensters, im Baukasten verstellbar. Mindestgroesse mit
+    // hoch, damit auch die kleinsten Angaben lesbar bleiben.
+    const tf = charSchrift();
+    const textSize = (sourcePx: number, min = 8): string => `${Math.max(Math.round(min * tf), Math.round(sourcePx * s * tf))}px`;
+    // R199: hat der Autor diesem Element im Baukasten eine EIGENE Schriftgroesse
+    // gegeben, gilt die - sonst die Vorgabe des Elements.
+    const schriftVon = (id: string, vorgabe: number, min = 8): string =>
+      textSize(charBox(id).schrift ?? vorgabe, min);
+
+    // BAUKASTEN: jedes Element liest seine Quell-Box aus charBox(id) (Vorgabe +
+    // Editor-Override). charEditBoxen sammelt die Schirm-Rechtecke fuer den
+    // Editor - R217: die Liste wird in build() geleert, damit auch Rucksack und
+    // Vergleichs-Spalte ihre Elemente dazulegen koennen.
+    const merke = (id: string, cx: number, cy: number, ww: number, hh: number): void => {
+      this.merkeEditBox(id, cx, cy, ww, hh);
+    };
+    const bA = charBox('ausruestung');
+    c.add(this.scene.add.text(bA.x * s, y(bA.y), 'AUSRÜSTUNG', {
+      fontFamily: 'serif', fontSize: schriftVon('ausruestung', 14), color: INK_TITEL, letterSpacing: Math.max(1, Math.round(2 * s)),
+    }).setOrigin(0.5, 0));
+    merke('ausruestung', bA.x * s, y(bA.y) + 8 * s, 90 * s, 18 * s);
+
+    const bP = charBox('portrait');
+    const portraitKey = this.scene.textures.exists(UI_ALDRIC)
+      ? UI_ALDRIC
+      : this.provider.heldPortraitKey(heldTier(p.armorIt ? p.armorIt.val : null));
+    const portrait = this.scene.add.image(bP.x * s, y(bP.y), portraitKey);
+    if (portraitKey === UI_ALDRIC) this.passePortraitEin(portrait, bP.x * s, y(bP.y), (bP.w ?? 175) * s, (bP.h ?? 226) * s);
+    else portrait.setScale(((bP.w ?? 172) * s) / Math.max(portrait.width, portrait.height));
+    c.add(portrait);
+    merke('portrait', bP.x * s, y(bP.y), (bP.w ?? 175) * s, (bP.h ?? 226) * s);
+
+    const bStufe = charBox('stufe'), bName = charBox('name');
+    c.add(this.scene.add.text(bStufe.x * s, y(bStufe.y), `STUFE ${p.level}`, {
+      fontFamily: 'serif', fontSize: schriftVon('stufe', 14), color: '#e2cfaa', letterSpacing: 1,
+    }).setOrigin(0.5, 0));
+    merke('stufe', bStufe.x * s, y(bStufe.y) + 9 * s, 90 * s, 18 * s);
+    c.add(this.scene.add.text(bName.x * s, y(bName.y), 'Aldric von Weiden', {
+      fontFamily: 'serif', fontSize: schriftVon('name', 12), color: '#d7c9ae',
+    }).setOrigin(0.5, 0));
+    merke('name', bName.x * s, y(bName.y) + 8 * s, 120 * s, 16 * s);
+
+    const slot = (
+      it: Item | null,
+      id: string,
+      label: string,
+      aktiv = false,
+      inaktiv = false,
+    ): void => {
+      const box = charBox(id);
+      const bx = box.x * s, by = y(box.y), bw = (box.w ?? 60) * s, bh = (box.h ?? 71) * s;
+      merke(id, bx + bw / 2, by + bh / 2, bw, bh);
+      const hit = this.scene.add.rectangle(bx, by, bw, bh, 0xffffff, 0).setOrigin(0);
+      if (aktiv) hit.setStrokeStyle(Math.max(1, Math.round(2 * s)), 0xb88936, 0.9);
+      c.add(hit);
+      if (!it) {
+        c.add(this.scene.add.text(bx + bw / 2, by + bh / 2, label, {
+          fontFamily: 'serif', fontSize: schriftVon(id, 11, 9), color: INK_ZWEIT,
+        }).setOrigin(0.5));
+        return;
+      }
+      const icon = this.scene.add.image(bx + bw / 2, by + bh / 2, this.provider.itemIcon(it));
+      // R-Fix (Autor "das soll mittig sein?"): das quadratische Icon schwamm klein
+      // und diagonal in den HOHEN Slots (Waffe/Schild 57x150) -> las sich als "nicht
+      // zentriert". Jetzt fuellt es den KUERZEREN Kasten-Rand deutlich (0,92) statt
+      // sich an der langen Seite kleinzurechnen; Origin 0.5 haelt es exakt mittig.
+      const grund = Math.min(bw, bh) * 0.92;
+      icon.setScale(Math.min(grund / icon.width, grund / icon.height, (bh * 0.82) / icon.height));
+      if (inaktiv) icon.setAlpha(0.34);
+      c.add(icon);
+      hit.setInteractive({ useHandCursor: true });
+      hit.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showTooltip(it, ptr));
+      hit.on('pointerout', () => this.hideTooltip());
+      hit.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
+        if (ptr.rightButtonDown()) this.clickItem(it, true);
+        else {
+          this.selectedItem = it;
+          this.compareItem = null;
+          this.hideTooltip();
+          this.build();
+          this.sfx.play('klick');
+        }
+      });
+    };
+
+    slot(p.weapon, 's_waffe', 'Waffe', !p.bogenAktiv);
+    slot(null, 's_kopf', 'Kopf');
+    slot(p.armorIt, 's_ruestung', 'Rüstung');
+    slot(p.schildIt, 's_schild', 'Schild', false, !!p.bogenAktiv && !!p.schildIt);
+    slot(p.bogen, 's_bogen', 'Bogen', !!p.bogenAktiv);
+    slot(null, 's_stiefel', 'Stiefel');
+    slot(p.ring, 's_ring', 'Ring');
+
+    // Abschnitts-Ueberschrift: Position aus dem Baukasten, kraeftige Tinte
+    // (der Autor las die alten hellen Titel kaum) und weniger Sperrung.
+    const sectionTitle = (id: string, title: string): void => {
+      const b = charBox(id);
+      c.add(this.scene.add.text(b.x * s, y(b.y), title, {
+        fontFamily: 'serif', fontSize: schriftVon(id, 14), color: INK_TITEL,
+        letterSpacing: Math.max(1, Math.round(1.5 * s)),
+      }).setOrigin(0.5, 0));
+      merke(id, b.x * s, y(b.y) + 9 * s, 120 * s, 18 * s);
+    };
+    // R217 (Autor: "die Schrift einzelner Texte getrennt vergroessern"): jede
+    // Tabelle hat ihre EIGENE Schriftgroesse (Schrift-Knopf am gewaehlten Block).
+    const pair = (label: string, value: string, sourceX: number, sourceY: number, valueX: number, id = ''): void => {
+      const gr = id ? schriftVon(id, 12) : textSize(12);
+      c.add(this.scene.add.text(sourceX * s, y(sourceY), label, { fontFamily: 'serif', fontSize: gr, color: INK }));
+      c.add(this.scene.add.text(valueX * s, y(sourceY), value, { fontFamily: 'serif', fontSize: gr, color: INK }).setOrigin(1, 0));
+    };
+
+    const dmgMin = Math.max(1, Math.round(p.stats.dmg * 0.85));
+    const dmgMax = Math.max(dmgMin, Math.round(p.stats.dmg * 1.2));
+    sectionTitle('werte', 'WERTE');
+    const werte: Array<[string, string]> = [
+      ['Schaden', `${dmgMin}-${dmgMax}`], ['Rüstung', String(p.stats.armor)],
+      ['Trefferpunkte', `${Math.ceil(p.hp)}/${p.stats.maxhp}`], ['Mana', `${Math.ceil(p.mana)}/${p.stats.maxmana}`],
+      ['Lebensraub', String(p.stats.leech)], ['Lichtradius', `+${p.stats.licht}`],
+    ];
+    // BLOCK statt fester Zahlen: x/y = Ecke, w = Spaltenabstand, h = Zeilenhoehe.
+    // Beide Spalten nutzen denselben Wert-Versatz - die Zahlen stehen damit
+    // sauber untereinander (Autorwunsch "feste Spalten, Werte rechtsbuendig").
+    const bWB = charBox('werteBlock');
+    const spalteW = bWB.w ?? 231, zeileW = bWB.h ?? 32;
+    werte.forEach(([label, value], index) => {
+      const sx = bWB.x + (index % 2) * spalteW;
+      pair(label, value, sx, bWB.y + Math.floor(index / 2) * zeileW, sx + spalteW - 26, 'werteBlock');
+    });
+    merke('werteBlock', (bWB.x + spalteW) * s, y(bWB.y + zeileW), (spalteW * 2 - 26) * s, (zeileW * 3) * s);
+
+    sectionTitle('widerstaende', 'WIDERSTÄNDE');
+    const res = p.resist ?? { feuer: 0, frost: 0, schatten: 0, seuche: 0 };
+    const bWid = charBox('widerstaendeBlock');
+    const widSpalte = bWid.w ?? 158;
+    ([['Feuer', res.feuer, 0xb64a28], ['Kälte', res.frost, 0x477b98], ['Schatten', res.schatten, 0x654f7e]] as Array<[string, number, number]>).forEach(([label, value, color], index) => {
+      const left = (bWid.x + index * widSpalte) * s;
+      c.add(this.scene.add.circle(left, y(bWid.y + 13), Math.max(3, 6 * s), color));
+      c.add(this.scene.add.text(left + 13 * s, y(bWid.y), label, { fontFamily: 'serif', fontSize: schriftVon('widerstaendeBlock', 12), color: INK }));
+      c.add(this.scene.add.text(left + (widSpalte - 30) * s, y(bWid.y), `${value}%`, { fontFamily: 'serif', fontSize: schriftVon('widerstaendeBlock', 12), color: INK }).setOrigin(1, 0));
+    });
+    merke('widerstaendeBlock', (bWid.x + widSpalte) * s, y(bWid.y + 8), (widSpalte * 3 - 30) * s, 26 * s);
+
+    sectionTitle('vorrat', 'VORRAT');
+    const m = p.materials;
+    const vorrat: Array<[string, string, number]> = [
+      ['Gold', String(p.gold), 0xe0b53a], ['Flaschen', `${p.flaskCount}/${p.flaskMax}`, 0xd8402a],
+      ['Holz', String(m.holz), 0x8a6434], ['Stein', String(m.stein), 0x8a8e96],
+      ['Eisen', String(m.eisen), 0xb8bcc4], ['Kräuter', String(m.kraeuter), 0x4a8a3a],
+      ['Kohle', String(m.kohle), 0x2a2a30], ['Fasern', String(m.fasern ?? 0), 0x9aa06a],
+      ['Verbände', String(p.verbaende ?? 0), 0xd8cfb8],
+    ];
+    const bV = charBox('vorratBlock');
+    const vSpalte = bV.w ?? 231, vZeile = bV.h ?? 21;
+    vorrat.forEach(([label, value, color], index) => {
+      const sx = bV.x + (index % 2) * vSpalte;
+      const sy = bV.y + Math.floor(index / 2) * vZeile;
+      c.add(this.scene.add.circle((sx + 4) * s, y(sy + 8), Math.max(2, 5 * s), color));
+      pair(label, value, sx + 15, sy, sx + vSpalte - 26, 'vorratBlock');
+    });
+    merke('vorratBlock', (bV.x + vSpalte) * s, y(bV.y + vZeile * 2), (vSpalte * 2 - 26) * s, (vZeile * 5) * s);
+
+    sectionTitle('kraeuter', 'KRÄUTERBEUTEL');
+    const pflanzen = PFLANZEN.filter((pf) => (m[pf.id as MaterialId] ?? 0) > 0).slice(0, 8);
+    if (!pflanzen.length) {
+      c.add(this.scene.add.text(w / 2, y(821), 'Noch keine Kräuter gesammelt', {
+        fontFamily: 'serif', fontSize: textSize(12), color: INK_ZWEIT, fontStyle: 'italic',
+      }).setOrigin(0.5));
+    } else {
+      const bK = charBox('kraeuterBlock');
+      const kAbstand = bK.w ?? 59;
+      pflanzen.forEach((pf, index) => {
+        const cx = (bK.x + index * kAbstand) * s;
+        c.add(this.scene.add.text(cx, y(bK.y), '✦', {
+          fontFamily: 'serif', fontSize: textSize(24, 12), color: pf.palette.bluete,
+        }).setOrigin(0.5));
+        // Menge auf dunklem Feld (Autor: "Zahlen kleben unten rechts und sind winzig")
+        const zx = cx + 15 * s, zy = y(bK.y + (bK.h ?? 19));
+        c.add(this.scene.add.rectangle(zx, zy, 26 * s, 15 * s, 0x1a130a, 0.75).setOrigin(1, 0).setStrokeStyle(1, 0x5a4a2e, 0.8));
+        c.add(this.scene.add.text(zx - 4 * s, zy + 1 * s, String(m[pf.id as MaterialId] ?? 0), {
+          fontFamily: 'serif', fontSize: schriftVon('kraeuterBlock', 11, 9), color: '#f0e2c2',
+        }).setOrigin(1, 0));
+      });
+      merke('kraeuterBlock', (bK.x + kAbstand * (pflanzen.length - 1) / 2) * s, y(bK.y + 8), Math.max(40, kAbstand * pflanzen.length) * s, 44 * s);
+    }
+    // R217: der Editor wird zentral in build() gezeichnet - NACH allen Spalten.
+  }
+
+  // Layout-Baukasten fuers Charakterfenster (Autor "ich moechte die Groessen
+  // selber anpassen und dir die Werte schicken"): kleiner "Layout"-Knopf; ist er
+  // an, umrahmt er jedes Element (Klick = auswaehlen) und zeigt eine Fussleiste
+  // mit -/+ fuer X/Y/Breite/Hoehe, Export (Werte fuers Uebernehmen) und Reset.
+  private zeichneCharEditor(c: Phaser.GameObjects.Container): void {
+    const s = this.charScale;
+    const knopf = (bx: number, by: number, bw: number, bh: number, txt: string, an: boolean, fn: () => void): void => {
+      const r = this.scene.add.rectangle(bx, by, bw, bh, an ? 0x5a3a12 : 0x1a130a, 0.95).setOrigin(0).setStrokeStyle(1, an ? 0xc9a227 : 0x5a4a2e);
+      r.setInteractive({ useHandCursor: true }).on('pointerdown', fn);
+      c.add(r);
+      c.add(this.scene.add.text(bx + bw / 2, by + bh / 2, txt, { fontFamily: 'serif', fontSize: `${Math.max(9, Math.round(11 * s))}px`, color: an ? '#f0d878' : '#b9a98b' }).setOrigin(0.5));
+    };
+    // R195 (Autor: "dieser kleine schwarze Kasten ist ein Debug-Element und
+    // stoert die Ueberschrift - muss in der finalen Oberflaeche komplett weg"):
+    // der Knopf erscheint nur noch, wenn der Baukasten im Entwicklungskasten
+    // (F10 -> ANZEIGE) eingeschaltet ist. Im normalen Spiel ist er unsichtbar.
+    if (!TUNING.layoutBaukasten) { this.charEditor = false; return; }
+    // Umschalt-Knopf, oben rechts im Shell-Bereich (nicht ueber dem Titel).
+    knopf(430 * s, -4 * s, 96 * s, 20 * s, this.charEditor ? '✏ Layout AN' : '✏ Layout', this.charEditor, () => {
+      this.charEditor = !this.charEditor;
+      if (!this.charEditor) this.charSel = null;
+      this.build();
+    });
+    if (!this.charEditor) return;
+
+    // R199 (Autor: "gib mir die Moeglichkeit dort ALLES zu verschieben nach
+    // Belieben MIT DER MAUS und dann fixieren"): jedes Element laesst sich
+    // anfassen und ziehen. Festgenagelte Elemente (Schloss) bleiben liegen.
+    //
+    // PHASER-FALLE (Risiko-Checkliste 4): NIEMALS die lokalen dragX/dragY auf
+    // die Container-Position addieren - das schaukelt sich auf. Wir merken uns
+    // die ZEIGER-SCHIRMKOORDINATE beim Anfassen und rechnen mit dem Delta.
+    for (const b of this.charEditBoxen) {
+      const sel = b.id === this.charSel;
+      const fest = charFest(b.id);
+      const rect = this.scene.add.rectangle(b.cx, b.cy, Math.max(10, b.w), Math.max(10, b.h),
+        fest ? 0x808080 : 0xc9a227, sel ? 0.16 : 0.05)
+        .setStrokeStyle(sel ? 2 : 1, fest ? 0x9a9a9a : sel ? 0xffe08a : 0x8a6f3c, 0.9);
+      rect.setInteractive({ useHandCursor: true, draggable: !fest });
+      rect.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
+        this.charSel = b.id;
+        if (fest) { this.build(); return; }
+        const start = charBox(b.id);
+        this.charDrag = { id: b.id, zx: ptr.x, zy: ptr.y, x0: start.x, y0: start.y };
+        this.build();
+      });
+      c.add(rect);
+    }
+    // Ziehen laeuft an der SZENE (nicht am Objekt): so bleibt es auch dann
+    // stabil, wenn der Zeiger die kleine Trefferflaeche verlaesst.
+    if (!this.charDragHaken) {
+      this.charDragHaken = true;
+      this.scene.input.on('pointermove', (ptr: Phaser.Input.Pointer) => {
+        const d = this.charDrag;
+        if (!d || !ptr.isDown) return;
+        const sk = this.charScale || 1;
+        setCharBox(d.id, {
+          x: Math.round((d.x0 + (ptr.x - d.zx) / sk) * 10) / 10,
+          y: Math.round((d.y0 + (ptr.y - d.zy) / sk) * 10) / 10,
+        });
+        this.charZiehTick = true;
+      });
+      this.scene.input.on('pointerup', () => {
+        if (!this.charDrag) return;
+        this.charDrag = null;
+        this.build();
+      });
+    }
+    // Waehrend des Ziehens neu zeichnen (einmal je Bild, nicht je Mausereignis)
+    if (this.charZiehTick && this.charDrag) { this.charZiehTick = false; this.scene.time.delayedCall(16, () => { if (this.charDrag) this.build(); }); }
+
+    // R217 (Autor: "das Fenster mit den Tools kann ich nicht verschieben, das
+    // haengt irgendwo ausserhalb vom Bildschirmrand"): die Werkzeugleiste ist
+    // jetzt ein EIGENES Fenster - eigener Container an der SZENE (nicht im
+    // Charakterfenster), mit Griff verschiebbar, Position gespeichert und beim
+    // Aufbau in den sichtbaren Bereich geklemmt.
+    this.zeichneBaukastenFenster();
+  }
+
+  private baukastenBox: Phaser.GameObjects.Container | null = null;
+
+  /** Werkzeugfenster des Baukastens: eigenes, verschiebbares Fenster (R217). */
+  private zeichneBaukastenFenster(): void {
+    this.baukastenBox?.destroy();
+    this.baukastenBox = null;
+    if (!TUNING.layoutBaukasten || !this.charEditor) return;
+    const sw = this.scene.scale.width, sh = this.scene.scale.height;
+    // Feste, gut lesbare Groesse - unabhaengig von der Fenster-Skala, damit die
+    // Werkzeuge nicht mitschrumpfen (Autor-Kritik: "kann ich kaum treffen").
+    const W = 620, H = 150;
+    const pos = baukastenPos();
+    // KLEMME: immer sichtbar, egal was gespeichert war (auch nach Fenster-
+    // groessen-Wechsel oder wenn es frueher "irgendwo draussen" hing).
+    const px = Math.max(4, Math.min(sw - W - 4, pos.x));
+    const py = Math.max(4, Math.min(sh - H - 4, pos.y));
+    if (px !== pos.x || py !== pos.y) setzeBaukastenPos(px, py);
+    const c = this.scene.add.container(px, py).setScrollFactor(0).setDepth(5300);
+    this.baukastenBox = c;
+    c.add(this.scene.add.rectangle(0, 0, W, H, 0x0d0a06, 0.95).setOrigin(0).setStrokeStyle(1, 0xc9a227, 0.8));
+    // Griff (Kopfzeile) - Regel 11: JEDES Fenster ist verschiebbar.
+    const griff = this.scene.add.rectangle(0, 0, W, 22, 0x2a1e0c, 0.95).setOrigin(0)
+      .setInteractive({ draggable: true, useHandCursor: true });
+    c.add(griff);
+    const sel = this.charSel ? charBox(this.charSel) : null;
+    const titel = this.charSel ? (CHAR_LAYOUT_LABEL[this.charSel] ?? this.charSel) : 'Element anklicken zum Auswählen';
+    c.add(this.scene.add.text(8, 4, `⇕ Layout-Baukasten - ${titel}`, {
+      fontFamily: 'serif', fontSize: '13px', color: '#e2cfaa',
+    }));
+    let zeiger: { x: number; y: number } | null = null;
+    let start = { x: 0, y: 0 };
+    griff.on('dragstart', (p: Phaser.Input.Pointer) => { zeiger = { x: p.x, y: p.y }; start = { x: c.x, y: c.y }; });
+    griff.on('drag', (p: Phaser.Input.Pointer) => {
+      if (!zeiger) return;
+      c.x = Math.max(4, Math.min(sw - W - 4, start.x + (p.x - zeiger.x)));
+      c.y = Math.max(4, Math.min(sh - H - 4, start.y + (p.y - zeiger.y)));
+    });
+    griff.on('dragend', () => { zeiger = null; setzeBaukastenPos(c.x, c.y); });
+
+    const knopf = (bx: number, by: number, bw: number, bh: number, txt: string, an: boolean, fn: () => void): void => {
+      const r = this.scene.add.rectangle(bx, by, bw, bh, an ? 0x5a3a12 : 0x1a130a, 0.95).setOrigin(0).setStrokeStyle(1, an ? 0xc9a227 : 0x5a4a2e);
+      r.setInteractive({ useHandCursor: true }).on('pointerdown', fn);
+      c.add(r);
+      c.add(this.scene.add.text(bx + bw / 2, by + bh / 2, txt, { fontFamily: 'serif', fontSize: '12px', color: an ? '#f0d878' : '#b9a98b' }).setOrigin(0.5));
+    };
+    const versatz = this.charSel ? CHAR_LAYOUT_VERSATZ.has(this.charSel) : false;
+    c.add(this.scene.add.text(8, 24, versatz
+      ? 'X/Y sind VERSÄTZE (0 = wie gebaut) · Element anklicken und ziehen · "Bericht kopieren" legt alles in die Zwischenablage'
+      : 'Element ANKLICKEN und ZIEHEN · Schloss nagelt es fest · "Bericht kopieren" legt alle Werte in die Zwischenablage', {
+      fontFamily: 'serif', fontSize: '10px', color: '#9a8a6a',
+    }));
+    // Spalten: X, Y, Breite, Höhe, Schrift - jede mit −10/−1/+1/+10.
+    const nudge = (feld: keyof CharBox, label: string, spalte: number, hat: boolean): void => {
+      const bx = 8 + spalte * 122, by = 42;
+      const wert = sel && sel[feld] !== undefined ? String(Math.round((sel[feld] as number) * 10) / 10) : '-';
+      c.add(this.scene.add.text(bx, by, `${label}: ${wert}`, { fontFamily: 'serif', fontSize: '12px', color: hat ? '#d8cfb8' : '#6a5f4c' }));
+      if (!this.charSel || !hat) return;
+      const setzen = (d: number): void => {
+        const cur = charBox(this.charSel!);
+        const alt = (cur[feld] as number | undefined) ?? 0;
+        setCharBox(this.charSel!, { [feld]: Math.round((alt + d) * 10) / 10 } as Partial<CharBox>);
+        this.build();
+      };
+      knopf(bx, by + 18, 26, 20, '−', false, () => setzen(-1));
+      knopf(bx + 29, by + 18, 26, 20, '+', false, () => setzen(1));
+      knopf(bx + 58, by + 18, 28, 20, '−10', false, () => setzen(-10));
+      knopf(bx + 89, by + 18, 28, 20, '+10', false, () => setzen(10));
+    };
+    nudge('x', 'X', 0, !!this.charSel);
+    nudge('y', 'Y', 1, !!this.charSel);
+    nudge('w', 'Breite', 2, !!sel && sel.w !== undefined);
+    nudge('h', 'Höhe', 3, !!sel && sel.h !== undefined);
+    // R199/R217: Schriftgroesse DIESES Elements - fuer JEDES auswaehlbare
+    // Element, auch wenn es noch keine eigene Groesse hat (dann ab Vorgabe).
+    if (this.charSel) {
+      const bx3 = 8 + 4 * 122, by3 = 42;
+      c.add(this.scene.add.text(bx3, by3, `Schrift: ${sel?.schrift !== undefined ? sel.schrift : 'Vorgabe'}`, {
+        fontFamily: 'serif', fontSize: '12px', color: '#d8cfb8',
+      }));
+      const setzeSchrift = (d: number): void => {
+        const cur = charBox(this.charSel!);
+        const basis = cur.schrift ?? 12;
+        setCharBox(this.charSel!, { schrift: Math.max(6, Math.min(48, Math.round((basis + d) * 10) / 10)) });
+        this.build();
+      };
+      knopf(bx3, by3 + 18, 26, 20, '−', false, () => setzeSchrift(-1));
+      knopf(bx3 + 29, by3 + 18, 26, 20, '+', false, () => setzeSchrift(1));
+      knopf(bx3 + 58, by3 + 18, 59, 20, charFest(this.charSel) ? '🔒 fest' : '🔓 frei', charFest(this.charSel), () => {
+        setCharFest(this.charSel!, !charFest(this.charSel!));
+        this.build();
+      });
+    }
+    // Untere Reihe: Gesamt-Schrift, Export, Zuruecksetzen, Schliessen.
+    const uy = 96;
+    c.add(this.scene.add.text(8, uy + 4, `Alle Schriften: ${Math.round(charSchrift() * 100)}%`, { fontFamily: 'serif', fontSize: '12px', color: '#d8cfb8' }));
+    knopf(140, uy, 26, 20, '−', false, () => { setzeCharSchrift(charSchrift() - 0.05); this.build(); });
+    knopf(169, uy, 26, 20, '+', false, () => { setzeCharSchrift(charSchrift() + 0.05); this.build(); });
+    knopf(206, uy, 150, 20, '📋 Bericht kopieren', false, () => {
+      const txt = exportCharLayout();
+      console.log('[CHAR-LAYOUT]\n' + txt);
+      const feld = document.createElement('textarea');
+      feld.value = txt;
+      feld.style.cssText = 'position:fixed;left:-9999px;top:0;';
+      document.body.appendChild(feld);
+      feld.select();
+      const kopiert = document.execCommand('copy');
+      feld.remove();
+      if (!kopiert) window.prompt('Diese Werte kopieren und mir schicken:', txt);
+      this.onCharLayoutExport?.(txt);
+    });
+    knopf(366, uy, 110, 20, 'Zurücksetzen', false, () => { resetCharLayout(); this.charSel = null; this.build(); });
+    knopf(486, uy, 126, 20, '✖ Baukasten zu', false, () => { this.charEditor = false; this.charSel = null; this.build(); });
+  }
+
+  // Optionaler Haken: die Szene kann den Export-Text auch ins Log-Fenster spiegeln.
+  onCharLayoutExport?: (text: string) => void;
+
+  private buildCharacterSide(c: Phaser.GameObjects.Container, w: number, _h: number): void {
+    if (this.scene.textures.exists(UI_CHARACTER_SHELL)) {
+      this.buildCharacterSideShell(c, w);
+      return;
+    }
+    const p = this.getPlayer();
+    c.add(this.scene.add.text(w / 2, 9, 'AUSRUESTUNG', { fontFamily: 'serif', fontSize: '12px', color: INK_SOFT, letterSpacing: 2 }).setOrigin(0.5, 0));
+    c.add(this.scene.add.rectangle(14, 30, 104, 140, 0x17130f).setOrigin(0));
+    const ptKey = this.scene.textures.exists(UI_ALDRIC)
+      ? UI_ALDRIC
+      : this.provider.heldPortraitKey(heldTier(p.armorIt ? p.armorIt.val : null));
+    const img = this.scene.add.image(66, 100, ptKey);
+    if (ptKey === UI_ALDRIC) {
+      this.passePortraitEin(img, 66, 100, 100, 136);   // R140: unverzerrt einpassen
+    } else {
+      img.setScale(96 / Math.max(img.width, img.height));
+    }
+    c.add(img);
+    this.zierRahmen(c, 12, 28, 108, 144, true);
+    c.add(this.scene.add.rectangle(12, 172, 108, 19, 0x2d2118).setOrigin(0).setStrokeStyle(1, 0x6a5636));
+    c.add(this.scene.add.text(66, 174, `STUFE ${p.level}`, { fontFamily: 'serif', fontSize: '11px', color: '#e2cfaa', letterSpacing: 1 }).setOrigin(0.5, 0));
+    c.add(this.scene.add.text(66, 194, 'Aldric von Weiden', { fontFamily: 'serif', fontSize: '10px', color: INK_SOFT }).setOrigin(0.5, 0));
+
+    const rarCol = (it: Item) => Phaser.Display.Color.HexStringToColor(RARITY_COLORS[(it.rarity ?? 0) as Rarity]).color;
+    const slotBoxMit = (it: Item | null, bx: number, by: number, bw: number, bh: number, aktiv: boolean, inaktiv: boolean, leerLabel?: string) => {
+      const box = this.scene.add.rectangle(bx, by, bw, bh, it ? 0x140e07 : 0x0c0805).setOrigin(0);
+      c.add(box);
+      if (it) {
+        // Seltenheits-Schimmer hinter dem Icon (R87: man soll sich freuen)
+        const glow = this.scene.add.circle(bx + bw / 2, by + bh / 2, Math.min(bw, bh) * 0.42, rarCol(it), 0.16);
+        c.add(glow);
+        const ic = this.scene.add.image(bx + bw / 2, by + bh / 2, this.provider.itemIcon(it)).setScale(0.56);
+        if (inaktiv) { ic.setAlpha(0.32); glow.setAlpha(0.05); }
+        c.add(ic);
+        box.setInteractive({ useHandCursor: true });
+        box.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showTooltip(it, ptr));
+        box.on('pointerout', () => this.hideTooltip());
+        box.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
+          if (ptr.rightButtonDown()) this.clickItem(it, true);
+          else {
+            this.selectedItem = it;
+            this.compareItem = null;
+            this.hideTooltip();
+            this.build();
+            this.sfx.play('klick');
+          }
+        });
+      } else if (leerLabel) {
+        c.add(this.scene.add.text(bx + bw / 2, by + bh / 2, leerLabel, { fontFamily: 'serif', fontSize: '9px', color: '#4a3f30' }).setOrigin(0.5));
+      }
+      this.zierRahmen(c, bx, by, bw, bh, aktiv);
+      return box;
+    };
+
+    // Waffe und Bogen NEBENEINANDER (Runde 41, Autorwunsch): der Bogen steht
+    // rechts neben der Hauptwaffe, per ALT umschaltbar; gefuehrte Waffe gold.
+    slotBoxMit(p.weapon, 130, 30, 38, 38, !p.bogenAktiv, false, 'Waffe');
+    slotBoxMit(p.bogen, 174, 30, 38, 38, !!p.bogen && p.bogenAktiv, false, 'Bogen');
+    c.add(this.scene.add.text(149, 70, 'Waffe', { fontFamily: 'serif', fontSize: '9px', color: !p.bogenAktiv ? '#765420' : INK_SOFT }).setOrigin(0.5, 0));
+    c.add(this.scene.add.text(193, 70, 'Bogen', { fontFamily: 'serif', fontSize: '9px', color: p.bogenAktiv ? '#765420' : INK_SOFT }).setOrigin(0.5, 0));
+    const akt = p.bogenAktiv && p.bogen ? p.bogen : p.weapon;
+    if (w >= 330) {
+      c.add(this.scene.add.text(220, 31, akt ? akt.name : '-', { fontFamily: 'serif', fontSize: '11px', color: akt ? RARITY_INK[(akt.rarity ?? 0) as Rarity] : INK_SOFT, wordWrap: { width: w - 226 } }));
+      c.add(this.scene.add.text(220, 50, p.bogen ? 'ALT: Waffe / Bogen' : 'Zweiter Platz: Bogen', { fontFamily: 'serif', fontSize: '9px', color: INK_SOFT }));
+    }
+
+    // Restliche Ausrüstung als volle Reihen darunter
+    const rest: Array<{ label: string; it: Item | null; inaktiv?: boolean }> = [
+      { label: 'Rüstung', it: p.armorIt },
+      { label: 'Ring', it: p.ring },
+      { label: 'Schild', it: p.schildIt, inaktiv: p.bogenAktiv && !!p.schildIt },
+    ];
+    let sy = 84;
+    const SH = 34, SP = 37;
+    for (const { label, it, inaktiv } of rest) {
+      slotBoxMit(it, 130, sy, 38, SH, false, !!inaktiv, label);
+      if (it) {
+        const zusatz = inaktiv ? '  (inaktiv)' : '';
+        c.add(this.scene.add.text(176, sy + 9, it.name + zusatz, { fontFamily: 'serif', fontSize: '11px', color: inaktiv ? INK_SOFT : RARITY_INK[(it.rarity ?? 0) as Rarity], wordWrap: { width: w - 182 } }));
+      } else {
+        c.add(this.scene.add.text(176, sy + 9, `${label}: -`, { fontFamily: 'serif', fontSize: '11px', color: INK_SOFT }));
+      }
+      sy += SP;
+    }
+
+    // WERTE: zwei saubere Spalten Label/Wert (Runde 38), Zierlinie (R87)
+    let wy = 226;
+    this.zierLinie(c, 12, wy - 6, w - 24, 'WERTE', true);
+    c.add(this.scene.add.rectangle(12, wy - 4, w - 24, 78, 0xf1e3c4, 0.18).setOrigin(0).setStrokeStyle(1, 0x8a6f4c, 0.65));
+    // Schaden als Spanne (Runde 40): ein Treffer würfelt zwischen min und max
+    const dmgMin = Math.max(1, Math.round(p.stats.dmg * 0.85));
+    const dmgMax = Math.max(dmgMin, Math.round(p.stats.dmg * 1.2));
+    const werte: Array<[string, string]> = [
+      ['Schaden', `${dmgMin}-${dmgMax}`], ['Rüstung', String(p.stats.armor)],
+      ['Trefferpunkte', `${Math.ceil(p.hp)}/${p.stats.maxhp}`], ['Mana', `${Math.ceil(p.mana)}/${p.stats.maxmana}`],
+      ['Lebensraub', String(p.stats.leech)], ['Lichtradius', `+${p.stats.licht}`],
+    ];
+    const spalte = (w - 24) / 2;
+    werte.forEach(([k, v], i) => {
+      const x = 20 + (i % 2) * spalte, y = wy + 4 + ((i / 2) | 0) * 23;
+      c.add(this.scene.add.text(x, y, k, { fontFamily: 'serif', fontSize: '11px', color: INK }));
+      c.add(this.scene.add.text(x + spalte - 14, y, v, { fontFamily: 'serif', fontSize: '11px', color: INK }).setOrigin(1, 0));
+    });
+
+    // RESISTENZEN (R87, Autorwunsch): Feuer / Frost / Schatten - die Werte
+    // kommen später aus Ringen, Rüstungen und Buffs (Monster ziehen nach).
+    let ry = wy + 88;
+    this.zierLinie(c, 12, ry - 6, w - 24, 'RESISTENZEN', true);
+    c.add(this.scene.add.rectangle(12, ry - 4, w - 24, 26, 0xf1e3c4, 0.18).setOrigin(0).setStrokeStyle(1, 0x8a6f4c, 0.65));
+    const res = p.resist ?? { feuer: 0, frost: 0, schatten: 0, seuche: 0 };
+    const resDrittel = (w - 24) / 3;
+    ([['Feuer', res.feuer, 0xb64a28], ['Kälte', res.frost, 0x477b98], ['Schatten', res.schatten, 0x654f7e]] as Array<[string, number, number]>).forEach(([k, v, col], i) => {
+      const x = 18 + i * resDrittel;
+      c.add(this.scene.add.circle(x + 3, ry + 8, 4, col));
+      c.add(this.scene.add.text(x + 11, ry + 1, `${k}`, { fontFamily: 'serif', fontSize: '10px', color: INK }));
+      c.add(this.scene.add.text(x + resDrittel - 12, ry + 1, `${v}%`, { fontFamily: 'serif', fontSize: '10px', color: INK }).setOrigin(1, 0));
+    });
+
+    // VORRAT: Gold/Flaschen + Rohstoffe als klare Reihen mit Farbpunkten
+    const m = p.materials;
+    let vy = ry + 42;
+    this.zierLinie(c, 12, vy - 6, w - 24, 'VORRAT', true);
+    c.add(this.scene.add.rectangle(12, vy - 4, w - 24, 120, 0xf1e3c4, 0.18).setOrigin(0).setStrokeStyle(1, 0x8a6f4c, 0.65));
+    const vorrat: Array<[string, string, number]> = [
+      ['Gold', String(p.gold), 0xe0b53a], ['Flaschen', `${p.flaskCount}/${p.flaskMax}`, 0xd8402a],
+      ['Holz', String(m.holz), 0x8a6434], ['Stein', String(m.stein), 0x8a8e96],
+      ['Eisen', String(m.eisen), 0xb8bcc4], ['Kräuter', String(m.kraeuter), 0x4a8a3a],
+      ['Kohle', String(m.kohle), 0x2a2a30], ['Fasern', String(m.fasern ?? 0), 0x9aa06a],
+      ['Verbände', String(p.verbaende ?? 0), 0xd8cfb8],
+    ];
+    vorrat.forEach(([k, v, col], i) => {
+      const x = 20 + (i % 2) * spalte, y = vy + 4 + ((i / 2) | 0) * 23;
+      c.add(this.scene.add.circle(x + 4, y + 8, 4, col));
+      c.add(this.scene.add.text(x + 14, y, k, { fontFamily: 'serif', fontSize: '11px', color: INK }));
+      c.add(this.scene.add.text(x + spalte - 14, y, v, { fontFamily: 'serif', fontSize: '11px', color: INK }).setOrigin(1, 0));
+    });
+    // KRÄUTER-BEUTEL (R89): gesammelte Heilpflanzen - nur was man dabei hat.
+    const pflanzen = PFLANZEN.filter((pf) => (m[pf.id as MaterialId] ?? 0) > 0);
+    let ky = vy + 4 + Math.ceil(vorrat.length / 2) * 23 + 12;
+    this.zierLinie(c, 12, ky - 6, w - 24, 'KRÄUTERBEUTEL', true);
+    if (!pflanzen.length) {
+      c.add(this.scene.add.text(20, ky + 2, 'Noch keine Kräuter gesammelt - Blumen und Kräuter mit dem Schwert schneiden.', { fontFamily: 'serif', fontSize: '10px', color: '#6a5f4c', wordWrap: { width: w - 40 } }));
+    } else {
+      pflanzen.forEach((pf, i) => {
+        const x = 20 + (i % 2) * spalte, y = ky + 4 + ((i / 2) | 0) * 20;
+        c.add(this.scene.add.circle(x + 4, y + 7, 4, Phaser.Display.Color.HexStringToColor(pf.palette.bluete).color));
+        c.add(this.scene.add.text(x + 14, y, pf.name, { fontFamily: 'serif', fontSize: '10px', color: INK }));
+        c.add(this.scene.add.text(x + spalte - 14, y, String(m[pf.id as MaterialId] ?? 0), { fontFamily: 'serif', fontSize: '10px', color: INK }).setOrigin(1, 0));
+      });
+    }
+  }
+
+  // --- Karten-Tab (Runde 51): das Fürstentum als Übersicht, Nebel des Krieges -
+  // Runde 74 (Autorwunsch): Klick auf eine Minimap öffnet sie als GROSSANSICHT
+  // in voller Kachel-Auflösung (Begutachten ohne Durchlaufen); Klick = zurück.
+  private buildMapTab(c: Phaser.GameObjects.Container, w: number, h: number): void {
+    c.add(this.scene.add.text(16, 6, 'KARTE - Das Fürstentum von Rabenmoor', { fontFamily: 'serif', fontSize: '15px', color: GOLD, letterSpacing: 2 }));
+    const info = this.getKarte?.();
+    if (!info || !info.gebiete.length) { c.add(this.scene.add.text(16, 56, 'Keine Kartendaten.', { fontFamily: 'serif', fontSize: '12px', color: '#6a5f4c' })); return; }
+    // R152 (Autor "keine Live-Karte"): Held/Truppen/NPC-Punkte in eine Karte malen.
+    const maleLive = (g2: Phaser.GameObjects.Graphics, karte: string, x0: number, y0: number, wPx: number, hPx: number): void => {
+      for (const p of info.punkte ?? []) {
+        if (p.karte !== karte) continue;
+        const px2 = x0 + p.u * wPx, py2 = y0 + p.v * hPx;
+        if (p.art === 'held') { g2.fillStyle(0xe03a2a, 1); g2.fillCircle(px2, py2, 3.4); g2.lineStyle(1, 0xffffff, 0.9); g2.strokeCircle(px2, py2, 4.6); }
+        else if (p.art === 'truppe') { g2.fillStyle(0x5aa8e8, 1); g2.fillCircle(px2, py2, 2.2); }
+        else { g2.fillStyle(0xe8c84a, 1); g2.fillCircle(px2, py2, 1.7); }
+      }
+    };
+    // GROSSANSICHT eines Gebiets (karteGross gesetzt und noch sichtbar)
+    const grossGeb = this.karteGross ? info.gebiete.find((g) => g.id === this.karteGross && g.sichtbar) : undefined;
+    if (grossGeb && this.getGebietGross) {
+      const th = this.getGebietGross(grossGeb.id);
+      c.add(this.scene.add.text(16, 26, `${grossGeb.name} - Klick auf die Karte führt zurück zur Übersicht.`, { fontFamily: 'serif', fontSize: '11.5px', color: '#8a7a5a' }));
+      const top = 48, availW = w - 32, availH = h - top - 10;
+      const cell = Math.max(1, Math.min(availW / th.w, availH / th.h));
+      const tx0 = 16 + (availW - th.w * cell) / 2, ty0 = top + (availH - th.h * cell) / 2;
+      const g = this.scene.add.graphics();
+      c.add(g);
+      for (let yy = 0; yy < th.h; yy++) {
+        for (let xx = 0; xx < th.w; xx++) {
+          g.fillStyle(th.farben[yy][xx], 1);
+          g.fillRect(Math.round(tx0 + xx * cell), Math.round(ty0 + yy * cell), Math.ceil(cell), Math.ceil(cell));
+        }
+      }
+      g.lineStyle(1, 0x6e5a36, 1); g.strokeRect(tx0, ty0, th.w * cell, th.h * cell);
+      maleLive(g, grossGeb.id, tx0, ty0, th.w * cell, th.h * cell);   // R152: Live-Marker
+      const hit = this.scene.add.rectangle(tx0, ty0, th.w * cell, th.h * cell, 0xffffff, 0).setOrigin(0).setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', () => { this.karteGross = null; this.build(); });
+      c.add(hit);
+      return;
+    }
+    this.karteGross = null;   // Gebiet nicht (mehr) sichtbar -> zurück zum Raster
+    const armee = this.onGetArmee?.();
+    const garnison = (id: string): number => armee ? armee.einheiten.filter((e) => e.ort === id && !armee.maersche.some((mm) => mm.ids.includes(e.id))).length : 0;
+    const unterwegs = (id: string): number => armee ? armee.maersche.filter((mm) => mm.route[mm.beiKarte] === id).reduce((n, mm) => n + mm.ids.length, 0) : 0;
+    c.add(this.scene.add.text(16, 26, this.truppenQuelle
+      ? `TRUPPEN VERLEGEN: ${this.truppenQuelle} → Ziel-Karte anklicken (Klick auf ⚔ bricht ab).`
+      : 'KLICK vergrößert. ⚔ = Truppen verlegen, ⚑ = Marsch. Live: ● rot = Held, ● blau = Truppen, ● gelb = Bewohner.', { fontFamily: 'serif', fontSize: '11.5px', color: this.truppenQuelle ? '#e8b45a' : '#8a7a5a', wordWrap: { width: w - 200 } }));
+    // Mengen-Wahl, solange eine Quelle gewaehlt ist
+    if (this.truppenQuelle) {
+      let mx = 16;
+      for (const [lbl, n] of [['Alle', 99], ['Hälfte', -2], ['5 Mann', 5]] as Array<[string, number]>) {
+        const an = this.truppenMenge === n;
+        const kn = this.scene.add.text(mx, 44, lbl, { fontFamily: 'serif', fontSize: '11px', color: an ? '#f0d060' : '#d8cfb8', backgroundColor: an ? '#3a2a10' : '#221808', padding: { x: 7, y: 3 } }).setInteractive({ useHandCursor: true });
+        kn.on('pointerdown', () => { this.truppenMenge = n; this.build(); this.sfx.play('klick'); });
+        c.add(kn); mx += kn.width + 8;
+      }
+    }
+    // Dev-Aufdeck-Knopf (in der finalen Version entfernbar)
+    const dev = this.scene.add.text(w - 16, 6, info.aufgedeckt ? 'AUFDECKEN: AN (Dev)' : 'ALLES AUFDECKEN (Dev)', {
+      fontFamily: 'serif', fontSize: '11px', color: info.aufgedeckt ? '#9ad86a' : '#d0a0a0', backgroundColor: '#1c1408', padding: { x: 8, y: 4 },
+    }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
+    dev.on('pointerdown', () => { this.toggleKarteDev?.(); this.build(); });
+    c.add(dev);
+
+    const maxGx = Math.max(...info.gebiete.map((g) => g.gx)), maxGy = Math.max(...info.gebiete.map((g) => g.gy));
+    const cols = maxGx + 1, rows = maxGy + 1, gap = 14, top = 52, leftPad = 16;
+    const availW = w - leftPad * 2, availH = h - top - 12;
+    const boxW = Math.floor((availW - (cols - 1) * gap) / cols);
+    const boxH = Math.floor(Math.min(boxW * 0.72, (availH - (rows - 1) * gap) / rows));
+    const g = this.scene.add.graphics();
+    c.add(g);
+    for (const geb of info.gebiete) {
+      const bx = leftPad + geb.gx * (boxW + gap), by = top + geb.gy * (boxH + gap);
+      if (geb.sichtbar && geb.thumb) {
+        const th = geb.thumb;
+        const cell = Math.max(1, Math.min(boxW / th.w, (boxH - 16) / th.h));
+        const tx0 = bx + (boxW - th.w * cell) / 2, ty0 = by + (boxH - 16 - th.h * cell) / 2;
+        for (let yy = 0; yy < th.h; yy++) {
+          for (let xx = 0; xx < th.w; xx++) {
+            g.fillStyle(th.farben[yy][xx], 1);
+            g.fillRect(Math.round(tx0 + xx * cell), Math.round(ty0 + yy * cell), Math.ceil(cell), Math.ceil(cell));
+          }
+        }
+        // F1 (Feldzug): die Gebietslage faerbt den Rahmen und stempelt den
+        // Status - besetzt rot, umkaempft orange, frei wie gehabt.
+        const lageFarbe = geb.lage === 'besetzt' ? 0xc03828 : geb.lage === 'umkaempft' ? 0xe08a28 : 0x6e5a36;
+        if (geb.lage === 'besetzt') { g.fillStyle(0xc03828, 0.16); g.fillRect(bx, by, boxW, boxH); }
+        g.lineStyle(geb.lage && geb.lage !== 'frei' ? 3 : 1, lageFarbe, 1); g.strokeRect(bx, by, boxW, boxH);
+        maleLive(g, geb.id, tx0, ty0, th.w * cell, th.h * cell);   // R152: Live-Marker
+        if (geb.lage === 'besetzt') {
+          c.add(this.scene.add.text(bx + boxW / 2, by + 4, '☠ BESETZT', { fontFamily: 'serif', fontSize: '11px', color: '#f0a090', backgroundColor: '#3a120ad0', padding: { x: 5, y: 2 }, stroke: '#000', strokeThickness: 2 }).setOrigin(0.5, 0));
+        } else if (geb.lage === 'umkaempft') {
+          c.add(this.scene.add.text(bx + boxW / 2, by + 4, '⚔ UMKÄMPFT', { fontFamily: 'serif', fontSize: '11px', color: '#f0d090', backgroundColor: '#3a2a0ad0', padding: { x: 5, y: 2 }, stroke: '#000', strokeThickness: 2 }).setOrigin(0.5, 0));
+        }
+        c.add(this.scene.add.text(bx + boxW / 2, by + boxH - 14, geb.name, { fontFamily: 'serif', fontSize: '12px', color: '#e8dcc0', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5, 0));
+        // Klick -> Großansicht; laeuft eine Truppen-Verlegung, ist der Klick
+        // stattdessen das ZIEL (R142).
+        const hit = this.scene.add.rectangle(bx, by, boxW, boxH, 0xffffff, 0).setOrigin(0).setInteractive({ useHandCursor: true });
+        hit.on('pointerdown', () => {
+          if (this.truppenQuelle && this.truppenQuelle !== geb.id) {
+            const vorhanden = garnison(this.truppenQuelle);
+            const n = this.truppenMenge === -2 ? Math.max(1, Math.floor(vorhanden / 2)) : Math.min(this.truppenMenge, vorhanden);
+            this.onSendeTruppen?.(this.truppenQuelle, geb.id, n);
+            this.truppenQuelle = null;
+            this.sfx.play('klick');
+            this.build();
+            return;
+          }
+          this.karteGross = geb.id; this.build();
+        });
+        c.add(hit);
+        // R142: Truppen-Badges. ⚔N = Garnison (klickbar: Quelle waehlen/abwaehlen),
+        // ⚑N = Trupp zieht gerade ueber diese Karte.
+        const gz = garnison(geb.id);
+        if (gz > 0) {
+          const quelleAktiv = this.truppenQuelle === geb.id;
+          const badge = this.scene.add.text(bx + 4, by + 3, `⚔ ${gz}`, { fontFamily: 'serif', fontSize: '12px', color: quelleAktiv ? '#f0d060' : '#e8dcc0', backgroundColor: quelleAktiv ? '#5a3a10' : '#22180ad0', padding: { x: 5, y: 2 }, stroke: '#000', strokeThickness: 2 }).setInteractive({ useHandCursor: true });
+          badge.on('pointerdown', () => { this.truppenQuelle = quelleAktiv ? null : geb.id; this.truppenMenge = 99; this.sfx.play('klick'); this.build(); });
+          c.add(badge);
+        }
+        const uz = unterwegs(geb.id);
+        if (uz > 0) c.add(this.scene.add.text(bx + boxW - 4, by + 3, `⚑ ${uz}`, { fontFamily: 'serif', fontSize: '12px', color: '#9ad86a', backgroundColor: '#16220ed0', padding: { x: 5, y: 2 }, stroke: '#000', strokeThickness: 2 }).setOrigin(1, 0));
+      } else {
+        g.fillStyle(0x000000, 1); g.fillRect(bx, by, boxW, boxH);
+        g.lineStyle(1, 0x2a2218, 1); g.strokeRect(bx, by, boxW, boxH);
+        c.add(this.scene.add.text(bx + boxW / 2, by + boxH / 2 - 14, '?', { fontFamily: 'serif', fontSize: '26px', color: '#3a3228' }).setOrigin(0.5));
+        c.add(this.scene.add.text(bx + boxW / 2, by + boxH - 14, 'unerforscht', { fontFamily: 'serif', fontSize: '11px', color: '#5a5246' }).setOrigin(0.5, 0));
+      }
+    }
+  }
+
+  // --- Fähigkeiten-Tab (Runde 38): die drei Schulen, je in Klassenfarbe ------
+  // Runde 52 (Autorwunsch "wie bei WoW"): die Fähigkeiten erscheinen als VOLLE
+  // Aktionsknöpfe (3D-Optik wie in der Leiste), nach Stufe von links nach rechts
+  // sortiert - und lassen sich von hier direkt in die Aktionsleiste ZIEHEN.
+  private buildSkillsTab(c: Phaser.GameObjects.Container, w: number, _h: number): void {
+    const p = this.getPlayer();
+    c.add(this.scene.add.text(16, 6, 'FERTIGKEITEN', { fontFamily: 'serif', fontSize: '15px', color: GOLD, letterSpacing: 2 }));
+    c.add(this.scene.add.text(16, 26, 'Nach Stufe geordnet. Freigeschaltete Knöpfe lassen sich auf die Aktionsleiste ziehen.', { fontFamily: 'serif', fontSize: '11.5px', color: '#8a7a5a' }));
+    // Alle Vektorgrafik (Kacheln + Knöpfe) auf EINER Graphics-Ebene, die zuerst
+    // in den Container kommt - so liegen Symbole/Texte/Ziehflächen darüber.
+    const g = this.scene.add.graphics();
+    c.add(g);
+    // Klassenfarben (Autorwunsch Runde 51): Krieger BLAU, Magier ROT, Bogen GRÜN.
+    const schools: Array<['nahkampf' | 'zauberei' | 'bogen', string, string, number]> = [
+      ['nahkampf', 'Krieger - Nahkampf', '⚔', 0x5a86e0],
+      ['zauberei', 'Zauberer - Zauberei', '✦', 0xd0563a],
+      ['bogen', 'Bogenschütze - Bogen', '➶', 0x5ac06a],
+    ];
+    const BTN = 38, GAP = 10, NAME_W = 104, CELL_W = BTN + 6 + NAME_W + GAP, CELL_H = 46;
+    const startX = 24, areaW = w - 36;
+    const perRow = Math.max(1, Math.floor(areaW / CELL_W));
+    let y = 54;
+    for (const [id, label, ico, col] of schools) {
+      const st = p.schools[id];
+      const nextAt = st.level >= SCHOOLS.maxLevel ? null : SCHOOLS.usesPerLevel[st.level + 1];
+      const prevAt = SCHOOLS.usesPerLevel[st.level] ?? 0;
+      const frac = nextAt === null ? 1 : Phaser.Math.Clamp((st.uses - prevAt) / (nextAt - prevAt), 0, 1);
+      const colHex = `#${col.toString(16).padStart(6, '0')}`;
+      // Fähigkeiten der Schule. Zauberei zeigt zusätzlich die drei Zauber.
+      const eintraege: Array<{ id: string; name: string; unlock: number }> = (
+        id === 'zauberei'
+          ? [...SPELLS.map((s) => ({ id: s.id, name: s.name, unlock: s.unlock })),
+             ...ABILITIES.filter((a2) => a2.school === id).map((a2) => ({ id: a2.id, name: a2.name, unlock: a2.unlock }))]
+          : ABILITIES.filter((a2) => a2.school === id).map((a2) => ({ id: a2.id, name: a2.name, unlock: a2.unlock }))
+      ).sort((a2, b2) => a2.unlock - b2.unlock); // nach Stufe sortiert (links = früh)
+      const reihen = Math.max(1, Math.ceil(eintraege.length / perRow));
+      const kachelH = 50 + reihen * CELL_H + 8;
+      // Klassen-Kachel (in g gezeichnet)
+      g.fillStyle(0x0e0a06, 0.7); g.fillRoundedRect(14, y, w - 28, kachelH, 6);
+      g.lineStyle(1, col, 1); g.strokeRoundedRect(14, y, w - 28, kachelH, 6);
+      g.fillStyle(0x140f08, 1); g.fillCircle(40, y + 28, 17);
+      g.lineStyle(2, col, 1); g.strokeCircle(40, y + 28, 17);
+      c.add(this.scene.add.text(40, y + 28, ico, { fontFamily: 'serif', fontSize: '20px', color: colHex }).setOrigin(0.5));
+      c.add(this.scene.add.text(68, y + 12, label, { fontFamily: 'serif', fontSize: '14px', color: '#e8dcc0', letterSpacing: 1 }));
+      c.add(this.scene.add.text(w - 42, y + 12, `Stufe ${st.level}`, { fontFamily: 'serif', fontSize: '14px', color: colHex }).setOrigin(1, 0));
+      // Fortschrittsbalken
+      g.fillStyle(0x080604, 1); g.fillRect(68, y + 36, w - 120, 8);
+      g.lineStyle(1, LINE, 1); g.strokeRect(68, y + 36, w - 120, 8);
+      g.fillStyle(col, 1); g.fillRect(69, y + 37, (w - 122) * frac, 6);
+      c.add(this.scene.add.text(w - 42, y + 33, nextAt === null ? 'Meister' : `${st.uses}/${nextAt}`, { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a' }).setOrigin(1, 0));
+      // Volle Aktionsknöpfe, von links nach rechts nach Stufe (Runde 52)
+      const ay0 = y + 50;
+      eintraege.forEach((e, i) => {
+        const frei = st.level >= e.unlock;
+        const sym = SKILL_ICONS[e.id] ?? '•';
+        const bx = startX + (i % perRow) * CELL_W;
+        const by = ay0 + Math.floor(i / perRow) * CELL_H;
+        this.zeichneSkillKnopf(g, bx, by, BTN, col, !frei);
+        c.add(this.scene.add.text(bx + BTN / 2, by + BTN / 2, sym, { fontFamily: 'serif', fontSize: '20px', color: frei ? colHex : '#5a5246' }).setOrigin(0.5).setAlpha(frei ? 1 : 0.5));
+        // Stufen-Plakette unten rechts am Knopf
+        c.add(this.scene.add.text(bx + BTN - 2, by + BTN - 1, `${e.unlock}`, { fontFamily: 'serif', fontSize: '10px', color: frei ? '#f0dca0' : '#6a5f4c', stroke: '#000', strokeThickness: 3 }).setOrigin(1));
+        // Name daneben
+        c.add(this.scene.add.text(bx + BTN + 6, by + BTN / 2, e.name, { fontFamily: 'serif', fontSize: '11px', color: frei ? '#e8dcc0' : '#6a5f4c', wordWrap: { width: NAME_W } }).setOrigin(0, 0.5));
+        // Zelle als interaktive Fläche: Tooltip + (wenn frei) ziehbar in die Leiste
+        const hit = this.scene.add.rectangle(bx, by, CELL_W - GAP, BTN, 0xffffff, 0).setOrigin(0).setInteractive({ useHandCursor: frei });
+        hit.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showTextTooltip(`${sym} ${e.name} - ab ${label} Stufe ${e.unlock}`, skillBeschreibung(e.id) + (frei ? '\n\nAuf die Aktionsleiste ziehen, um sie zu belegen.' : ''), ptr));
+        hit.on('pointerout', () => this.hideTooltip());
+        if (frei && this.onAssignToSlot) this.macheSkillZiehbar(hit, e.id, sym, colHex);
+        c.add(hit);
+      });
+      y += kachelH + 12;
+    }
+  }
+
+  // Voller Aktionsknopf im Fähigkeiten-Baum (Runde 52): 3D-Optik wie die
+  // Aktionsleiste. locked = noch nicht freigeschaltet -> matt.
+  private zeichneSkillKnopf(g: Phaser.GameObjects.Graphics, x: number, y: number, size: number, col: number, locked: boolean): void {
+    const r = 5;
+    g.fillStyle(0x000000, 0.4); g.fillRoundedRect(x + 1, y + 2, size, size, r);
+    g.fillStyle(locked ? 0x120d08 : 0x1b140c, 0.98); g.fillRoundedRect(x, y, size, size, r);
+    if (!locked) {
+      g.fillStyle(col, 0.14); g.fillRoundedRect(x + 2, y + 2, size - 4, size - 4, r - 2);
+      g.fillStyle(0xffffff, 0.08); g.fillRoundedRect(x + 3, y + 3, size - 6, size * 0.4, r - 3);
+    }
+    g.lineStyle(2, locked ? 0x2a2218 : 0x6e5a36, locked ? 0.7 : 0.9);
+    g.lineBetween(x + 3, y + 2, x + size - 4, y + 2); g.lineBetween(x + 2, y + 3, x + 2, y + size - 4);
+    g.lineStyle(2, 0x000000, 0.55);
+    g.lineBetween(x + 3, y + size - 2, x + size - 3, y + size - 2); g.lineBetween(x + size - 2, y + 3, x + size - 2, y + size - 3);
+    g.lineStyle(locked ? 1 : 2, locked ? 0x3a3228 : col, 1); g.strokeRoundedRect(x, y, size, size, r);
+  }
+
+  // Einen Fähigkeitsknopf auf die Aktionsleiste ziehbar machen (Runde 52):
+  // beim Loslassen über einem Slot wird die Fähigkeit dort belegt (onAssignToSlot
+  // -> Hud.belegeBeiPunkt, akzeptiert alle belegbaren Aktions-IDs).
+  private macheSkillZiehbar(hit: Phaser.GameObjects.Rectangle, aktionId: string, glyph: string, colHex: string): void {
+    this.scene.input.setDraggable(hit);
+    hit.on('dragstart', (ptr: Phaser.Input.Pointer) => {
+      if (ptr.rightButtonDown()) return;
+      this.hideTooltip();
+      this.dragGhost?.destroy();
+      this.dragGhost = this.scene.add.text(ptr.x, ptr.y, glyph, {
+        fontFamily: 'serif', fontSize: '24px', color: colHex, stroke: '#000000', strokeThickness: 3,
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(6200);
+    });
+    hit.on('drag', (ptr: Phaser.Input.Pointer) => this.dragGhost?.setPosition(ptr.x, ptr.y));
+    hit.on('dragend', (ptr: Phaser.Input.Pointer) => {
+      this.dragGhost?.destroy();
+      this.dragGhost = null;
+      if (this.onAssignToSlot?.(ptr.x, ptr.y, aktionId)) this.sfx.play('klick');
+    });
+  }
+
+  // --- Ebenen-Karte (Runde 53, Autorwunsch): die aufgedeckte Karte der
+  // AKTUELLEN Ebene, wie oben rechts, samt Treppen (hinab/hinauf), als Reiter.
+  private buildEbeneTab(c: Phaser.GameObjects.Container, w: number, h: number): void {
+    c.add(this.scene.add.text(16, 6, 'KARTE DIESER EBENE', { fontFamily: 'serif', fontSize: '15px', color: GOLD, letterSpacing: 2 }));
+    const k = this.getEbeneKarte?.();
+    if (!k) {
+      c.add(this.scene.add.text(18, 40, 'Hier oben ist keine Ebenen-Karte - sie erscheint in den Krypten/Minen, sobald du sie erkundest.', { fontFamily: 'serif', fontSize: '12.5px', color: '#8a7a5a', wordWrap: { width: w - 36 } }));
+      return;
+    }
+    c.add(this.scene.add.text(w - 16, 10, k.name, { fontFamily: 'serif', fontSize: '12px', color: '#b0a384' }).setOrigin(1, 0));
+    // Legende
+    const legende: Array<[number, string]> = [[0x4a4236, 'Erkundet'], [0xc9a227, '▼ Treppe hinab'], [0x8a9ab8, '▲ Treppe hinauf'], [0xe04a3a, 'Du']];
+    let lx = 16;
+    for (const [col, txt] of legende) {
+      c.add(this.scene.add.rectangle(lx, 30, 10, 10, col).setOrigin(0, 0.5));
+      const t = this.scene.add.text(lx + 14, 30, txt, { fontFamily: 'serif', fontSize: '11px', color: '#c8b890' }).setOrigin(0, 0.5);
+      c.add(t);
+      lx += 14 + t.width + 16;
+    }
+    // Karte einpassen
+    const padT = 46, padB = 8;
+    const z = Math.max(2, Math.floor(Math.min((w - 32) / k.w, (h - padT - padB) / k.h)));
+    const ox = Math.floor((w - k.w * z) / 2);
+    const oy = padT + Math.floor((h - padT - padB - k.h * z) / 2);
+    const g = this.scene.add.graphics();
+    g.fillStyle(0x070605, 0.8); g.fillRect(ox - 4, oy - 4, k.w * z + 8, k.h * z + 8);
+    g.lineStyle(1, 0x3a2f24, 1); g.strokeRect(ox - 4, oy - 4, k.w * z + 8, k.h * z + 8);
+    const treppen: Array<[number, number, number]> = [];
+    for (const [tx, ty, art] of k.zellen) {
+      if (art === 0) { g.fillStyle(0x4a4236, 1); g.fillRect(ox + tx * z, oy + ty * z, z, z); }
+      else treppen.push([tx, ty, art]);
+    }
+    // Treppen zuletzt + hervorgehoben, damit sie auffallen
+    for (const [tx, ty, art] of treppen) {
+      g.fillStyle(art === 1 ? 0xc9a227 : 0x8a9ab8, 1);
+      g.fillRect(ox + tx * z - 1, oy + ty * z - 1, z + 2, z + 2);
+    }
+    c.add(g);
+    // Treppen-Pfeile (bei genug Platz)
+    if (z >= 6) for (const [tx, ty, art] of treppen) {
+      c.add(this.scene.add.text(ox + tx * z + z / 2, oy + ty * z + z / 2, art === 1 ? '▼' : '▲', {
+        fontFamily: 'serif', fontSize: `${Math.min(14, z + 2)}px`, color: '#1a1206',
+      }).setOrigin(0.5));
+    }
+    if (k.spieler) {
+      g.fillStyle(0xe04a3a, 1);
+      g.fillRect(ox + k.spieler[0] * z - 1, oy + k.spieler[1] * z - 1, z + 2, z + 2);
+    }
+  }
+
+  // --- Quest-Logbuch (Runde 52, Autorwunsch "hübsch, RPG/WoW-ähnlich") -------
+  // Karten je Quest mit Kategorie-Akzent, Zielen (Häkchen), Belohnung und einem
+  // VERFOLGEN-Schalter, der die Quest auf den Hauptbildschirm (Quest-Verfolger)
+  // legt. Aktive Quests zuerst, abgeschlossene gedämpft darunter.
+  private readonly KAT_FARBE_HEX: Record<string, number> = { haupt: 0xe8c84a, neben: 0x9ab4cc, ereignis: 0xd96b5a };
+  private readonly KAT_LABEL: Record<string, string> = { haupt: 'HAUPTQUEST', neben: 'NEBENQUEST', ereignis: 'EREIGNIS' };
+
+  private buildTasksTab(c: Phaser.GameObjects.Container, w: number, h: number): void {
+    c.add(this.scene.add.text(16, 6, 'QUESTLOGBUCH', { fontFamily: 'serif', fontSize: '15px', color: GOLD, letterSpacing: 2 }));
+    c.add(this.scene.add.text(w - 16, 10, 'Verfolgte Quest erscheint auf dem Hauptbildschirm', { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a' }).setOrigin(1, 0));
+    const log = this.getQuestLog?.() ?? [];
+    const verfolgt = this.getVerfolgtId?.() ?? null;
+    // Alle Vektorgrafik (Karten) auf EINER Ebene zuerst, Texte/Knöpfe darüber.
+    const g = this.scene.add.graphics();
+    c.add(g);
+    const cardX = 14, cardW = w - 28;
+    let y = 34;
+    if (!log.length) {
+      c.add(this.scene.add.text(20, 44, 'Noch keine Aufgaben offen.', { fontFamily: 'serif', fontSize: '13px', color: '#8a7a5a' }));
+    }
+    for (const s of log) {
+      if (y > h - 40) break;
+      const aktiv = s.status === 'aktiv';
+      const katFarbe = this.KAT_FARBE_HEX[s.def.kategorie] ?? 0xc9a227;
+      const katHex = `#${katFarbe.toString(16).padStart(6, '0')}`;
+      const istVerfolgt = aktiv && verfolgt === s.def.id;
+      const innerX = cardX + 14;
+      const innerW = cardW - 26;
+      let yy = y + 8;
+      // Kopf: Kategorie + Fortschritt
+      c.add(this.scene.add.text(innerX, yy, this.KAT_LABEL[s.def.kategorie] ?? 'QUEST', { fontFamily: 'serif', fontSize: '10px', color: aktiv ? katHex : '#6a5f4c', letterSpacing: 2 }));
+      c.add(this.scene.add.text(cardX + cardW - 12, yy, `${s.fortschritt}/${s.gesamt}`, { fontFamily: 'serif', fontSize: '10px', color: '#8a7a5a' }).setOrigin(1, 0));
+      yy += 15;
+      // Titel
+      const titel = this.scene.add.text(innerX, yy, s.def.titel, { fontFamily: 'serif', fontSize: '15px', color: aktiv ? GOLD : '#8a7d62', wordWrap: { width: innerW - 100 } });
+      c.add(titel);
+      // VERFOLGEN-Schalter (nur aktive Quests)
+      if (aktiv) {
+        const lbl = istVerfolgt ? '✓ VERFOLGT' : 'VERFOLGEN';
+        const btn = this.scene.add.text(cardX + cardW - 12, yy + 1, lbl, {
+          fontFamily: 'serif', fontSize: '11px', letterSpacing: 1,
+          color: istVerfolgt ? '#1a1206' : '#d8cfb8',
+          backgroundColor: istVerfolgt ? katHex : '#221808', padding: { x: 8, y: 3 },
+        }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
+        btn.on('pointerover', () => { if (!istVerfolgt) btn.setBackgroundColor('#3a2e14'); });
+        btn.on('pointerout', () => { if (!istVerfolgt) btn.setBackgroundColor('#221808'); });
+        btn.on('pointerdown', () => {
+          // erneutes Klicken der verfolgten Quest -> zurück auf Automatik
+          setVerfolgtWunsch(istVerfolgt ? '' : s.def.id);
+          this.sfx.play('klick');
+          this.build();
+        });
+        c.add(btn);
+      }
+      yy += titel.height + 4;
+      // Kurzbeschreibung
+      const kurz = this.scene.add.text(innerX, yy, s.def.kurz, { fontFamily: 'serif', fontSize: '11.5px', color: aktiv ? '#b0a384' : '#6a5f4c', fontStyle: 'italic', wordWrap: { width: innerW } });
+      c.add(kurz);
+      yy += kurz.height + 5;
+      // Ziele mit Häkchen
+      s.def.ziele.forEach((z, i) => {
+        const erfuellt = s.zielErfuellt[i];
+        const istAktuell = aktiv && s.aktuellesZiel === z;
+        const farbe = erfuellt ? '#7a9a64' : istAktuell ? '#f0e2b0' : aktiv ? '#c8bda0' : '#6a5f4c';
+        // Häkchen-Kästchen
+        g.lineStyle(1, erfuellt ? 0x7a9a64 : 0x9a8a5a, 1);
+        g.strokeRect(innerX, yy + 3, 8, 8);
+        if (erfuellt) { g.lineStyle(2, 0x7a9a64, 1); g.lineBetween(innerX + 1, yy + 7, innerX + 3, yy + 10); g.lineBetween(innerX + 3, yy + 10, innerX + 8, yy + 2); }
+        const zt = this.scene.add.text(innerX + 16, yy, z.text, { fontFamily: 'serif', fontSize: '12px', color: farbe, fontStyle: istAktuell ? 'bold' : 'normal', wordWrap: { width: innerW - 18 } });
+        c.add(zt);
+        yy += zt.height + 1;
+        if (istAktuell && z.wohin) {
+          const wt = this.scene.add.text(innerX + 16, yy, `→ ${z.wohin}`, { fontFamily: 'serif', fontSize: '11px', color: '#b89a4a', fontStyle: 'italic' });
+          c.add(wt);
+          yy += wt.height + 1;
+        }
+      });
+      // Belohnung
+      if (aktiv && s.def.belohnung) {
+        const bt = this.scene.add.text(innerX, yy + 2, `Belohnung: ${s.def.belohnung}`, { fontFamily: 'serif', fontSize: '11px', color: '#c9a227' });
+        c.add(bt);
+        yy += bt.height + 3;
+      }
+      const cardH = yy - y + 6;
+      // Karte zeichnen (in g, hinter den Texten)
+      g.fillStyle(istVerfolgt ? 0x1a140a : 0x100b06, istVerfolgt ? 0.95 : 0.7);
+      g.fillRoundedRect(cardX, y, cardW, cardH, 6);
+      g.lineStyle(istVerfolgt ? 2 : 1, istVerfolgt ? katFarbe : 0x2f2618, istVerfolgt ? 0.9 : 1);
+      g.strokeRoundedRect(cardX, y, cardW, cardH, 6);
+      g.fillStyle(katFarbe, aktiv ? 0.9 : 0.4);
+      g.fillRoundedRect(cardX, y + 5, 3, cardH - 10, 2);
+      y += cardH + 10;
+    }
+    // Hinweise (Sammeln/Handwerk) als gedämpfter Fußtext (kamen aus dem alten Journal)
+    const tipps = (this.getJournal?.() ?? []).filter((e) => /^\s*—/.test(e)).map((e) => e.replace(/^\s*—\s*/, ''));
+    if (tipps.length && y < h - 30) {
+      c.add(this.scene.add.text(16, y + 2, 'HINWEISE', { fontFamily: 'serif', fontSize: '10px', color: '#6a5f4c', letterSpacing: 2 }));
+      y += 16;
+      for (const t of tipps) {
+        if (y > h - 16) break;
+        const tt = this.scene.add.text(20, y, `· ${t}`, { fontFamily: 'serif', fontSize: '11px', color: '#8a7d62', wordWrap: { width: w - 40 } });
+        c.add(tt);
+        y += tt.height + 3;
+      }
+    }
+  }
+
+  // --- rechte Seite: Inventar mit Blättern -----------------------------------
+
+  private filter: 'alle' | 'weapon' | 'stab' | 'axt' | 'armor' | 'schild' | 'ring' | 'rest' = 'alle';
+
+  private buildInventorySide(c: Phaser.GameObjects.Container, x0: number, w: number, h: number): void {
+    const p = this.getPlayer();
+    const shellAktiv = this.scene.textures.exists(UI_CHARACTER_SHELL);
+    const s = this.panelScale;
+    // R217 (Autor: "unter Rucksack geht gar nichts davon"): Titel, Anzahl,
+    // Filterleiste und Liste sind jetzt Baukasten-Elemente. x/y wirken als
+    // VERSATZ auf die gebaute Position, schrift als eigene Groesse.
+    const tf = charSchrift();
+    const bT = charBox('r_titel'), bZ = charBox('r_zaehler');
+    const spx = (quell: number, min: number): string => `${Math.max(min, Math.round(quell * s * tf))}px`;
+    const tTitel = this.scene.add.text(x0 + 5 + bT.x * s, (10 + bT.y) * s, 'RUCKSACK', {
+      fontFamily: 'serif', fontSize: shellAktiv ? spx(bT.schrift ?? 18, 11) : '17px', color: INK, letterSpacing: 2,
+    });
+    c.add(tTitel);
+    this.merkeEditBox('r_titel', tTitel.x + tTitel.width / 2, tTitel.y + tTitel.height / 2, Math.max(40, tTitel.width), Math.max(16, tTitel.height));
+    const tZaehler = this.scene.add.text(x0 + w + bZ.x * s, (12 + bZ.y) * s, `${p.inv.length} Gegenstände  ·  ${p.gold} Gold`, {
+      fontFamily: 'serif', fontSize: shellAktiv ? spx(bZ.schrift ?? 15, 12) : '13px', color: INK,   // R140: war winzig
+    }).setOrigin(1, 0);
+    c.add(tZaehler);
+    this.merkeEditBox('r_zaehler', tZaehler.x - tZaehler.width / 2, tZaehler.y + tZaehler.height / 2, Math.max(40, tZaehler.width), Math.max(16, tZaehler.height));
+    // Filter-Reiter (Feedback-Runde 2)
+    const tabs: Array<[typeof this.filter, string]> = [
+      ['alle', 'ALLE'], ['weapon', 'WAFFEN'], ['stab', 'ZAUBERSTÄBE'], ['axt', 'ÄXTE'],
+      ['armor', 'RÜSTUNG'], ['schild', 'SCHILDE'], ['ring', 'RINGE'], ['rest', 'SONSTIGES'],
+    ];
+    const bF = charBox('r_filter');
+    let tx2 = x0, ty2 = (shellAktiv ? (144 - 79) : 34) * s + bF.y * s;
+    let tabUmbruch = false;
+    if (shellAktiv) {
+      // R161: die Schale malt die 8 Filter-Reiter bei Design-x 676..1176
+      // (vermessen, helle Pixel-Laeufe bei y=160) - Labels/Hitboxen sitzen
+      // jetzt EXAKT auf den gemalten Reitern statt gleichverteilt daneben.
+      // R199 (vermessen im Schalen-PNG, Trennlinien bei y=158): die Schale malt
+      // NEUN Reiter-Kaesten (617/675/738/801/864/926/989/1052/1112/1177). Der
+      // Code belegte Kasten 2 bis 9 - Kasten 1 blieb LEER (der leere Rahmen
+      // links von "ALLE" im Autor-Screenshot). Jetzt liegen die acht Kategorien
+      // auf Kasten 1 bis 8, und "SONSTIGES" bekommt den Rest bis zum Ende der
+      // Leiste - so bleibt kein Loch.
+      const FILTER_BOXEN: ReadonlyArray<readonly [number, number]> = [
+        [617, 675], [676, 738], [739, 801], [802, 864], [865, 926], [927, 989], [990, 1052], [1053, 1177],
+      ];
+      const tabH = (bF.h ?? 30) * s;
+      // R196: EINE Schriftgroesse fuer ALLE Reiter - so gross, dass auch das
+      // laengste Wort ("ZAUBERSTÄBE") in seinen gemalten Reiter passt. Vorher
+      // wurde je Reiter einzeln geschrumpft, dadurch standen zwei winzige
+      // Woerter zwischen normalen (Autor-Screenshot).
+      const tabSchrift = ((): number => {
+        const mess = this.scene.add.text(0, 0, '', { fontFamily: 'serif', fontSize: '20px', letterSpacing: 0 });
+        let klein = Math.max(10, Math.round((bF.schrift ?? 13) * s * tf));
+        for (let i = 0; i < tabs.length; i++) {
+          const [b0, b1] = FILTER_BOXEN[i];
+          const platz = (b1 - b0) * s - 8 * s;
+          mess.setFontSize(klein).setText(tabs[i][1]);
+          if (mess.width > platz) klein = Math.max(9, Math.floor(klein * platz / mess.width));
+        }
+        mess.destroy();
+        return klein;
+      })();
+      tabs.forEach(([id, lbl], index) => {
+        const [b0, b1] = FILTER_BOXEN[index];
+        const tx = b0 * s + bF.x * s, tabW = (b1 - b0) * s;
+        // R195 (Autor: "Kategorien zu klein, aktiver Zustand zu schwach"):
+        // groessere Schrift, hellerer Innenbereich und eine kraeftige Goldkante
+        // unten am aktiven Reiter. Lange Namen werden eingepasst statt gequetscht.
+        if (this.filter === id) {
+          c.add(this.scene.add.rectangle(tx + 1, ty2, tabW - 2, tabH, 0x5c4726, 0.9).setOrigin(0));
+          c.add(this.scene.add.rectangle(tx + 1, ty2 + tabH - 3 * s, tabW - 2, Math.max(2, 3 * s), 0xd8a83c, 1).setOrigin(0));
+        }
+        const hit = this.scene.add.rectangle(tx, ty2, tabW, tabH, 0xffffff, 0).setOrigin(0).setInteractive({ useHandCursor: true });
+        const t = this.scene.add.text(tx + tabW / 2, ty2 + tabH / 2, lbl, {
+          fontFamily: 'serif', fontSize: `${tabSchrift}px`, letterSpacing: 0,
+          color: this.filter === id ? '#f7ecd2' : INK_TITEL,
+        }).setOrigin(0.5);
+        // R196-Korrektur: NICHT je Reiter einzeln schrumpfen (dann waren
+        // "ZAUBERSTAEBE" und "SONSTIGES" winzig neben den anderen). Die Groesse
+        // wird EINMAL fuer alle bestimmt - siehe tabSchrift oben.
+        void tabW;
+        hit.on('pointerdown', () => {
+          this.filter = id;
+          this.scroll = 0;
+          this.build();
+          this.sfx.play('klick');
+        });
+        c.add([hit, t]);
+      });
+    } else {
+      for (const [id, lbl] of tabs) {
+        const t = this.scene.add.text(tx2, ty2, lbl, {
+          fontFamily: 'serif', fontSize: '11px', letterSpacing: 1,
+          color: this.filter === id ? '#efe2c6' : INK_SOFT,
+          backgroundColor: this.filter === id ? '#4a3925' : '#c6b184', padding: { x: 5, y: 3 },
+        }).setInteractive({ useHandCursor: true });
+        if (tx2 > x0 && tx2 + t.width > x0 + w) { tx2 = x0; ty2 += 20; t.setPosition(tx2, ty2); }
+        t.on('pointerdown', () => {
+          this.filter = id;
+          this.scroll = 0;
+          this.build();
+          this.sfx.play('klick');
+        });
+        c.add(t);
+        tx2 += t.width + 6;
+      }
+      tabUmbruch = ty2 > 34;
+    }
+
+    // Angelegtes erscheint NUR links im Charakter (Feedback-Runde 2);
+    // Rest nach Filter, beste zuerst (Seltenheit, dann Wert).
+    // WAFFEN umfasst auch Pfeile (Autorwunsch Runde 39: Pfeil/Bogen sind Waffen).
+    const inv = p.inv
+      .filter((it) => it !== p.weapon && it !== p.bogen && it !== p.armorIt && it !== p.ring && it !== p.schildIt)
+      .filter((it) => this.filter === 'alle' ? true
+        : this.filter === 'weapon' ? ((it.kind === 'weapon' && it.weaponClass !== 'stab' && it.weaponClass !== 'axt') || it.kind === 'arrows')
+        : this.filter === 'stab' ? it.kind === 'weapon' && it.weaponClass === 'stab'
+        : this.filter === 'axt' ? it.kind === 'weapon' && it.weaponClass === 'axt'
+        : this.filter === 'rest' ? !['weapon', 'arrows', 'armor', 'schild', 'ring'].includes(it.kind)
+        : it.kind === this.filter)
+      .sort((a, b) => {
+        // Edelsteine tragen ihre Güte in power, nicht in val (Runde 28)
+        const wert = (it: Item): number => it.kind === 'gem' ? (it as GemItem).power : it.val + (it.upgrade ?? 0) * 2;
+        return (b.rarity ?? 0) - (a.rarity ?? 0) || wert(b) - wert(a);
+      });
+
+    // R-Fix: Zeilen-Schritt = gemessener Kasten-Abstand (69,25) statt 68, damit
+    // die Icons ueber die 9 gemalten Kaesten nicht nach unten wegdriften. Die
+    // Schale hat GENAU 9 Kaesten -> nie mehr Zeilen als Kaesten anzeigen.
+    // R217: Zeilenhoehe (h) und Listen-Versatz kommen aus dem Baukasten.
+    const bL = charBox('r_liste');
+    const rowH = (shellAktiv ? (bL.h ?? 69.25) : 42) * (shellAktiv ? s : 1);
+    const listTop = (shellAktiv ? (192 - 79) * s : (tabUmbruch ? 78 : 58)) + bL.y * s;
+    let visible = Math.floor((h - listTop - 14) / rowH);
+    if (shellAktiv) visible = Math.min(visible, 9);
+    const maxScroll = Math.max(0, inv.length - visible);
+    this.scroll = Math.min(this.scroll, maxScroll);
+    if (inv.length === 0) {
+      c.add(this.scene.add.text(x0 + (shellAktiv ? 82 * s : 0), listTop + (shellAktiv ? 8 * s : 0), shellAktiv ? 'Der Rucksack ist leer.' : MELDUNGEN.inventarLeer, {
+        fontFamily: 'serif', fontSize: `${shellAktiv ? Math.max(8, Math.round(13 * s)) : 13}px`, color: INK_SOFT, fontStyle: 'italic',
+      }));
+    }
+    let y = listTop;
+    for (const it of inv.slice(this.scroll, this.scroll + visible)) {
+      this.buildItemRow(c, it, x0 + bL.x * s, y, w, y === listTop);
+      y += rowH;
+    }
+    // R217: Filterleiste und Liste als anklickbare Baukasten-Elemente.
+    this.merkeEditBox('r_filter', x0 + w / 2 + bF.x * s, ty2 + (bF.h ?? 30) * s / 2, w, (bF.h ?? 30) * s);
+    this.merkeEditBox('r_liste', x0 + w / 2 + bL.x * s, listTop + Math.max(rowH, (y - listTop)) / 2,
+      w, Math.max(rowH, y - listTop));
+    // Bildlauf-Anzeige
+    if (maxScroll > 0) {
+      const trackH = visible * rowH;
+      c.add(this.scene.add.rectangle(x0 + w + 4, listTop, 3, trackH, 0x0e0a06).setOrigin(0));
+      const thumbH = Math.max(24, trackH * (visible / inv.length));
+      const thumbY = listTop + (trackH - thumbH) * (this.scroll / maxScroll);
+      c.add(this.scene.add.rectangle(x0 + w + 4, thumbY, 3, thumbH, 0x8a7a5a).setOrigin(0));
+    }
+  }
+
+  private buildItemDetailSide(c: Phaser.GameObjects.Container, x0: number, w: number, h: number): void {
+    const p = this.getPlayer();
+    const shellAktiv = this.scene.textures.exists(UI_CHARACTER_SHELL);
+    const s = this.panelScale;
+    const vorhanden = [p.weapon, p.bogen, p.armorIt, p.schildIt, p.ring, ...p.inv]
+      .filter((it): it is Item => !!it);
+    if (!this.selectedItem || !vorhanden.includes(this.selectedItem)) this.selectedItem = vorhanden[0] ?? null;
+    const it = this.selectedItem;
+
+    // R217 (Autor: "das Fenster nebenan mit dem Vergleich auch nicht"): auch
+    // die rechte Spalte haengt jetzt am Baukasten - Versatz + eigene Schriften.
+    const tfd = charSchrift();
+    const bDT = charBox('d_titel'), bDN = charBox('d_name'), bDW = charBox('d_werte'), bDV = charBox('d_vergleich');
+    const dSchrift = (b: { schrift?: number }, vorgabe: number, min: number, mitSkala = false): string =>
+      `${Math.max(min, Math.round((b.schrift ?? vorgabe) * (mitSkala ? s : 1) * tfd))}px`;
+    const tDT = this.scene.add.text(x0 + w / 2 + bDT.x, 10 + bDT.y, 'AUSGEWÄHLT', {
+      fontFamily: 'serif', fontSize: dSchrift(bDT, 15, 10), color: INK_TITEL, letterSpacing: 1,
+    }).setOrigin(0.5, 0);
+    c.add(tDT);
+    this.merkeEditBox('d_titel', tDT.x, tDT.y + tDT.height / 2, Math.max(60, tDT.width), Math.max(16, tDT.height));
+    this.zierLinie(c, x0 + 8, 31, w - 16, undefined, true);
+    if (!it) {
+      c.add(this.scene.add.text(x0 + w / 2, 72, 'Kein Gegenstand ausgewählt', {
+        fontFamily: 'serif', fontSize: '12px', color: INK_SOFT, fontStyle: 'italic',
+      }).setOrigin(0.5, 0));
+      return;
+    }
+
+    const rar = (it.rarity ?? 0) as Rarity;
+    // R161 (Autor "alles versetzt, 4-6 Schaden schwebt ausserhalb"): im
+    // Schalen-Modus liegt ALLES in der gemalten Innenbox (Design 1283..1528,
+    // dieselben Koordinaten wie die Knoepfe) und SKALIERT mit - vorher waren
+    // die Positionen Fixpixel und liefen bei kleiner Schale aus den Kaesten.
+    if (shellAktiv) {
+      // R195 (Autor: "Symbol viel zu klein, Name zu schwach, rechte Spalte zu
+      // leer"): Gegenstand auf einer dunklen Praesentationsflaeche, Symbol rund
+      // doppelt so gross, darunter Name / Seltenheit / Typ als eigene Zeilen.
+      const bx = 1283 * s, bw = 245 * s, bcx = bx + bw / 2;
+      // R196-Korrektur (Autor-Screenshot "was ist das fuer ein Mist"): die
+      // Zeilen lagen UEBEREINANDER, weil sie mit festen Pixel-Abstaenden unter
+      // die Bildflaeche gesetzt wurden - bei kleiner Schale war der Abstand
+      // kleiner als die (vergroesserte) Schrift. Jetzt wird JEDE Zeile gesetzt
+      // und der Stapel um ihre TATSAECHLICHE Hoehe weitergeschoben.
+      const platteY = (146 - 79) * s, platte = 92 * s;
+      c.add(this.scene.add.rectangle(bcx, platteY + platte / 2, platte, platte, 0x1c150d, 0.5)
+        .setStrokeStyle(Math.max(1, Math.round(1.5 * s)), Phaser.Display.Color.HexStringToColor(RARITY_COLORS[rar]).color, 0.7));
+      const icon = this.scene.add.image(bcx, platteY + platte / 2, this.provider.itemIcon(it));
+      icon.setScale(Math.min(2.1, (platte - 14 * s) / Math.max(icon.width, icon.height)));
+      c.add(icon);
+      let stapel = platteY + platte + 6 * s;
+      const zeile = (txt: string, groesse: number, farbe: string, luft = 3): void => {
+        const t2 = this.scene.add.text(bcx, stapel, txt, {
+          fontFamily: 'serif', fontSize: `${Math.max(10, Math.round(groesse * s))}px`, color: farbe,
+          wordWrap: { width: bw - 10 * s }, align: 'center',
+        }).setOrigin(0.5, 0);
+        c.add(t2);
+        stapel += t2.height + luft * s;
+      };
+      const typS = it.kind === 'weapon'
+        ? `${KLASSEN_NAMEN[it.weaponClass ?? 'schwert']} · ${handLabel(it.weaponClass)}`
+        : TYP_NAMEN[it.kind] ?? 'Gegenstand';
+      zeile(it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), bDN.schrift ?? 17, RARITY_INK[rar], 2);
+      this.merkeEditBox('d_name', bcx, stapel - 10 * s, bw, 26 * s);
+      zeile(RARITY_NAMES[rar], 12, RARITY_INK[rar], 1);
+      zeile(typS, 12, INK_ZWEIT, 4);
+      // Die WERTE-Linie folgt dem Stapel, faellt aber nie ueber ihre gemalte
+      // Grundlinie hinaus nach oben.
+      const werteY = Math.max(stapel + 8 * s, (300 - 79) * s);
+      this.zierLinie(c, bx, werteY, bw, 'WERTE', true);
+      const werteText = this.scene.add.text(bx + 8 * s + bDW.x * s, werteY + 12 * s + bDW.y * s, itemStatLine(it, false), {
+        fontFamily: 'serif', fontSize: dSchrift(bDW, 13, 11, true), color: INK,
+        wordWrap: { width: bw - 16 * s }, lineSpacing: 3,
+      });
+      c.add(werteText);
+      this.merkeEditBox('d_werte', bcx + bDW.x * s, werteText.y + werteText.height / 2, bw, Math.max(20, werteText.height));
+      let ys = Math.max(werteY + 12 * s + werteText.height + 14 * s, (362 - 79) * s);
+      if (it.boni.length || it.sock) {
+        this.zierLinie(c, bx, ys - 7 * s, bw, 'AFFIXE', true);
+        ys += 8 * s;
+        for (const bonus of it.boni) {
+          c.add(this.scene.add.text(bx + 8 * s, ys, `◆  ${bonus.t.replace('#', String(bonus.v))}`, {
+            fontFamily: 'serif', fontSize: `${Math.max(11, Math.round(13 * s))}px`, color: '#4d2e73', wordWrap: { width: bw - 16 * s },
+          }));
+          ys += 20 * s;
+        }
+        if (it.sock) {
+          const sockel = it.sock.gem ? `${it.sock.gem.name} (+${it.sock.gem.power})` : 'Leerer Sockel';
+          c.add(this.scene.add.text(bx + 8 * s, ys, `◇  ${sockel}`, { fontFamily: 'serif', fontSize: `${Math.max(9, Math.round(10.5 * s))}px`, color: INK_SOFT }));
+          ys += 20 * s;
+        }
+      }
+      const ausruestbarS = ['weapon', 'armor', 'ring', 'schild'].includes(it.kind);
+      if (ausruestbarS && this.compareItem === it) {
+        this.zierLinie(c, bx, Math.max(ys, (470 - 79) * s) - 7 * s, bw, 'VERGLEICH', true);
+        let yv = Math.max(ys, (470 - 79) * s) + 8 * s;
+        const neu = this.statsWith(it);
+        const werte: Array<[string, number, number]> = [
+          ['Schaden', p.stats.dmg, neu.dmg], ['Rüstung', p.stats.armor, neu.armor],
+          ['Trefferpunkte', p.stats.maxhp, neu.maxhp], ['Mana', p.stats.maxmana, neu.maxmana],
+        ];
+        for (const [name, alt, wert] of werte) {
+          const farbe = wert > alt ? '#3f7135' : wert < alt ? '#8b3027' : INK_SOFT;
+          c.add(this.scene.add.text(bx + 8 * s, yv, `${name}: ${alt}  →  ${wert}`, { fontFamily: 'serif', fontSize: `${Math.max(11, Math.round(13 * s))}px`, color: farbe }));
+          yv += 21 * s;
+        }
+        ys = yv;   // die Knoepfe folgen auch dem Vergleichsblock
+      }
+      this.buildDetailButtons(c, it, x0, w, h, shellAktiv, s);
+      return;
+    }
+    const icon = this.scene.add.image(x0 + 56, 92, this.provider.itemIcon(it));
+    icon.setScale(Math.min(1.05, 78 / Math.max(icon.width, icon.height)));
+    c.add(icon);
+    c.add(this.scene.add.text(x0 + 108, 53, it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), {
+      fontFamily: 'serif', fontSize: '16px', color: RARITY_INK[rar], wordWrap: { width: Math.max(80, w - 116) },
+    }));
+    const typ = it.kind === 'weapon'
+      ? `${KLASSEN_NAMEN[it.weaponClass ?? 'schwert']} · ${handLabel(it.weaponClass)}`
+      : TYP_NAMEN[it.kind] ?? 'Gegenstand';
+    c.add(this.scene.add.text(x0 + 108, 88, typ, { fontFamily: 'serif', fontSize: '10px', color: INK_SOFT }));
+    c.add(this.scene.add.text(x0 + 108, 106, RARITY_NAMES[rar], { fontFamily: 'serif', fontSize: '10px', color: RARITY_INK[rar] }));
+
+    this.zierLinie(c, x0 + 8, 144, w - 16, 'WERTE', true);
+    c.add(this.scene.add.text(x0 + 14, 151, itemStatLine(it, false), {
+      fontFamily: 'serif', fontSize: '12px', color: INK, wordWrap: { width: w - 28 }, lineSpacing: 3,
+    }));
+
+    let y = 205;
+    if (it.boni.length || it.sock) {
+      this.zierLinie(c, x0 + 8, y - 7, w - 16, 'AFFIXE', true);
+      for (const bonus of it.boni) {
+        c.add(this.scene.add.text(x0 + 16, y, `◆  ${bonus.t.replace('#', String(bonus.v))}`, {
+          fontFamily: 'serif', fontSize: '10.5px', color: '#604185', wordWrap: { width: w - 32 },
+        }));
+        y += 21;
+      }
+      if (it.sock) {
+        const sockel = it.sock.gem ? `${it.sock.gem.name} (+${it.sock.gem.power})` : 'Leerer Sockel';
+        c.add(this.scene.add.text(x0 + 16, y, `◇  ${sockel}`, { fontFamily: 'serif', fontSize: '10.5px', color: INK_SOFT }));
+        y += 21;
+      }
+    }
+
+    const ausruestbar = ['weapon', 'armor', 'ring', 'schild'].includes(it.kind);
+    if (ausruestbar && this.compareItem === it) {
+      y = Math.max(y + 4, 268);
+      this.zierLinie(c, x0 + 8, y - 7, w - 16, 'VERGLEICH', true);
+      const neu = this.statsWith(it);
+      const werte: Array<[string, number, number]> = [
+        ['Schaden', p.stats.dmg, neu.dmg],
+        ['Rüstung', p.stats.armor, neu.armor],
+        ['Trefferpunkte', p.stats.maxhp, neu.maxhp],
+        ['Mana', p.stats.maxmana, neu.maxmana],
+      ];
+      // R217: der Vergleichsblock ist ein eigenes Baukasten-Element.
+      const yStart = y;
+      for (const [name, alt, wert] of werte) {
+        const farbe = wert > alt ? '#3f7135' : wert < alt ? '#8b3027' : INK_SOFT;
+        c.add(this.scene.add.text(x0 + 16 + bDV.x, y + bDV.y, `${name}: ${alt}  →  ${wert}`, {
+          fontFamily: 'serif', fontSize: dSchrift(bDV, 11, 9), color: farbe,
+        }));
+        y += 19;
+      }
+      this.merkeEditBox('d_vergleich', x0 + w / 2 + bDV.x, (yStart + y) / 2 + bDV.y, w - 20, Math.max(20, y - yStart));
+    }
+
+    this.buildDetailButtons(c, it, x0, w, h, shellAktiv, s);
+  }
+
+  // R161: BENUTZEN/ABLEGEN/VERGLEICHEN - EIN Block fuer Schalen- und
+  // Fallback-Layout (vorher nur im Fallback-Zweig erreichbar).
+  private buildDetailButtons(c: Phaser.GameObjects.Container, it: Item, x0: number, w: number, h: number, shellAktiv: boolean, s: number, startY?: number): void {
+    const p = this.getPlayer();
+    const ausruestbar = ['weapon', 'armor', 'ring', 'schild'].includes(it.kind);
+    const angelegt = it === p.weapon || it === p.bogen || it === p.armorIt || it === p.ring || it === p.schildIt;
+    const buttonH = shellAktiv ? 45 * s : 31;
+    const button = (by: number, label: string, aktiv: boolean, farbe: number, fn: () => void): void => {
+      const buttonX = shellAktiv ? 1283 * s : x0 + 18;
+      const buttonW = shellAktiv ? 245 * s : w - 36;
+      const bg = this.scene.add.rectangle(buttonX, by, buttonW, buttonH, aktiv ? farbe : 0x302b25, shellAktiv ? (aktiv ? 0.55 : 0.42) : (aktiv ? 0.95 : 0.35))
+        .setOrigin(0);
+      if (!shellAktiv) bg.setStrokeStyle(1, aktiv ? 0x2a2117 : 0x554c40);
+      const text = this.scene.add.text(buttonX + buttonW / 2, by + buttonH / 2, label, {
+        fontFamily: 'serif', fontSize: `${shellAktiv ? Math.max(11, Math.round(15 * s)) : 13}px`, color: aktiv ? '#f4ead2' : '#cbbba4', letterSpacing: 1,
+      }).setOrigin(0.5);
+      c.add(bg); c.add(text);
+      if (!aktiv) return;
+      bg.setInteractive({ useHandCursor: true });
+      bg.on('pointerover', () => bg.setFillStyle(Phaser.Display.Color.IntegerToColor(farbe).brighten(12).color, shellAktiv ? 0.72 : 1));
+      bg.on('pointerout', () => bg.setFillStyle(farbe, shellAktiv ? 0.55 : 0.95));
+      bg.on('pointerdown', fn);
+    };
+    const verbrauchbar = ['potion', 'mpotion', 'scroll', 'food'].includes(it.kind);
+    // R196-Korrektur: die Knoepfe sitzen wieder auf den GEMALTEN Knopfflaechen
+    // der Schale. Mein Versuch aus R195, sie an die Gegenstandsdaten
+    // heranzuziehen, hat sie neben die gemalten Kaesten geschoben - im Fenster
+    // standen dann drei leere Rahmen darunter (Autor-Screenshot).
+    void startY;
+    const basisY = shellAktiv ? (699 - 79) * s : h - 112;
+    const buttonAbstand = shellAktiv ? 60 * s : 37;
+    // R195 (Autorwunsch): Reihenfolge AUSRUESTEN - VERGLEICHEN - ABLEGEN.
+    // "Vergleichen" ist die haeufigere und harmlosere Handlung; "Ablegen" steht
+    // zuletzt und bleibt zurueckhaltend (leicht roetlich), weil man es selten
+    // will. Die Knoepfe ruecken naeher an die Gegenstandsdaten (basisY).
+    button(basisY, verbrauchbar ? 'BENUTZEN' : 'AUSRUESTEN', (ausruestbar && !angelegt) || verbrauchbar, 0x435536, () => this.clickItem(it, verbrauchbar));
+    button(basisY + buttonAbstand, this.compareItem === it ? 'VERGLEICH AUS' : 'VERGLEICHEN', ausruestbar, 0x283c4a, () => {
+      this.compareItem = this.compareItem === it ? null : it;
+      this.build();
+      this.sfx.play('klick');
+    });
+    button(basisY + buttonAbstand * 2, 'ABLEGEN', angelegt, 0x5a2a22, () => this.clickItem(it, false));
+  }
+
+  // erste = oberste sichtbare Zeile; nur sie meldet ihre Text-Elemente an den
+  // Baukasten (R217) - sonst laegen neun gleiche Rahmen uebereinander.
+  private buildItemRow(c: Phaser.GameObjects.Container, it: Item, x0: number, y: number, w: number, erste = false): void {
+    const p = this.getPlayer();
+    const shellAktiv = this.scene.textures.exists(UI_CHARACTER_SHELL);
+    const rowH = shellAktiv ? Math.max(36, 64 * this.panelScale) : 38;
+    const equipped = it === p.weapon || it === p.bogen || it === p.armorIt || it === p.ring || it === p.schildIt;
+    const rar = (it.rarity ?? 0) as Rarity;
+    const rarCol = Phaser.Display.Color.HexStringToColor(RARITY_COLORS[rar]).color;
+    const selected = it === this.selectedItem;
+    // R195 (Autor: "der Auswahlrahmen ist zu schwach, faellt kaum auf"):
+    // waermere Fuellung, kraeftigerer Rahmen und ein breiter Goldbalken links.
+    const row = this.scene.add.rectangle(x0, y, w, rowH, selected ? 0x8b642a : equipped ? 0xc9a227 : 0xffffff, selected ? 0.34 : equipped ? 0.09 : shellAktiv ? 0 : 0.07).setOrigin(0);
+    if (selected || !shellAktiv) row.setStrokeStyle(selected ? 3 : 1, selected ? 0xd8a83c : rar >= 1 ? rarCol : 0x796445, selected ? 1 : 0.65);
+    row.setInteractive({ useHandCursor: true });
+    c.add(row);
+    if (rar >= 1) c.add(this.scene.add.rectangle(x0, y, 4, rowH, rarCol).setOrigin(0));
+    if (selected) c.add(this.scene.add.rectangle(x0, y, 6, rowH, 0xffd870).setOrigin(0));
+    // R140 (Autor: "alles verschoben"): das Icon passt sich der ZEILE an.
+    // R161: im Schalen-Modus sitzt das Icon in der GEMALTEN Slot-Spalte
+    // (Design-x 565..615, vermessen) - der Slot-Rahmen schnitt sonst in den
+    // Text. Der Text beginnt rechts NEBEN der Slot-Spalte.
+    const s2 = this.panelScale;
+    const iconS = shellAktiv ? Math.min(rowH - 10, 44 * s2) : rowH - 10;
+    // R-Fix (Autor "die Waffen-Icons sitzen NEBEN den dunklen Kaesten, nicht
+    // DRIN"): die gemalten Slot-Kaesten der Schale sitzen bei Design-x 587..682
+    // (Mitte 634) - der alte Wert 590 lag am linken Kastenrand. Icon jetzt
+    // mittig im Kasten, Text startet rechts NEBEN dem Kasten (Rand 682).
+    const iconCx = shellAktiv ? 634 * s2 : x0 + 6 + iconS / 2;
+    c.add(this.scene.add.image(iconCx, y + rowH / 2, this.provider.itemIcon(it)).setDisplaySize(iconS, iconS));
+    const textX = shellAktiv ? 706 * s2 : x0 + rowH + 16;   // rechts neben Slot/Icon, mit Luft (R195: mehr Abstand)
+    // R217: Name und Info-Zeile haben je eine EIGENE Schriftgroesse im Baukasten
+    // (Autor: "die Schrift einzelner Texte getrennt vergroessern").
+    const tfz = charSchrift();
+    const bIN = charBox('r_itemName'), bII = charBox('r_itemInfo');
+    const zSchrift = (b: { schrift?: number }, vorgabe: number, min: number): string =>
+      `${Math.max(min, Math.round((b.schrift ?? vorgabe) * this.panelScale * tfz))}px`;
+    const tName = this.scene.add.text(textX + bIN.x * this.panelScale, y + Math.round(rowH * 0.12) + bIN.y * this.panelScale, it.name + (it.upgrade ? ` (+${it.upgrade})` : ''), {
+      fontFamily: 'serif', fontSize: zSchrift(bIN, 15, 11), color: RARITY_INK[rar],
+    });
+    c.add(tName);
+    if (erste) this.merkeEditBox('r_itemName', tName.x + tName.width / 2, tName.y + tName.height / 2, Math.max(60, tName.width), Math.max(14, tName.height));
+    const typ = it.kind === 'weapon' ? `${KLASSEN_NAMEN[it.weaponClass ?? 'schwert']} · ${handLabel(it.weaponClass)}` : TYP_NAMEN[it.kind] ?? '';
+    const wert = it.kind === 'weapon' ? `${weaponDamageRange(it)} Schaden` : (it.kind === 'armor' || it.kind === 'schild') ? `${it.val + (it.upgrade ?? 0)} Rüstung` : '';
+    const grund = this.scene.add.text(textX + bII.x * this.panelScale, y + Math.round(rowH * 0.55) + bII.y * this.panelScale, `${typ}${wert ? ' · ' + wert : ''}`, {
+      fontFamily: 'serif', fontSize: zSchrift(bII, 12, 9), color: INK_ZWEIT,
+    });
+    c.add(grund);
+    if (erste) this.merkeEditBox('r_itemInfo', grund.x + grund.width / 2, grund.y + grund.height / 2, Math.max(60, grund.width), Math.max(12, grund.height));
+    if (it.boni.length) {
+      // Bonus-Werte grün, direkt dahinter (Runde 29)
+      c.add(this.scene.add.text(textX + bII.x * this.panelScale + grund.width + 8, y + Math.round(rowH * 0.55) + bII.y * this.panelScale, it.boni.map((b) => b.t.replace('#', String(b.v))).join(' · '), {
+        fontFamily: 'serif', fontSize: zSchrift(bII, 12, 9), color: '#3f7135',
+      }));
+    }
+    if (equipped) {
+      c.add(this.scene.add.text(x0 + w - 6, y + 4, 'ANGELEGT', { fontFamily: 'serif', fontSize: '12px', color: GOLD }).setOrigin(1, 0));
+    }
+    row.on('pointerover', (ptr: Phaser.Input.Pointer) => this.showTooltip(it, ptr));
+    row.on('pointerout', () => this.hideTooltip());
+    row.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
+      if (ptr.rightButtonDown()) { this.clickItem(it, true); return; }
+      // R140 (Autor: "ausruesten mit Doppelklick wie frueher"): zweiter Klick
+      // auf DIESELBE Zeile innerhalb 350ms legt an/ab bzw. benutzt.
+      const jetzt = this.scene.time.now;
+      if (this.klickMerker && this.klickMerker.it === it && jetzt - this.klickMerker.t < 350) {
+        this.klickMerker = null;
+        this.clickItem(it, it.kind === 'potion' || it.kind === 'mpotion' || it.kind === 'scroll' || it.kind === 'food');
+        return;
+      }
+      this.klickMerker = { it, t: jetzt };
+      this.selectedItem = it;
+      this.hideTooltip();
+      this.build();
+      this.sfx.play('klick');
+    });
+    // Schriftrollen/Tränke auf die Aktionsleiste ziehen (Runde 40)
+    const slotAktion = SLOT_AKTION[it.kind];
+    if (slotAktion && this.onAssignToSlot) this.macheZiehbar(row, it, slotAktion);
+  }
+
+  // Eine Inventarzeile auf die Aktionsleiste ziehbar machen (Runde 40):
+  // beim Loslassen über einem Slot wird die passende Aktion dort belegt.
+  private macheZiehbar(row: Phaser.GameObjects.Rectangle, it: Item, aktionId: string): void {
+    this.scene.input.setDraggable(row);
+    row.on('dragstart', (ptr: Phaser.Input.Pointer) => {
+      if (ptr.rightButtonDown()) return;
+      this.hideTooltip();
+      this.dragGhost?.destroy();
+      this.dragGhost = this.scene.add.text(ptr.x, ptr.y, ZIEH_GLYPH[it.kind] ?? '📜', {
+        fontFamily: 'serif', fontSize: '24px', color: '#f0dfa0', stroke: '#000000', strokeThickness: 3,
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(6200);
+    });
+    row.on('drag', (ptr: Phaser.Input.Pointer) => this.dragGhost?.setPosition(ptr.x, ptr.y));
+    row.on('dragend', (ptr: Phaser.Input.Pointer) => {
+      this.dragGhost?.destroy();
+      this.dragGhost = null;
+      if (this.onAssignToSlot?.(ptr.x, ptr.y, aktionId)) this.sfx.play('klick');
+    });
+  }
+
+  private clickItem(it: Item, rechts: boolean): void {
+    const p = this.getPlayer();
+    // Verbrauchsgegenstände (Tränke/Rollen/Proviant) lösen NUR per Rechtsklick
+    // aus (Autorwunsch Runde 36) - vorher gingen Rollen sofort beim Antippen
+    // los. Linksklick wählt nur an (zeigt den Tooltip).
+    const verbrauch = it.kind === 'potion' || it.kind === 'mpotion' || it.kind === 'scroll' || it.kind === 'food';
+    if (verbrauch && !rechts) { this.sfx.play('klick'); return; }
+    if (it.kind === 'gem') {
+      const gem = it as GemItem;
+      // In die Hauptwaffe ODER den Bogen fassen (Autorbug R53: Bögen ließen sich
+      // nicht sockeln, darum kein Test der Elementarpfeile möglich).
+      const ziel = p.weapon?.sock ? p.weapon : (p.bogen?.sock ? p.bogen : null);
+      if (ziel?.sock) {
+        if (ziel.sock.gem) p.inv.push(ziel.sock.gem);   // alter Stein zurück ins Inventar
+        ziel.sock.gem = gem;
+        p.inv = p.inv.filter((x) => x !== it);
+        this.sfx.play('edelstein_fassen');
+      } else {
+        this.sfx.play('fehler');
+        return;
+      }
+    } else if (it.kind === 'weapon') {
+      if (it.weaponClass === 'bogen') {
+        // Bogen belegt den ZWEITEN Waffenplatz (Runde 41) - per X im Spiel
+        // zwischen Hauptwaffe und Bogen umschaltbar.
+        p.bogen = p.bogen === it ? null : it;
+        if (!p.bogen) p.bogenAktiv = false;
+      } else {
+        p.weapon = p.weapon === it ? null : it;
+        // Stab als Hauptwaffe braucht beide Hände -> Schild ablegen
+        if (p.weapon?.weaponClass === 'stab' && p.schildIt) { p.schildIt = null; this.sfx.play('klick'); }
+      }
+    }
+    else if (it.kind === 'armor') p.armorIt = p.armorIt === it ? null : it;
+    else if (it.kind === 'ring') p.ring = p.ring === it ? null : it;
+    else if (it.kind === 'schild') {
+      // Schild nur, wenn die HAUPTWAFFE kein Stab ist. Ein Bogen im Zweitplatz
+      // verbietet das Schild NICHT - es wird nur inaktiv, solange der Bogen
+      // gezückt ist (Autorwunsch: Schild bleibt sichtbar, nur grau).
+      if (p.weapon?.weaponClass === 'stab') { this.sfx.play('fehler'); return; }
+      p.schildIt = p.schildIt === it ? null : it;
+    }
+    else if (it.kind === 'potion') {
+      p.pot++;
+      p.inv = p.inv.filter((x) => x !== it);
+    } else if (it.kind === 'mpotion') {
+      p.mpot++;
+      p.inv = p.inv.filter((x) => x !== it);
+    } else if (it.kind === 'scroll' && it.scrollSkill) {
+      it.stack = (it.stack ?? 1) - 1;
+      if (it.stack <= 0) p.inv = p.inv.filter((x) => x !== it);
+      this.onUseScroll?.(it.scrollSkill);
+    } else if (it.kind === 'food' && it.buff) {
+      p.foodBuff = { hpRegen: it.buff.hpRegen, restS: it.buff.dauerS };
+      p.inv = p.inv.filter((x) => x !== it);
+      this.sfx.play('trank');
+    } else {
+      return;
+    }
+    recalc(p);
+    this.sfx.play('klick');
+    this.hideTooltip();
+    this.build();
+    this.onChanged?.();
+  }
+
+  // --- Tooltips mit Wert-Differenzen ------------------------------------------
+
+  // Werte, als wäre `it` im passenden Slot angelegt
+  private statsWith(it: Item): Stats {
+    const p = this.getPlayer();
+    const w = it.kind === 'weapon' ? it : p.weapon;
+    const a = it.kind === 'armor' ? it : p.armorIt;
+    const r = it.kind === 'ring' ? it : p.ring;
+    const sch = it.kind === 'schild' ? it : p.schildIt;
+    return calcStats(p.level, p.elixirs, [w, a, r, sch], p.schools.nahkampf.level);
+  }
+
+  private showTooltip(it: Item, ptr: Phaser.Input.Pointer): void {
+    this.hideTooltip();
+    const p = this.getPlayer();
+    const lines = itemTooltipLines(it);
+    // Vergleich: aktuelle Werte UND die, die man bekäme (Runde 41, Autorwunsch
+    // "die Werte die man hat und daneben die die man bekommt - also beides").
+    if ((it.kind === 'weapon' || it.kind === 'armor' || it.kind === 'ring' || it.kind === 'schild')
+      && it !== p.weapon && it !== p.bogen && it !== p.armorIt && it !== p.ring && it !== p.schildIt) {
+      const neu = this.statsWith(it);
+      const cur = p.stats;
+      const werte: Array<[string, number, number]> = [
+        ['Schaden', cur.dmg, neu.dmg], ['Rüstung', cur.armor, neu.armor],
+        ['Leben', cur.maxhp, neu.maxhp], ['Mana', cur.maxmana, neu.maxmana],
+        ['Lebensraub', cur.leech, neu.leech], ['Lichtradius', cur.licht, neu.licht],
+      ];
+      const relevant = werte.filter(([, a, b]) => a !== 0 || b !== 0);
+      if (relevant.length) {
+        lines.push(['— jetzt  →  mit diesem —', '#8a7a5a']);
+        for (const [name, a, b] of relevant) {
+          const col = b > a ? '#6ad06a' : b < a ? '#e05a4a' : BONE;
+          lines.push([`${name}: ${a}  →  ${b}`, col]);
+        }
+      } else {
+        lines.push(['Kein Unterschied zu jetzt', '#8a7a5a']);
+      }
+    }
+    if (it.kind === 'gem') lines.push(['Linksklick: in Waffe fassen', '#8a7a5a']);
+    else if (it.kind === 'scroll') lines.push(['Rechtsklick: Rolle wirken', '#c9a227']);
+    else if (it.kind === 'food') lines.push(['Rechtsklick: verzehren', '#c9a227']);
+    else if (it.kind === 'potion') lines.push(['Rechtsklick: in den Heiltrank-Beutel', '#c9a227']);
+    else if (it.kind === 'mpotion') lines.push(['Rechtsklick: in den Manatrank-Beutel', '#c9a227']);
+    else if (it.kind === 'schild') lines.push(['Linksklick: an-/ablegen (nicht mit Bogen/Stab)', '#8a7a5a']);
+    else if (it.kind === 'weapon' || it.kind === 'armor' || it.kind === 'ring') lines.push(['Linksklick: an-/ablegen', '#8a7a5a']);
+    this.renderTooltip(lines, ptr);
+  }
+
+  private showTextTooltip(titel: string, text: string, ptr: Phaser.Input.Pointer): void {
+    this.hideTooltip();
+    this.renderTooltip([[titel, GOLD], [text, BONE]], ptr);
+  }
+
+  private renderTooltip(lines: Array<[string, string]>, ptr: Phaser.Input.Pointer): void {
+    const c = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(5200);
+    let ty = 8;
+    const texts: Phaser.GameObjects.Text[] = [];
+    for (const [txt, col] of lines) {
+      const t = this.scene.add.text(10, ty, txt, {
+        fontFamily: 'serif', fontSize: '12.5px', color: col, wordWrap: { width: 250 },
+      });
+      texts.push(t);
+      ty += t.height + 2;
+    }
+    const bgW = Math.max(...texts.map((t) => t.width)) + 20;
+    const bg = this.scene.add.rectangle(0, 0, bgW, ty + 6, 0x0e0a06, 0.97).setOrigin(0).setStrokeStyle(1, LINE);
+    c.add(bg);
+    for (const t of texts) c.add(t);
+    const px = ptr.x + 14 + bgW > this.scene.scale.width ? ptr.x - bgW - 12 : ptr.x + 14;
+    c.setPosition(Math.max(6, px), Math.min(ptr.y, this.scene.scale.height - ty - 16));
+    this.tooltip = c;
+  }
+
+  private hideTooltip(): void {
+    this.tooltip?.destroy();
+    this.tooltip = null;
+  }
+
+  destroy(): void {
+    this.close();
+  }
+}

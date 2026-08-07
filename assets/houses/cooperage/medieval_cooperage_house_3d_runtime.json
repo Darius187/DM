@@ -1,0 +1,329 @@
+{
+  "asset": "medieval_cooperage_house_3d_runtime",
+  "asset_type": "rotatable walkable 3D medieval cooperage and barrel workshop",
+  "model": "medieval_cooperage_house_3d_runtime.glb",
+  "units": "meters",
+  "root_node": "COOPERAGE_HOUSE_ROTATION_PIVOT",
+  "coordinate_conversion": {
+    "blender": "X/Y ground, Z up",
+    "threejs": "X/Z ground, Y up",
+    "point_rule": "[x,y,z] -> [x,z,-y]"
+  },
+  "continuous_controls": {
+    "building_yaw_degrees": {
+      "min": 0,
+      "max": 360,
+      "default": 0
+    },
+    "uniform_scale": {
+      "min": 0.25,
+      "max": 4,
+      "default": 1
+    },
+    "camera_elevation_degrees": {
+      "min": 18,
+      "max": 78,
+      "default": 43
+    },
+    "camera_azimuth_degrees": {
+      "min": 0,
+      "max": 360,
+      "default": 36
+    },
+    "orthographic_zoom": {
+      "min": 0.55,
+      "max": 2.4,
+      "default": 1
+    }
+  },
+  "materials": {
+    "all_visible_materials_have_embedded_basecolor_textures": true,
+    "runtime_tinting_allowed": false,
+    "transparent_windows": true,
+    "texture_count": 13,
+    "used_materials": [
+      "MAT_COOPERAGE_FORGED_IRON",
+      "MAT_COOPERAGE_FRESH_OAK",
+      "MAT_COOPERAGE_GLASS_TRANSPARENT",
+      "MAT_COOPERAGE_MOSS_WEATHERING",
+      "MAT_COOPERAGE_OAK_DARK",
+      "MAT_COOPERAGE_OAK_MID",
+      "MAT_COOPERAGE_PLASTER_AGED",
+      "MAT_COOPERAGE_PLASTER_WORN",
+      "MAT_COOPERAGE_SHINGLE_A",
+      "MAT_COOPERAGE_SHINGLE_B",
+      "MAT_COOPERAGE_SHINGLE_C",
+      "MAT_COOPERAGE_STONE_DARK",
+      "MAT_COOPERAGE_STONE_WARM"
+    ]
+  },
+  "renderer_recipe": {
+    "output_color_space": "SRGBColorSpace",
+    "tone_mapping": "ACESFilmicToneMapping",
+    "exposure": 1.0,
+    "do_not_replace_materials": true
+  },
+  "doors": {
+    "DOOR_COOPERAGE_MAIN_HINGE": {
+      "node": "DOOR_COOPERAGE_MAIN_HINGE",
+      "closed_frame": 1,
+      "open_frame": 30
+    }
+  },
+  "walkable_interior": {
+    "enabled": false,
+    "replacement": "separate Phaser interior map"
+  },
+  "visibility_controls": {
+    "roof_property": "roof_removable",
+    "cutaway_property": "cutaway_near_wall",
+    "floor_property": "floor_level"
+  },
+  "node_groups": {
+    "transparent_windows": [
+      "WINDOW_DORMER_GLASS",
+      "WINDOW_FRONT_0_GLASS",
+      "WINDOW_FRONT_1_GLASS",
+      "WINDOW_FRONT_2_GLASS",
+      "WINDOW_FRONT_3_GLASS",
+      "WINDOW_FRONT_4_GLASS",
+      "WINDOW_FRONT_ATTIC_GLASS",
+      "WINDOW_LEFT_UPPER_GLASS",
+      "WINDOW_REAR_UPPER_LEFT_GLASS",
+      "WINDOW_REAR_UPPER_RIGHT_GLASS",
+      "WINDOW_RIGHT_UPPER_FRONT_GLASS",
+      "WINDOW_RIGHT_UPPER_REAR_GLASS"
+    ],
+    "batched_runtime_meshes": [
+      "RUNTIME_BATCH_000_MAT_COOPERAGE_STONE_WARM",
+      "RUNTIME_BATCH_002_MAT_COOPERAGE_OAK_DARK",
+      "RUNTIME_BATCH_003_MAT_COOPERAGE_OAK_DARK",
+      "RUNTIME_BATCH_004_MAT_COOPERAGE_OAK_DARK",
+      "RUNTIME_BATCH_005_MAT_COOPERAGE_OAK_DARK",
+      "RUNTIME_BATCH_006_MAT_COOPERAGE_OAK_DARK",
+      "RUNTIME_BATCH_009_MAT_COOPERAGE_OAK_DARK",
+      "RUNTIME_BATCH_010_MAT_COOPERAGE_OAK_DARK",
+      "RUNTIME_BATCH_011_MAT_COOPERAGE_STONE_DARK",
+      "RUNTIME_BATCH_012_MAT_COOPERAGE_STONE_WARM",
+      "RUNTIME_BATCH_013_MAT_COOPERAGE_STONE_DARK",
+      "RUNTIME_BATCH_014_MAT_COOPERAGE_STONE_WARM",
+      "RUNTIME_BATCH_016_MAT_COOPERAGE_PLASTER_AGED",
+      "RUNTIME_BATCH_017_MAT_COOPERAGE_PLASTER_WORN",
+      "RUNTIME_BATCH_018_MAT_COOPERAGE_PLASTER_AGED",
+      "RUNTIME_BATCH_019_MAT_COOPERAGE_PLASTER_WORN",
+      "RUNTIME_BATCH_020_MAT_COOPERAGE_PLASTER_AGED",
+      "RUNTIME_BATCH_021_MAT_COOPERAGE_PLASTER_WORN",
+      "RUNTIME_BATCH_022_MAT_COOPERAGE_PLASTER_AGED",
+      "RUNTIME_BATCH_023_MAT_COOPERAGE_PLASTER_WORN",
+      "RUNTIME_BATCH_024_MAT_COOPERAGE_PLASTER_AGED",
+      "RUNTIME_BATCH_025_MAT_COOPERAGE_PLASTER_WORN",
+      "RUNTIME_BATCH_026_MAT_COOPERAGE_OAK_DARK",
+      "RUNTIME_BATCH_027_MAT_COOPERAGE_OAK_DARK",
+      "RUNTIME_BATCH_028_MAT_COOPERAGE_OAK_DARK",
+      "RUNTIME_BATCH_029_MAT_COOPERAGE_SHINGLE_C",
+      "RUNTIME_BATCH_030_MAT_COOPERAGE_SHINGLE_B",
+      "RUNTIME_BATCH_031_MAT_COOPERAGE_SHINGLE_A",
+      "RUNTIME_BATCH_032_MAT_COOPERAGE_OAK_DARK",
+      "RUNTIME_BATCH_033_MAT_COOPERAGE_SHINGLE_B",
+      "RUNTIME_BATCH_034_MAT_COOPERAGE_SHINGLE_C",
+      "RUNTIME_BATCH_035_MAT_COOPERAGE_SHINGLE_A",
+      "RUNTIME_BATCH_036_MAT_COOPERAGE_MOSS_WEATHERING",
+      "RUNTIME_BATCH_037_MAT_COOPERAGE_FRESH_OAK",
+      "RUNTIME_BATCH_038_MAT_COOPERAGE_FORGED_IRON",
+      "RUNTIME_BATCH_039_MAT_COOPERAGE_OAK_DARK",
+      "RUNTIME_BATCH_040_MAT_COOPERAGE_OAK_MID",
+      "RUNTIME_BATCH_041_MAT_COOPERAGE_OAK_DARK",
+      "RUNTIME_BATCH_043_MAT_COOPERAGE_OAK_DARK",
+      "RUNTIME_BATCH_044_MAT_COOPERAGE_OAK_DARK",
+      "RUNTIME_BATCH_045_MAT_COOPERAGE_OAK_DARK",
+      "RUNTIME_BATCH_046_MAT_COOPERAGE_FRESH_OAK",
+      "RUNTIME_BATCH_047_MAT_COOPERAGE_OAK_DARK",
+      "RUNTIME_BATCH_048_MAT_COOPERAGE_FRESH_OAK",
+      "RUNTIME_BATCH_049_MAT_COOPERAGE_OAK_DARK",
+      "RUNTIME_BATCH_050_MAT_COOPERAGE_FRESH_OAK",
+      "RUNTIME_BATCH_051_MAT_COOPERAGE_FORGED_IRON",
+      "RUNTIME_BATCH_052_MAT_COOPERAGE_FRESH_OAK"
+    ],
+    "batched_roof_meshes": [
+      "COOPERAGE_CHIMNEY_OPEN_MOUTH",
+      "RUNTIME_BATCH_009_MAT_COOPERAGE_OAK_DARK",
+      "RUNTIME_BATCH_010_MAT_COOPERAGE_OAK_DARK",
+      "RUNTIME_BATCH_013_MAT_COOPERAGE_STONE_DARK",
+      "RUNTIME_BATCH_014_MAT_COOPERAGE_STONE_WARM",
+      "RUNTIME_BATCH_024_MAT_COOPERAGE_PLASTER_AGED",
+      "RUNTIME_BATCH_025_MAT_COOPERAGE_PLASTER_WORN",
+      "RUNTIME_BATCH_029_MAT_COOPERAGE_SHINGLE_C",
+      "RUNTIME_BATCH_030_MAT_COOPERAGE_SHINGLE_B",
+      "RUNTIME_BATCH_031_MAT_COOPERAGE_SHINGLE_A",
+      "RUNTIME_BATCH_032_MAT_COOPERAGE_OAK_DARK",
+      "RUNTIME_BATCH_033_MAT_COOPERAGE_SHINGLE_B",
+      "RUNTIME_BATCH_034_MAT_COOPERAGE_SHINGLE_C",
+      "RUNTIME_BATCH_035_MAT_COOPERAGE_SHINGLE_A",
+      "RUNTIME_BATCH_043_MAT_COOPERAGE_OAK_DARK",
+      "WORKSHOP_RIDGE"
+    ]
+  },
+  "animations": [
+    {
+      "name": "DOOR_COOPERAGE_MAIN_HINGEAction",
+      "frame_range": [
+        1.0,
+        30.0
+      ]
+    }
+  ],
+  "collision_guides": [
+    {
+      "name": "NAV_FRONT_APPROACH",
+      "kind": "walk",
+      "role": "walkable_polygon",
+      "floor": "EXTERIOR",
+      "center_blender_xyz": [
+        1.8,
+        -4.3,
+        0.08
+      ],
+      "size_blender_xyz": [
+        11.0,
+        1.1,
+        0.06
+      ]
+    },
+    {
+      "name": "COLLISION_ASSEMBLY_VAT",
+      "kind": "block",
+      "role": "fixed_furniture",
+      "floor": "EXTERIOR",
+      "center_blender_xyz": [
+        3.6,
+        -3.95,
+        0.7
+      ],
+      "size_blender_xyz": [
+        1.4,
+        1.4,
+        1.4
+      ]
+    },
+    {
+      "name": "TRIGGER_COOPERAGE_MAIN",
+      "kind": "transition",
+      "role": "enter_cooperage",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        0.0,
+        -3.55,
+        1.35
+      ],
+      "size_blender_xyz": [
+        1.15,
+        1.0,
+        2.5
+      ]
+    },
+    {
+      "name": "TRIGGER_WORKSHOP",
+      "kind": "transition",
+      "role": "enter_workshop",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        4.15,
+        -3.35,
+        1.35
+      ],
+      "size_blender_xyz": [
+        1.6,
+        1.0,
+        2.5
+      ]
+    },
+    {
+      "name": "INTERACTION_ASSEMBLY_VAT",
+      "kind": "interaction",
+      "role": "assemble_barrel",
+      "floor": "EXTERIOR",
+      "center_blender_xyz": [
+        3.6,
+        -3.95,
+        0.8
+      ],
+      "size_blender_xyz": [
+        1.8,
+        1.8,
+        1.7
+      ]
+    },
+    {
+      "name": "COLLISION_EXTERIOR_FOOTPRINT_0",
+      "kind": "block",
+      "role": "solid_building",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        0.0,
+        0.0,
+        1.55
+      ],
+      "size_blender_xyz": [
+        6.95,
+        6.55,
+        3.1
+      ]
+    },
+    {
+      "name": "COLLISION_EXTERIOR_FOOTPRINT_1",
+      "kind": "block",
+      "role": "solid_building",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        5.985,
+        -0.04,
+        1.55
+      ],
+      "size_blender_xyz": [
+        4.45,
+        6.27,
+        3.1
+      ]
+    }
+  ],
+  "markers": [
+    {
+      "name": "SPAWN_EXTERIOR_MAIN",
+      "role": "spawn_exterior",
+      "floor": "EXTERIOR",
+      "blender_xyz": [
+        0.0,
+        -4.35,
+        0.08
+      ]
+    }
+  ],
+  "counts": {
+    "runtime_objects": 80,
+    "materials": 13,
+    "windows": 12,
+    "doors": 1,
+    "collisions": 7,
+    "house_roof_shingles": 647,
+    "workshop_roof_shingles": 362,
+    "barrels": 14,
+    "removed_interior_objects": 19,
+    "merged_static_objects": 1808
+  },
+  "integration_contract": {
+    "load_with": "Three.js GLTFLoader",
+    "rotate": "COOPERAGE_HOUSE_ROTATION_PIVOT around Three.js Y",
+    "collisions": "build from JSON and transform with building",
+    "doors": "play named animations",
+    "forbidden": [
+      "PNG replacement",
+      "material tinting",
+      "visible collision meshes"
+    ]
+  },
+  "runtime_mode": "exterior_only",
+  "construction_contract": {
+    "embedded_interior_fitout": false,
+    "separate_interior_map_ready": true
+  }
+}

@@ -1,0 +1,327 @@
+{
+  "asset": "medieval_rectory_house_3d_runtime",
+  "asset_type": "rotatable walkable 3D medieval rectory house",
+  "historical_target_year": 1349,
+  "runtime_mode": "exterior_only",
+  "model": "medieval_rectory_house_3d_runtime.glb",
+  "units": "meters",
+  "root_node": "RECTORY_HOUSE_ROTATION_PIVOT",
+  "bounds_blender": {
+    "min": [
+      -4.40161,
+      -4.53,
+      0.0
+    ],
+    "max": [
+      5.975,
+      3.755,
+      10.08
+    ],
+    "center": [
+      0.78669,
+      -0.3875,
+      5.04
+    ],
+    "size": [
+      10.37661,
+      8.285,
+      10.08
+    ],
+    "bounding_radius": 8.07498
+  },
+  "coordinate_conversion": {
+    "blender": "X/Y ground, Z up",
+    "threejs": "X/Z ground, Y up",
+    "point_rule": "[x,y,z] -> [x,z,-y]"
+  },
+  "continuous_controls": {
+    "building_yaw_degrees": {
+      "min": 0,
+      "max": 360,
+      "default": 0
+    },
+    "uniform_scale": {
+      "min": 0.25,
+      "max": 4,
+      "default": 1
+    },
+    "camera_elevation_degrees": {
+      "min": 18,
+      "max": 78,
+      "default": 43
+    },
+    "camera_azimuth_degrees": {
+      "min": 0,
+      "max": 360,
+      "default": 36
+    },
+    "orthographic_zoom": {
+      "min": 0.55,
+      "max": 2.4,
+      "default": 1
+    }
+  },
+  "materials": {
+    "all_visible_materials_have_embedded_basecolor_textures": true,
+    "runtime_tinting_allowed": false,
+    "transparent_windows": true,
+    "texture_count": 13,
+    "used_materials": [
+      "MAT_RECTORY_BLUE_SLATE_A",
+      "MAT_RECTORY_BLUE_SLATE_B",
+      "MAT_RECTORY_FORGED_IRON",
+      "MAT_RECTORY_GARDEN_LEAF",
+      "MAT_RECTORY_LEADED_GLASS_TRANSPARENT",
+      "MAT_RECTORY_MOSS",
+      "MAT_RECTORY_OAK_DARK",
+      "MAT_RECTORY_OAK_MID",
+      "MAT_RECTORY_PLASTER_AGED",
+      "MAT_RECTORY_PLASTER_WORN",
+      "MAT_RECTORY_SLATE_WEATHERED",
+      "MAT_RECTORY_STONE_DARK",
+      "MAT_RECTORY_STONE_WARM"
+    ]
+  },
+  "renderer_recipe": {
+    "output_color_space": "SRGBColorSpace",
+    "tone_mapping": "ACESFilmicToneMapping",
+    "exposure": 1.0,
+    "do_not_replace_materials": true
+  },
+  "doors": {
+    "main": {
+      "node": "DOOR_RECTORY_MAIN_HINGE",
+      "trigger": "TRIGGER_RECTORY_MAIN",
+      "closed_frame": 1,
+      "open_frame": 30
+    },
+    "annex": {
+      "node": "DOOR_RECTORY_ANNEX_HINGE",
+      "trigger": "TRIGGER_RECTORY_ANNEX",
+      "closed_frame": 1,
+      "open_frame": 30
+    }
+  },
+  "walkable_interior": {
+    "enabled": false,
+    "replacement": "separate Phaser interior map"
+  },
+  "visibility_controls": {
+    "main_roof_property": "roof_removable",
+    "lean_roof_property": "roof_removable",
+    "cutaway_property": "cutaway_near_wall",
+    "floor_property": "floor_level"
+  },
+  "construction_contract": {
+    "fachwerk_infill_between_beams": true,
+    "beams_through_windows_or_doors": false,
+    "rear_and_side_framing_complete": true,
+    "roof_covering_lies_on_planes": true,
+    "global_ground_plate": false,
+    "embedded_interior_fitout": false,
+    "separate_interior_map_ready": true
+  },
+  "node_groups": {
+    "transparent_windows": [
+      "WINDOW_FRONT_ATTIC_GLASS",
+      "WINDOW_FRONT_GROUND_0_GLASS",
+      "WINDOW_FRONT_GROUND_1_GLASS",
+      "WINDOW_FRONT_UPPER_0_GLASS",
+      "WINDOW_FRONT_UPPER_1_GLASS",
+      "WINDOW_LEFT_GROUND_0_GLASS",
+      "WINDOW_LEFT_GROUND_1_GLASS",
+      "WINDOW_LEFT_UPPER_0_GLASS",
+      "WINDOW_LEFT_UPPER_1_GLASS",
+      "WINDOW_REAR_GROUND_0_GLASS",
+      "WINDOW_REAR_GROUND_1_GLASS",
+      "WINDOW_REAR_UPPER_0_GLASS",
+      "WINDOW_REAR_UPPER_1_GLASS",
+      "WINDOW_RIGHT_GROUND_0_GLASS",
+      "WINDOW_RIGHT_GROUND_1_GLASS",
+      "WINDOW_RIGHT_UPPER_0_GLASS",
+      "WINDOW_RIGHT_UPPER_1_GLASS"
+    ],
+    "batched_roof_meshes": [
+      "CHIMNEY_OPENING",
+      "MAIN_ROOF_RIDGE",
+      "RUNTIME_BATCH_009_MAT_RECTORY_STONE_WARM",
+      "RUNTIME_BATCH_010_MAT_RECTORY_STONE_DARK",
+      "RUNTIME_BATCH_035_MAT_RECTORY_SLATE_WEATHERED",
+      "RUNTIME_BATCH_036_MAT_RECTORY_BLUE_SLATE_A",
+      "RUNTIME_BATCH_037_MAT_RECTORY_BLUE_SLATE_B"
+    ],
+    "batched_runtime_meshes": [
+      "RUNTIME_BATCH_000_MAT_RECTORY_STONE_WARM",
+      "RUNTIME_BATCH_001_MAT_RECTORY_OAK_DARK",
+      "RUNTIME_BATCH_002_MAT_RECTORY_OAK_DARK",
+      "RUNTIME_BATCH_003_MAT_RECTORY_OAK_DARK",
+      "RUNTIME_BATCH_004_MAT_RECTORY_OAK_DARK",
+      "RUNTIME_BATCH_005_MAT_RECTORY_OAK_MID",
+      "RUNTIME_BATCH_006_MAT_RECTORY_OAK_MID",
+      "RUNTIME_BATCH_008_MAT_RECTORY_STONE_DARK",
+      "RUNTIME_BATCH_009_MAT_RECTORY_STONE_WARM",
+      "RUNTIME_BATCH_010_MAT_RECTORY_STONE_DARK",
+      "RUNTIME_BATCH_012_MAT_RECTORY_STONE_DARK",
+      "RUNTIME_BATCH_013_MAT_RECTORY_STONE_WARM",
+      "RUNTIME_BATCH_014_MAT_RECTORY_PLASTER_AGED",
+      "RUNTIME_BATCH_015_MAT_RECTORY_PLASTER_WORN",
+      "RUNTIME_BATCH_016_MAT_RECTORY_STONE_DARK",
+      "RUNTIME_BATCH_017_MAT_RECTORY_STONE_WARM",
+      "RUNTIME_BATCH_018_MAT_RECTORY_PLASTER_AGED",
+      "RUNTIME_BATCH_019_MAT_RECTORY_PLASTER_WORN",
+      "RUNTIME_BATCH_020_MAT_RECTORY_PLASTER_AGED",
+      "RUNTIME_BATCH_021_MAT_RECTORY_PLASTER_WORN",
+      "RUNTIME_BATCH_022_MAT_RECTORY_PLASTER_AGED",
+      "RUNTIME_BATCH_023_MAT_RECTORY_PLASTER_WORN",
+      "RUNTIME_BATCH_024_MAT_RECTORY_OAK_DARK",
+      "RUNTIME_BATCH_025_MAT_RECTORY_OAK_MID",
+      "RUNTIME_BATCH_026_MAT_RECTORY_FORGED_IRON",
+      "RUNTIME_BATCH_027_MAT_RECTORY_FORGED_IRON",
+      "RUNTIME_BATCH_028_MAT_RECTORY_OAK_DARK",
+      "RUNTIME_BATCH_029_MAT_RECTORY_OAK_MID",
+      "RUNTIME_BATCH_030_MAT_RECTORY_FORGED_IRON",
+      "RUNTIME_BATCH_031_MAT_RECTORY_FORGED_IRON",
+      "RUNTIME_BATCH_032_MAT_RECTORY_OAK_MID",
+      "RUNTIME_BATCH_033_MAT_RECTORY_FORGED_IRON",
+      "RUNTIME_BATCH_034_MAT_RECTORY_STONE_DARK",
+      "RUNTIME_BATCH_035_MAT_RECTORY_SLATE_WEATHERED",
+      "RUNTIME_BATCH_036_MAT_RECTORY_BLUE_SLATE_A",
+      "RUNTIME_BATCH_037_MAT_RECTORY_BLUE_SLATE_B",
+      "RUNTIME_BATCH_039_MAT_RECTORY_FORGED_IRON",
+      "RUNTIME_BATCH_040_MAT_RECTORY_GARDEN_LEAF",
+      "RUNTIME_BATCH_041_MAT_RECTORY_OAK_DARK"
+    ]
+  },
+  "animations": [
+    {
+      "name": "DOOR_RECTORY_ANNEX_HINGEAction",
+      "frame_range": [
+        1.0,
+        30.0
+      ]
+    },
+    {
+      "name": "DOOR_RECTORY_MAIN_HINGEAction",
+      "frame_range": [
+        1.0,
+        30.0
+      ]
+    }
+  ],
+  "collision_guides": [
+    {
+      "name": "NAV_RECTORY_APPROACH",
+      "kind": "walk",
+      "role": "walkable_polygon",
+      "floor": "EXTERIOR",
+      "center_blender_xyz": [
+        0.0,
+        -3.92,
+        0.08
+      ],
+      "size_blender_xyz": [
+        2.7,
+        1.1,
+        0.06
+      ]
+    },
+    {
+      "name": "TRIGGER_RECTORY_MAIN",
+      "kind": "transition",
+      "role": "enter_rectory",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        0.0,
+        -3.18,
+        1.45
+      ],
+      "size_blender_xyz": [
+        1.35,
+        1.05,
+        2.45
+      ]
+    },
+    {
+      "name": "TRIGGER_RECTORY_ANNEX",
+      "kind": "transition",
+      "role": "enter_rectory_annex",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        4.55,
+        0.12,
+        1.25
+      ],
+      "size_blender_xyz": [
+        1.45,
+        1.0,
+        2.2
+      ]
+    },
+    {
+      "name": "COLLISION_EXTERIOR_FOOTPRINT_0",
+      "kind": "block",
+      "role": "solid_building",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        4.55,
+        1.625,
+        1.55
+      ],
+      "size_blender_xyz": [
+        1.8,
+        2.85,
+        3.1
+      ]
+    },
+    {
+      "name": "COLLISION_EXTERIOR_FOOTPRINT_1",
+      "kind": "block",
+      "role": "solid_building",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        0.0,
+        0.0,
+        1.55
+      ],
+      "size_blender_xyz": [
+        6.75,
+        5.95,
+        3.1
+      ]
+    }
+  ],
+  "markers": [
+    {
+      "name": "SPAWN_RECTORY_EXTERIOR",
+      "role": "spawn_exterior",
+      "floor": "EXTERIOR",
+      "blender_xyz": [
+        0.0,
+        -4.25,
+        0.08
+      ]
+    }
+  ],
+  "counts": {
+    "runtime_objects": 80,
+    "materials": 13,
+    "windows": 17,
+    "doors": 2,
+    "collisions": 5,
+    "batched_roof_meshes": 6,
+    "roof_tile_boxes": 702,
+    "removed_interior_objects": 21,
+    "merged_static_objects": 440
+  },
+  "integration_contract": {
+    "load_with": "Three.js GLTFLoader",
+    "rotate": "RECTORY_HOUSE_ROTATION_PIVOT around Three.js Y",
+    "collisions": "build from JSON and transform with building",
+    "doors": "play named animations",
+    "forbidden": [
+      "PNG replacement",
+      "material tinting",
+      "visible collision meshes"
+    ]
+  }
+}

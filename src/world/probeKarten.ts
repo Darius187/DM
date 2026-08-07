@@ -1,0 +1,247 @@
+// Vereinheitlichte Karten-Erzeugung für die DUNGEON-PROBE (ÜBERSICHT/BEGEHEN)
+// UND die spielbare Variante (DungeonSpiel). Jeder Generator wird auf eine
+// kleine ProbeKarte abgebildet: grid + solid() (für Kollision) + farbe() (für
+// die Minikarte). So testen Ansehen, Begehen und Spielen alle dieselbe Quelle.
+
+import { baueLogischenDungeon, type DRaum, type Zelle } from './logischerDungeon';
+import { baueKammernDungeon } from './dungeonKammern';
+import { baueGangDungeon } from './dungeonGaenge';
+import { baueHoehle } from './hoehlenDungeon';
+import { baueVerbundeneRaeume } from './verbundeneRaeume';
+import { baueBurg } from './burgDungeon';
+import { baueV9 } from './v9Dungeon';
+import { baueV10 } from './v10Dungeon';
+import { baueV11 } from './v11Dungeon';
+import { baueKatakombenDungeon } from './katakombenDungeon';
+import { baueKerker } from './kerkerDungeon';
+import type { KatakombenRolle } from '../data/katakombenDungeon';
+import { buildCrypt } from './areagen';
+import { seededRng } from '../logic/rng';
+import { T, SOLID } from './tiles';
+import { VORLAGE_FARBE, type EditCode } from './dungeonVorlage';
+
+export type DungeonVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
+
+export interface ProbeKarte {
+  name: string;
+  w: number; h: number;
+  grid: number[][];
+  solid: (t: number) => boolean;
+  farbe: (t: number) => number;
+  raeume?: DRaum[];
+  // V8 (R102): Rollen-Etiketten fuer die Uebersicht ("die Folterkammer" statt
+  // "irgendein Raum") + editorCodes=true, wenn das Gitter BEREITS Editor-Codes
+  // traegt (der Editor uebernimmt dann Tueren/Gaenge 1:1 statt nur Wand/Boden).
+  rollen?: Array<{ cx: number; y: number; label: string; farbe: string }>;
+  editorCodes?: boolean;
+  // R126: V4 ist die Mine/Höhle - DungeonSpiel schaltet dann auf Höhlen-Optik
+  // (Geröll-Wände, Erzadern, Höhlenlicht, Wassertropfen).
+  stil?: 'hoehle';
+  // R127 (Autorwunsch "verschiedene Böden für verschiedene Räume"): Kachel-
+  // Rechtecke mit eigenem Boden-Stil (z. B. Blut im Kerker, Gebein im
+  // Beinhaus). Nur begehbare Kacheln im Rechteck werden umgefärbt.
+  raumBoeden?: Array<{ x: number; y: number; w: number; h: number; stil: string }>;
+}
+
+// Raum-Rollen -> Boden-Stil (V8 Katakomben): so erzählt der Boden den Raum.
+const ROLLEN_BODEN: Partial<Record<KatakombenRolle, string>> = {
+  folterkammer: 'blut', beinhaus: 'gebein', kerker: 'lehm', kapelle: 'kirchenfliesen',
+  skriptorium: 'holzdielen', schatzkammer: 'mosaik', bossarena: 'schachbrett',
+  krypta: 'rosette', wachstube: 'flusskiesel',
+};
+
+// Themen-Räume (V3/V6, DRaum.inhalt) -> Boden-Stil.
+const INHALT_BODEN: Record<string, string> = { blut: 'blut', knochen: 'gebein', folter: 'blut' };
+
+// Themen-Räume (V3/V6): DRaum.inhalt bestimmt den Boden; die Haupthalle
+// bekommt Kirchenfliesen (V3 ist der Kloster-Kandidat).
+function themenRaumBoeden(raeume: DRaum[]): ProbeKarte['raumBoeden'] {
+  const out: NonNullable<ProbeKarte['raumBoeden']> = [];
+  for (const r of raeume) {
+    const stil = r.inhalt ? INHALT_BODEN[r.inhalt] : r.typ === 'haupthalle' ? 'kirchenfliesen' : null;
+    if (stil) out.push({ x: r.x, y: r.y, w: r.w, h: r.h, stil });
+  }
+  return out;
+}
+
+// Rollenlose Räume (V9/V10/V11): ein Teil bekommt zufällig einen Sonder-Boden.
+function zufallsRaumBoeden(raeume: Array<{ x: number; y: number; w: number; h: number }>): ProbeKarte['raumBoeden'] {
+  const pool = ['blut', 'gebein', 'moos', 'lehm', 'mosaik', 'holzdielen'];
+  const out: NonNullable<ProbeKarte['raumBoeden']> = [];
+  for (const r of raeume) {
+    if (Math.random() >= 0.3) continue;                       // ~30% der Räume
+    const stil = pool[Math.floor(Math.random() * pool.length)];
+    out.push({ x: r.x + 1, y: r.y + 1, w: r.w - 2, h: r.h - 2, stil });
+  }
+  return out;
+}
+
+const FARBE_V3: Record<Zelle, number> = {
+  0: 0x14110c, 1: 0x4a443a, 2: 0x8a5a2a, 3: 0xc9a227, 4: 0x6ad06a, 5: 0xd05a4a, 6: 0x05060a, 7: 0x6a1818, 8: 0xff4848,
+};
+
+function farbeV1(t: number): number {
+  if (t === T.STAIR) return 0xd05a4a;
+  if (t === T.STAIRUP || t === T.WENDEL) return 0x6ad06a;
+  if (t === T.CDOOR || t === T.HDOOR || t === T.ZELLENTOR) return 0x8a5a2a;
+  if (t === T.WATER || t === T.ABYSS) return 0x05060a;
+  if (t === T.BLOOD) return 0x6a1818;
+  if (SOLID.has(t)) return 0x14110c;
+  return 0x4a443a;
+}
+
+// V8 (R102): Anzeige-Etiketten je Rolle - GROSS = die festen/besonderen Rollen.
+const ROLLEN_LABEL: Record<KatakombenRolle, { text: string; farbe: string }> = {
+  eingang: { text: 'EINGANG', farbe: '#6ad06a' },
+  bossarena: { text: 'BOSSARENA', farbe: '#ff4848' },
+  schatzkammer: { text: 'SCHATZKAMMER', farbe: '#f0c040' },
+  kapelle: { text: 'Kapelle', farbe: '#e8d8a0' },
+  folterkammer: { text: 'Folterkammer', farbe: '#ff8a7a' },
+  kerker: { text: 'Kerker', farbe: '#cdbf9d' },
+  krypta: { text: 'Krypta', farbe: '#9ab4cc' },
+  beinhaus: { text: 'Beinhaus', farbe: '#cdbf9d' },
+  skriptorium: { text: 'Skriptorium', farbe: '#e8d8a0' },
+  wachstube: { text: 'Wachstube', farbe: '#ff8a7a' },
+  gewoelbe: { text: 'Gewölbe', farbe: '#8a8070' },
+};
+
+export function erzeugeKarte(version: DungeonVersion): ProbeKarte {
+  if (version === 12) {
+    // R136 (Fable-Sitzung, Kerker-Spec): rekursive Flaechenteilung - die Flaeche
+    // ist LUECKENLOS mit aneinandergrenzenden Raeumen gefuellt, Wand = duenne
+    // Trennlinie, Tueren per Spanning Tree (alle Raeume erreichbar) + Schleifen.
+    const r = seededRng(Math.floor(Math.random() * 1e9));
+    const d = baueKerker(() => r.random());
+    const tueren = d.grid.flat().filter((t) => t === 3).length;
+    // R136b (Autor): KEINE verschiedenen Boeden je Raum bei V12 - die Insel-
+    // Optik wirkte fremd. EIN durchgehender Boden fuer die ganze Karte.
+    return {
+      name: `V12 - KERKER: lueckenlose Flaechenteilung (${d.raeume.length} Räume, ${tueren} Türen)`,
+      w: d.w, h: d.h, grid: d.grid as number[][], solid: (t) => t === 0 || t === 2,
+      farbe: (t) => VORLAGE_FARBE[t as EditCode] ?? 0x100d0a, editorCodes: true,
+    };
+  }
+  if (version === 9) {
+    // R118: gefuellte Kammern + ECHTE Tueren (im Spiel T.DTUER, hier Editor-Code 3)
+    const r = seededRng(Math.floor(Math.random() * 1e9));
+    const d = baueV9(() => r.random());
+    return {
+      name: `V9 - Kammern + echte Türen (${d.raeume.length} Räume, ${d.tueren.length} Türen)`,
+      w: d.w, h: d.h, grid: d.grid, solid: (t) => t === 0 || t === 2,
+      farbe: (t) => VORLAGE_FARBE[t as EditCode] ?? 0x100d0a, editorCodes: true,
+      raumBoeden: zufallsRaumBoeden(d.raeume),
+    };
+  }
+  if (version === 11) {
+    // R123: unregelmaessige Hauptraeume + Zwischenraeume (Autor: mehr Ueberraschung)
+    const r = seededRng(Math.floor(Math.random() * 1e9));
+    const d = baueV11(() => r.random());
+    const haupt = d.raeume.filter((x) => !x.fueller).length, fuell = d.raeume.length - haupt;
+    return {
+      name: `V11 - Hauptraeume + Zwischenraeume (${haupt} Haupt, ${fuell} Zwischen)`,
+      w: d.w, h: d.h, grid: d.grid, solid: (t) => t === 0 || t === 2,
+      farbe: (t) => VORLAGE_FARBE[t as EditCode] ?? 0x100d0a, editorCodes: true,
+      raumBoeden: zufallsRaumBoeden(d.raeume),
+    };
+  }
+  if (version === 10) {
+    // R120: Autor-Vorlage-Gefuehl (Wandmassen, Gang-Stummel, verschachtelte Raeume)
+    const r = seededRng(Math.floor(Math.random() * 1e9));
+    const d = baueV10(() => r.random());
+    return {
+      name: `V10 - Vorlage-Stil: Wandmassen + Gang-Stummel (${d.raeume.length} Räume)`,
+      w: d.w, h: d.h, grid: d.grid, solid: (t) => t === 0 || t === 2,
+      farbe: (t) => VORLAGE_FARBE[t as EditCode] ?? 0x100d0a, editorCodes: true,
+      raumBoeden: zufallsRaumBoeden(d.raeume),
+    };
+  }
+  if (version === 8) {
+    const d = baueKatakombenDungeon(seededRng(Math.floor(Math.random() * 1e9)));
+    const vaults = d.rooms.filter((r) => r.istVault);
+    const geheime = vaults.filter((r) => r.tueren.some((t) => t.geheim)).length;
+    return {
+      name: `V8 - Katakomben-Räume + Vaults (${d.rooms.length} Räume, ${vaults.length} Vaults, ${geheime} geheim)`,
+      w: d.w, h: d.h, grid: d.tiles as number[][],
+      solid: (t) => t === 0 || t === 2,
+      farbe: (t) => VORLAGE_FARBE[t as EditCode] ?? 0x100d0a,
+      rollen: d.rooms.map((r) => ({
+        cx: r.rect.x + (r.rect.w >> 1), y: r.rect.y,
+        label: ROLLEN_LABEL[r.rolle].text + (r.istVault ? (r.tueren.some((t) => t.geheim) ? ' 🔒' : ' (Vault)') : ''),
+        farbe: ROLLEN_LABEL[r.rolle].farbe,
+      })),
+      // R127: der Boden erzählt die Rolle (Blut in der Folterkammer, Gebein im
+      // Beinhaus, Fliesen in der Kapelle ...) - rect ist AUSSEN inkl. Wandring.
+      raumBoeden: d.rooms.flatMap((r) => {
+        const stil = ROLLEN_BODEN[r.rolle];
+        return stil ? [{ x: r.rect.x + 1, y: r.rect.y + 1, w: r.rect.w - 2, h: r.rect.h - 2, stil }] : [];
+      }),
+      editorCodes: true,
+    };
+  }
+  if (version === 1) {
+    const a = buildCrypt(1, seededRng(Math.floor(Math.random() * 1e9)));
+    return { name: 'V1 - Krypta (aktuell im Spiel)', w: a.w, h: a.h, grid: a.map, solid: (t) => SOLID.has(t), farbe: farbeV1 };
+  }
+  if (version === 3) {
+    const d = baueLogischenDungeon(Math.random);
+    return {
+      name: 'V3 - Geteilte Halle (logisch)', w: d.w, h: d.h, grid: d.grid as number[][], raeume: d.raeume,
+      solid: (t) => t === 0 || t === 3 || t === 6, farbe: (t) => FARBE_V3[t as Zelle] ?? 0x4a443a,
+      raumBoeden: themenRaumBoeden(d.raeume),
+    };
+  }
+  if (version === 2) {
+    const d = baueKammernDungeon(Math.random);   // wiederhergestellt (dgn2): Kammern + Gänge
+    return { name: 'V2 - Kammern + Gänge (Original)', w: d.w, h: d.h, grid: d.grid as number[][], raeume: d.raeume as unknown as DRaum[],
+      solid: (t) => t === 0 || t === 3 || t === 6, farbe: (t) => FARBE_V3[t as Zelle] ?? 0x4a443a };
+  }
+  if (version === 6) {
+    const d = baueGangDungeon(Math.random);       // wiederhergestellt (dgnB): offen + Elite-Themenräume
+    return { name: 'V6 - Offen + Elite-Themenräume', w: d.w, h: d.h, grid: d.grid as number[][], raeume: d.raeume as unknown as DRaum[],
+      solid: (t) => t === 0 || t === 3 || t === 6, farbe: (t) => FARBE_V3[t as Zelle] ?? 0x4a443a,
+      raumBoeden: themenRaumBoeden(d.raeume as unknown as DRaum[]) };
+  }
+  if (version === 7) {
+    const d = baueBurg(Math.random);              // NEU: echtes Verlies (BSP, dichte unregelmäßige Räume)
+    const farben: Record<number, number> = { 0: 0x14110c, 1: 0x8a5a2a, 2: 0x4a443a };
+    return { name: `V7 - Verlies/Burg (${d.raeume} Räume)`, w: d.w, h: d.h, grid: d.grid, solid: (t) => t === 0, farbe: (t) => farben[t] ?? 0x4a443a };
+  }
+  if (version === 4) {
+    // R126: die MINE - Erzadern (4 Eisen, 5 Kupfer, 6 Gold) liegen als solide
+    // Wandkacheln an den Stollen-Kanten; DungeonSpiel rendert Höhlen-Optik.
+    const d = baueHoehle(Math.random);
+    const farben: Record<number, number> = { 0: 0x14110c, 1: 0x39322a, 2: 0x8a5a2a, 3: 0x5a6076, 4: 0x8a4a2e, 5: 0x3fa06a, 6: 0xc9a227 };
+    return {
+      name: `V4 - Mine/Höhle (${d.raeume} Kammern, ${d.adern} Erzadern)`, w: d.w, h: d.h, grid: d.grid,
+      solid: (t) => t === 0 || t >= 4, farbe: (t) => farben[t] ?? 0x39322a, stil: 'hoehle',
+    };
+  }
+  const d = baueVerbundeneRaeume(Math.random);
+  const farben: Record<number, number> = { 0: 0x14110c, 1: 0x4a443a, 2: 0x5a6076 };
+  return { name: `V5 - Verbundene Räume (${d.raeume}) + Füllräume`, w: d.w, h: d.h, grid: d.grid, solid: (t) => t === 0, farbe: (t) => farben[t] ?? 0x4a443a };
+}
+
+// Eine selbst gezeichnete Editor-Vorlage (Codes: 2 Wand, 0 Leer/Fels = solide;
+// 1 Boden, 3 Tür, 4 Gang = begehbar) als ProbeKarte - damit Begehen UND Spielen
+// die gezeichnete Vorlage identisch behandeln (Runde 53, Autorwunsch).
+export function vorlageKarte(grid: number[][], name = 'Editor-Vorlage'): ProbeKarte {
+  return {
+    name, w: grid[0]?.length ?? 0, h: grid.length,
+    grid: grid.map((r) => [...r]),
+    solid: (t) => t === 2 || t === 0,
+    farbe: (t) => VORLAGE_FARBE[t as EditCode] ?? 0x100d0a,
+  };
+}
+
+// Nächste begehbare Kachel von der Mitte aus (Ringsuche) - Startpunkt.
+export function findeStartKachel(k: ProbeKarte): { x: number; y: number } {
+  const cx = Math.floor(k.w / 2), cy = Math.floor(k.h / 2);
+  for (let r = 0; r < Math.max(k.w, k.h); r++) {
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      const x = cx + dx, y = cy + dy;
+      if (x < 1 || y < 1 || x >= k.w - 1 || y >= k.h - 1) continue;
+      if (!k.solid(k.grid[y][x])) return { x, y };
+    }
+  }
+  return { x: cx, y: cy };
+}

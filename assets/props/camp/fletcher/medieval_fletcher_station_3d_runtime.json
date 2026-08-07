@@ -1,0 +1,74 @@
+{
+  "asset": "medieval_fletcher_station_3d_runtime",
+  "label_de": "Pfeilmacher- und Bognerstand",
+  "glb": "medieval_fletcher_station_3d_runtime.glb",
+  "runtime_mode": "static_exterior_prop",
+  "root_node": "FLETCHER_STATION_ROTATION_PIVOT",
+  "meters_per_blender_unit": 1.0,
+  "placement": {
+    "front_axis": "-Y",
+    "ground_z": 0.0,
+    "continuous_yaw_degrees": "0..360",
+    "no_global_ground_plate": true,
+    "world_placement": "open"
+  },
+  "bounds_m": {
+    "min": [
+      -2.753,
+      -1.514,
+      -0.024
+    ],
+    "max": [
+      2.56,
+      1.272,
+      2.916
+    ],
+    "size": [
+      5.313,
+      2.786,
+      2.94
+    ]
+  },
+  "runtime": {
+    "visible_objects": 10,
+    "triangles": 10662,
+    "embedded_textured_materials": 10,
+    "static_material_batches": [
+      "FLETCHER_WOOD_DARK_BATCH",
+      "FLETCHER_WOOD_MID_BATCH",
+      "FLETCHER_SHAFT_BATCH",
+      "FLETCHER_WICKER_BATCH",
+      "FLETCHER_ROPE_BATCH",
+      "FLETCHER_CANVAS_DARK_BATCH",
+      "FLETCHER_LEATHER_BATCH",
+      "FLETCHER_STEEL_BATCH",
+      "FLETCHER_FEATHER_WHITE_BATCH",
+      "FLETCHER_FEATHER_BROWN_BATCH"
+    ],
+    "baked_cloth_panels": []
+  },
+  "collision_guide": {
+    "shape": "box",
+    "size": [
+      5.4,
+      3.2
+    ],
+    "center": [
+      0.15,
+      -0.22
+    ]
+  },
+  "content": {
+    "arrows": 119,
+    "large_baskets": 3,
+    "open_quivers": 3,
+    "bound_bundles": 3,
+    "sorting_rack": true
+  },
+  "interactions": [],
+  "notes": [
+    "Eigenstaendiges Asset; nicht mit den beiden anderen Lager-Assets verschmelzen.",
+    "Keine Bodenplatte im GLB. Weltboden und Platzierung kommen aus Phaser.",
+    "Material-Farbtexturen sind im GLB eingebettet."
+  ]
+}

@@ -1,0 +1,146 @@
+{
+  "asset": "medieval_firewood_stack_3d_runtime",
+  "label_de": "Brennholzstapel",
+  "glb": "medieval_firewood_stack_3d_runtime.glb",
+  "runtime_mode": "static_exterior_prop",
+  "root_node": "FIREWOOD_STACK_ROTATION_PIVOT",
+  "editable_blend": "C:\\Obsidian\\DM\\Darius187-DM\\assets\\props\\camp\\firewood_stack\\medieval_firewood_stack_1349_rebuilt.blend",
+  "meters_per_blender_unit": 1.0,
+  "placement": {
+    "front_axis": "-Y",
+    "ground_z": 0.0,
+    "continuous_yaw_degrees": "0..360",
+    "no_global_ground_plate": true,
+    "world_placement": "open"
+  },
+  "bounds_m": {
+    "min": [
+      -1.685,
+      -0.855,
+      -0.061
+    ],
+    "max": [
+      1.926,
+      0.909,
+      1.801
+    ],
+    "size": [
+      3.611,
+      1.764,
+      1.861
+    ]
+  },
+  "runtime": {
+    "visible_objects": 3,
+    "triangles": 46316,
+    "embedded_textured_materials": 3,
+    "pbr_materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_AGED_SPLIT_WOOD_PBR",
+      "MAT_ROUGH_BARK_PBR"
+    ],
+    "active_runtime_cloth_simulations": 0,
+    "lod_policy": "LOD0 authored; Phaser distance culling/LOD integration remains external"
+  },
+  "collision_guide": {
+    "shape": "box",
+    "size": [
+      3.95,
+      1.72
+    ],
+    "center": [
+      0,
+      0
+    ]
+  },
+  "content": {
+    "historical_period": "Central Europe circa 1349",
+    "crooked_round_logs": 37,
+    "hand_split_billets": 19,
+    "kindling_sticks": 14,
+    "loose_splinters": 18,
+    "supported_contact_layers": 7,
+    "layer_pitch_m": 0.18,
+    "floating_stack_members": 0,
+    "identical_cylinder_stack": false,
+    "global_floor": false
+  },
+  "interactions": [
+    {
+      "id": "collect_firewood",
+      "position": [
+        0,
+        -0.94,
+        0.4
+      ]
+    }
+  ],
+  "quality_contract": {
+    "preview": "1536x1536 transparent RGBA, 62 mm perspective camera",
+    "texture_maps": "ambientCG CC0 2K BaseColor/Roughness/NormalGL; Metalness where applicable",
+    "uv_unwrapped": true,
+    "visible_edge_bevels": true,
+    "glb_reimport_required": true
+  },
+  "notes": [
+    "Rebuilt from scratch for a rural Central European field camp circa 1349.",
+    "No global ground plate is included; localized ash belongs to the cooking-fire prop.",
+    "Same GLB and root-node names are retained for Phaser/Claude Code compatibility."
+  ],
+  "reimport_audit": {
+    "status": "passed",
+    "root_ok": true,
+    "mesh_objects": 3,
+    "triangles": 46316,
+    "embedded_images": {
+      "Wood035_aged_dark_oak_2K_Color": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Wood092_aged_split_wood_2K_Color": [
+        2048,
+        2048
+      ],
+      "Wood092_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Wood092_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Bark001_rough_bark_2K_Color": [
+        1024,
+        2048
+      ],
+      "Bark001_2K-JPG_Roughness": [
+        1024,
+        2048
+      ],
+      "Bark001_2K-JPG_NormalGL": [
+        1024,
+        2048
+      ]
+    },
+    "materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_AGED_SPLIT_WOOD_PBR",
+      "MAT_ROUGH_BARK_PBR"
+    ],
+    "missing_uv_objects": [],
+    "active_cloth_modifiers": [],
+    "animation_actions": [],
+    "shape_key_objects": [],
+    "global_ground_plates": [],
+    "preview_rendered_from_reimported_glb": "medieval_firewood_stack_3d_runtime_preview.png",
+    "errors": []
+  }
+}

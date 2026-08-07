@@ -1,0 +1,173 @@
+{
+  "asset": "medieval_camp_supplies_3d_runtime",
+  "label_de": "Lagergut",
+  "glb": "medieval_camp_supplies_3d_runtime.glb",
+  "runtime_mode": "static_exterior_prop",
+  "root_node": "CAMP_SUPPLIES_ROTATION_PIVOT",
+  "editable_blend": "C:\\Obsidian\\DM\\Darius187-DM\\assets\\props\\camp\\camp_supplies\\medieval_camp_supplies_1349_rebuilt.blend",
+  "meters_per_blender_unit": 1.0,
+  "placement": {
+    "front_axis": "-Y",
+    "ground_z": 0.0,
+    "continuous_yaw_degrees": "0..360",
+    "no_global_ground_plate": true,
+    "world_placement": "open"
+  },
+  "bounds_m": {
+    "min": [
+      -2.554,
+      -2.115,
+      0.009
+    ],
+    "max": [
+      1.9,
+      2.056,
+      0.964
+    ],
+    "size": [
+      4.454,
+      4.17,
+      0.955
+    ]
+  },
+  "runtime": {
+    "visible_objects": 7,
+    "triangles": 27408,
+    "embedded_textured_materials": 5,
+    "pbr_materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_COARSE_LINEN_PBR",
+      "MAT_DARK_WEATHERED_PLANKS_PBR",
+      "MAT_FADED_MADDER_LINEN_PBR",
+      "MAT_FORGED_IRON_PBR"
+    ],
+    "active_runtime_cloth_simulations": 0,
+    "lod_policy": "LOD0 authored; Phaser distance culling/LOD integration remains external"
+  },
+  "collision_guide": {
+    "shape": "box",
+    "size": [
+      4.95,
+      4.2
+    ],
+    "center": [
+      -0.18,
+      -0.06
+    ]
+  },
+  "content": {
+    "historical_period": "Central Europe circa 1349",
+    "mixed_crates": 4,
+    "mixed_barrels": 3,
+    "tied_sacks": 5,
+    "wicker_baskets": 2,
+    "hemp_rope_coil": true,
+    "ceramics": 3,
+    "folded_cloth": true,
+    "container_intersections": 0,
+    "layout_clearance_validated": true,
+    "supported_elevated_props": [
+      "clay_bowl",
+      "folded_wool_cloth"
+    ],
+    "global_floor": false
+  },
+  "interactions": [
+    {
+      "id": "camp_stores",
+      "position": [
+        0,
+        -1.42,
+        0.0
+      ]
+    }
+  ],
+  "quality_contract": {
+    "preview": "1536x1536 transparent RGBA, 62 mm perspective camera",
+    "texture_maps": "ambientCG CC0 2K BaseColor/Roughness/NormalGL; Metalness where applicable",
+    "uv_unwrapped": true,
+    "visible_edge_bevels": true,
+    "glb_reimport_required": true
+  },
+  "notes": [
+    "Rebuilt from scratch for a rural Central European field camp circa 1349.",
+    "No global ground plate is included; localized ash belongs to the cooking-fire prop.",
+    "Same GLB and root-node names are retained for Phaser/Claude Code compatibility."
+  ],
+  "reimport_audit": {
+    "status": "passed",
+    "root_ok": true,
+    "mesh_objects": 7,
+    "triangles": 27408,
+    "embedded_images": {
+      "Wood035_aged_dark_oak_2K_Color": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Fabric019_coarse_linen_2K_Color": [
+        2048,
+        2048
+      ],
+      "Fabric019_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Fabric019_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Planks021_dark_weathered_planks_2K_Color": [
+        2048,
+        2048
+      ],
+      "Planks021_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Planks021_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Fabric019_faded_madder_linen_2K_Color": [
+        2048,
+        2048
+      ],
+      "Metal008_forged_iron_2K_Color": [
+        2048,
+        2048
+      ],
+      "Metal008_2K-JPG_Metalness-Metal008_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Metal008_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ]
+    },
+    "materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_COARSE_LINEN_PBR",
+      "MAT_DARK_WEATHERED_PLANKS_PBR",
+      "MAT_FADED_MADDER_LINEN_PBR",
+      "MAT_FORGED_IRON_PBR",
+      "MAT_HEMP_ROPE",
+      "MAT_UNGLAZED_CERAMIC"
+    ],
+    "missing_uv_objects": [],
+    "active_cloth_modifiers": [],
+    "animation_actions": [],
+    "shape_key_objects": [],
+    "global_ground_plates": [],
+    "preview_rendered_from_reimported_glb": "medieval_camp_supplies_3d_runtime_preview.png",
+    "errors": []
+  }
+}

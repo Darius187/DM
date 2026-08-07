@@ -1,0 +1,57 @@
+{
+  "format": "ravenmoor-painted-character-v1",
+  "status": "ready-for-live-integration-test",
+  "frameSize": [
+    128,
+    128
+  ],
+  "sheetSize": [
+    1152,
+    512
+  ],
+  "directions": [
+    "down",
+    "left",
+    "right",
+    "up"
+  ],
+  "frames": [
+    "idle",
+    "walk_1",
+    "walk_2",
+    "walk_3",
+    "walk_4",
+    "windup",
+    "impact",
+    "followthrough",
+    "block"
+  ],
+  "timingMs": {
+    "idle": 240,
+    "walk": 120,
+    "windup": 140,
+    "impact": 80,
+    "followthrough": 180,
+    "block": 160
+  },
+  "asset": "aldric-hemd-schwert-painted-9x4.png",
+  "proofs": {
+    "allFrames": "proofs/proof-painted-all-frames.png",
+    "walk": "proofs/proof-painted-walk.gif",
+    "attack": "proofs/proof-painted-attack.gif"
+  },
+  "variant": {
+    "bodyAppearance": "hemd",
+    "weapon": "solide-klinge",
+    "shield": null,
+    "helmet": null,
+    "cape": null,
+    "composition": "vollstaendig gemalte Figur; keine angeklebten Ruestungs-Overlays"
+  },
+  "notes": [
+    "Vier Richtungsfolgen wurden jeweils als zusammenhaengendes 3x3-Animationsblatt gemalt.",
+    "Gehen ist mit vier eigenen Frames in down, left, right und up vollstaendig vorhanden.",
+    "Basis down impact/followthrough wurden nach Autorhinweis als natuerlicher Einhandhieb korrigiert.",
+    "Live-Test vor weiteren Ruestungsvarianten."
+  ]
+}

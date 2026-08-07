@@ -1,0 +1,226 @@
+{
+  "asset": "medieval_field_forge_3d_runtime",
+  "label_de": "Feldschmiede",
+  "glb": "medieval_field_forge_3d_runtime.glb",
+  "runtime_mode": "static_exterior_prop",
+  "root_node": "FIELD_FORGE_ROTATION_PIVOT",
+  "editable_blend": "C:\\Obsidian\\DM\\Darius187-DM\\assets\\props\\camp\\field_forge\\medieval_field_forge_1349_rebuilt.blend",
+  "meters_per_blender_unit": 1.0,
+  "placement": {
+    "front_axis": "-Y",
+    "ground_z": 0.0,
+    "continuous_yaw_degrees": "0..360",
+    "no_global_ground_plate": true,
+    "world_placement": "open"
+  },
+  "bounds_m": {
+    "min": [
+      -2.226,
+      -1.08,
+      0.01
+    ],
+    "max": [
+      2.125,
+      1.904,
+      2.87
+    ],
+    "size": [
+      4.351,
+      2.984,
+      2.86
+    ]
+  },
+  "runtime": {
+    "visible_objects": 17,
+    "triangles": 31834,
+    "embedded_textured_materials": 8,
+    "pbr_materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_AGED_SPLIT_WOOD_PBR",
+      "MAT_DARK_WEATHERED_PLANKS_PBR",
+      "MAT_FIELD_STONE_PBR",
+      "MAT_FORGED_IRON_PBR",
+      "MAT_LOW_FIRE_FLAME_CARD",
+      "MAT_WEATHERED_BROWN_CANVAS_PBR",
+      "MAT_WORN_LEATHER_PBR"
+    ],
+    "active_runtime_cloth_simulations": 0,
+    "lod_policy": "LOD0 authored; Phaser distance culling/LOD integration remains external"
+  },
+  "collision_guide": {
+    "shape": "box",
+    "size": [
+      3.55,
+      2.85
+    ],
+    "center": [
+      0,
+      0
+    ]
+  },
+  "content": {
+    "historical_period": "Central Europe circa 1349",
+    "weathered_tarp": true,
+    "masonry_blocks": 27,
+    "functional_bellows": true,
+    "iron_air_duct": true,
+    "anvil_on_stump": true,
+    "quench_bucket": true,
+    "tool_rack": true,
+    "charcoal_sack": true
+  },
+  "interactions": [
+    {
+      "id": "forge_fire_fx",
+      "position": [
+        -0.62,
+        0.36,
+        0.94
+      ]
+    },
+    {
+      "id": "anvil",
+      "position": [
+        0.82,
+        -0.72,
+        1.12
+      ]
+    },
+    {
+      "id": "bellows",
+      "position": [
+        0.75,
+        0.43,
+        0.83
+      ]
+    }
+  ],
+  "quality_contract": {
+    "preview": "1536x1536 transparent RGBA, 62 mm perspective camera",
+    "texture_maps": "ambientCG CC0 2K BaseColor/Roughness/NormalGL; Metalness where applicable",
+    "uv_unwrapped": true,
+    "visible_edge_bevels": true,
+    "glb_reimport_required": true
+  },
+  "notes": [
+    "Rebuilt from scratch for a rural Central European field camp circa 1349.",
+    "No global ground plate is included; localized ash belongs to the cooking-fire prop.",
+    "Same GLB and root-node names are retained for Phaser/Claude Code compatibility."
+  ],
+  "reimport_audit": {
+    "status": "passed",
+    "root_ok": true,
+    "mesh_objects": 17,
+    "triangles": 31834,
+    "embedded_images": {
+      "Wood035_aged_dark_oak_2K_Color": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Wood092_aged_split_wood_2K_Color": [
+        2048,
+        2048
+      ],
+      "Wood092_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Wood092_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Planks021_dark_weathered_planks_2K_Color": [
+        2048,
+        2048
+      ],
+      "Planks021_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Planks021_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Rock027_field_stone_2K_Color": [
+        2048,
+        1024
+      ],
+      "Rock027_2K-JPG_Roughness": [
+        2048,
+        1024
+      ],
+      "Rock027_2K-JPG_NormalGL": [
+        2048,
+        1024
+      ],
+      "Metal008_forged_iron_2K_Color": [
+        2048,
+        2048
+      ],
+      "Metal008_2K-JPG_Metalness-Metal008_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Metal008_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "camp_fire_flame_rgba": [
+        512,
+        512
+      ],
+      "Fabric019_weathered_brown_canvas_2K_Color": [
+        2048,
+        2048
+      ],
+      "Fabric019_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Fabric019_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Leather026_2K-JPG_Color": [
+        2048,
+        2048
+      ],
+      "Leather026_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Leather026_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ]
+    },
+    "materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_AGED_SPLIT_WOOD_PBR",
+      "MAT_DARK_WEATHERED_PLANKS_PBR",
+      "MAT_EMBERS",
+      "MAT_FIELD_STONE_PBR",
+      "MAT_FORGED_IRON_PBR",
+      "MAT_FORGE_COAL",
+      "MAT_HEMP_ROPE",
+      "MAT_LOW_FIRE_FLAME_CARD",
+      "MAT_WEATHERED_BROWN_CANVAS_PBR",
+      "MAT_WORN_LEATHER_PBR"
+    ],
+    "missing_uv_objects": [],
+    "active_cloth_modifiers": [],
+    "animation_actions": [],
+    "shape_key_objects": [],
+    "global_ground_plates": [],
+    "preview_rendered_from_reimported_glb": "medieval_field_forge_3d_runtime_preview.png",
+    "errors": []
+  }
+}

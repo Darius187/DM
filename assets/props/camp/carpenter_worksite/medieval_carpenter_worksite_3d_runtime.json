@@ -1,0 +1,173 @@
+{
+  "asset": "medieval_carpenter_worksite_3d_runtime",
+  "label_de": "Zimmermannsarbeitsplatz",
+  "glb": "medieval_carpenter_worksite_3d_runtime.glb",
+  "runtime_mode": "static_exterior_prop",
+  "root_node": "CARPENTER_WORKSITE_ROTATION_PIVOT",
+  "editable_blend": "C:\\Obsidian\\DM\\Darius187-DM\\assets\\props\\camp\\carpenter_worksite\\medieval_carpenter_worksite_1349_rebuilt.blend",
+  "meters_per_blender_unit": 1.0,
+  "placement": {
+    "front_axis": "-Y",
+    "ground_z": 0.0,
+    "continuous_yaw_degrees": "0..360",
+    "no_global_ground_plate": true,
+    "world_placement": "open"
+  },
+  "bounds_m": {
+    "min": [
+      -1.33,
+      -1.715,
+      -0.044
+    ],
+    "max": [
+      1.425,
+      2.513,
+      1.399
+    ],
+    "size": [
+      2.755,
+      4.229,
+      1.443
+    ]
+  },
+  "runtime": {
+    "visible_objects": 5,
+    "triangles": 21114,
+    "embedded_textured_materials": 4,
+    "pbr_materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_AGED_SPLIT_WOOD_PBR",
+      "MAT_DARK_WEATHERED_PLANKS_PBR",
+      "MAT_FORGED_IRON_PBR"
+    ],
+    "active_runtime_cloth_simulations": 0,
+    "lod_policy": "LOD0 authored; Phaser distance culling/LOD integration remains external"
+  },
+  "collision_guide": {
+    "shape": "box",
+    "size": [
+      3.55,
+      3.75
+    ],
+    "center": [
+      0,
+      0.3
+    ]
+  },
+  "content": {
+    "historical_period": "Central Europe circa 1349",
+    "braced_workbench": true,
+    "wooden_vise": true,
+    "trestles": 2,
+    "hewn_beam": true,
+    "period_tools": [
+      "mallet",
+      "axe",
+      "frame saw",
+      "chisel",
+      "auger",
+      "wooden plane"
+    ],
+    "curled_shavings": 20,
+    "wood_chips": 24,
+    "global_floor": false
+  },
+  "interactions": [
+    {
+      "id": "workbench",
+      "position": [
+        0,
+        -1.65,
+        0.0
+      ]
+    },
+    {
+      "id": "hewn_beam",
+      "position": [
+        0.65,
+        1.34,
+        0.86
+      ]
+    }
+  ],
+  "quality_contract": {
+    "preview": "1536x1536 transparent RGBA, 62 mm perspective camera",
+    "texture_maps": "ambientCG CC0 2K BaseColor/Roughness/NormalGL; Metalness where applicable",
+    "uv_unwrapped": true,
+    "visible_edge_bevels": true,
+    "glb_reimport_required": true
+  },
+  "notes": [
+    "Rebuilt from scratch for a rural Central European field camp circa 1349.",
+    "No global ground plate is included; localized ash belongs to the cooking-fire prop.",
+    "Same GLB and root-node names are retained for Phaser/Claude Code compatibility."
+  ],
+  "reimport_audit": {
+    "status": "passed",
+    "root_ok": true,
+    "mesh_objects": 5,
+    "triangles": 21114,
+    "embedded_images": {
+      "Wood035_aged_dark_oak_2K_Color": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Wood035_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Wood092_aged_split_wood_2K_Color": [
+        2048,
+        2048
+      ],
+      "Wood092_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Wood092_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Planks021_dark_weathered_planks_2K_Color": [
+        2048,
+        2048
+      ],
+      "Planks021_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Planks021_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ],
+      "Metal008_forged_iron_2K_Color": [
+        2048,
+        2048
+      ],
+      "Metal008_2K-JPG_Metalness-Metal008_2K-JPG_Roughness": [
+        2048,
+        2048
+      ],
+      "Metal008_2K-JPG_NormalGL": [
+        2048,
+        2048
+      ]
+    },
+    "materials": [
+      "MAT_AGED_DARK_OAK_PBR",
+      "MAT_AGED_SPLIT_WOOD_PBR",
+      "MAT_DARK_WEATHERED_PLANKS_PBR",
+      "MAT_FORGED_IRON_PBR",
+      "MAT_HEMP_ROPE"
+    ],
+    "missing_uv_objects": [],
+    "active_cloth_modifiers": [],
+    "global_ground_plates": [],
+    "preview_rendered_from_reimported_glb": "medieval_carpenter_worksite_3d_runtime_preview.png",
+    "errors": []
+  }
+}

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ravensmoor · Echte Wände im 2D-Generator</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #050409; font-family: Georgia, 'Times New Roman', serif; }
+    #view { position: fixed; inset: 0; display: block; image-rendering: pixelated; }
+    #hud { position: fixed; left: 16px; top: 12px; color: #e8dcc0; text-shadow: 0 2px 6px #000; pointer-events: none; max-width: 600px; }
+    #hud h1 { margin: 0; font-size: 17px; letter-spacing: 2px; color: #e6c878; font-weight: 600; }
+    #hud p { margin: 5px 0 0; font-size: 12.5px; color: #b8ac90; line-height: 1.45; }
+  </style>
+</head>
+<body>
+  <canvas id="view"></canvas>
+  <div id="hud">
+    <h1>RAVENSMOOR · ECHTE WÄNDE IM 2D-GENERATOR</h1>
+    <p>Echtes buildCrypt-Layout, reines 2D-Canvas (Phaser-fähig): jede Wandkachel
+       als erhabener Steinblock - Mauerkrone + hohe Vorderfront + 90°-Ecken,
+       waagerecht UND senkrecht. Türen + Truhe/Erz als 3D-Sprites. Die Figur
+       steht still - WASD/Pfeile bewegen sie.</p>
+  </div>
+  <script type="module" src="/src/demo3d/wand2dSim.ts"></script>
+</body>
+</html>

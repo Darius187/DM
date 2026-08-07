@@ -1,0 +1,497 @@
+{
+  "asset": "medieval_stable_house_3d_runtime",
+  "asset_type": "rotatable walkable 3D four-horse standing stable",
+  "historical_basis": {
+    "period": "14th century",
+    "type": "covered standing stalls with timber partitions, mangers, hay racks and drainage",
+    "intentional_gameplay_compromise": "low front gates allow parked horse heads to remain visible",
+    "not_present": [
+      "modern loose boxes",
+      "baked horse meshes",
+      "chimney",
+      "global ground plate"
+    ]
+  },
+  "model": "medieval_stable_house_3d_runtime.glb",
+  "units": "meters",
+  "root_node": "STABLE_HOUSE_ROTATION_PIVOT",
+  "runtime_mode": "exterior_only",
+  "coordinate_conversion": {
+    "blender": "X/Y ground, Z up",
+    "threejs": "X/Z ground, Y up",
+    "point_rule": "[x,y,z] -> [x,z,-y]"
+  },
+  "bounds_blender": {
+    "min": [
+      -5.655,
+      -4.25,
+      0.0
+    ],
+    "max": [
+      5.655,
+      3.46484,
+      6.255
+    ],
+    "center": [
+      -0.0,
+      -0.39258,
+      3.1275
+    ],
+    "size": [
+      11.31,
+      7.71484,
+      6.255
+    ],
+    "bounding_radius": 6.62586
+  },
+  "continuous_controls": {
+    "building_yaw_degrees": {
+      "min": 0,
+      "max": 360,
+      "default": 0
+    },
+    "uniform_scale": {
+      "min": 0.25,
+      "max": 4,
+      "default": 1
+    },
+    "camera_elevation_degrees": {
+      "min": 18,
+      "max": 78,
+      "default": 43
+    },
+    "camera_azimuth_degrees": {
+      "min": 0,
+      "max": 360,
+      "default": 36
+    },
+    "orthographic_zoom": {
+      "min": 0.55,
+      "max": 2.4,
+      "default": 1
+    }
+  },
+  "materials": {
+    "all_visible_materials_have_embedded_basecolor_textures": true,
+    "runtime_tinting_allowed": false,
+    "transparent_windows": true,
+    "texture_count": 15,
+    "used_materials": [
+      "MAT_STABLE_DRY_HAY",
+      "MAT_STABLE_FORGED_IRON",
+      "MAT_STABLE_GLASS_TRANSPARENT",
+      "MAT_STABLE_MOSS_WEATHERING",
+      "MAT_STABLE_OAK_DARK",
+      "MAT_STABLE_OAK_MID",
+      "MAT_STABLE_PACKED_EARTH",
+      "MAT_STABLE_PLASTER_AGED",
+      "MAT_STABLE_PLASTER_WORN",
+      "MAT_STABLE_SHINGLE_A",
+      "MAT_STABLE_SHINGLE_B",
+      "MAT_STABLE_SHINGLE_C",
+      "MAT_STABLE_STONE_DARK",
+      "MAT_STABLE_STONE_WARM",
+      "MAT_STABLE_WORN_LEATHER"
+    ]
+  },
+  "renderer_recipe": {
+    "output_color_space": "SRGBColorSpace",
+    "tone_mapping": "ACESFilmicToneMapping",
+    "exposure": 1.0,
+    "do_not_replace_materials": true
+  },
+  "doors": {
+    "main": {
+      "node": "DOOR_STABLE_MAIN_HINGE",
+      "trigger": "TRIGGER_STABLE_MAIN",
+      "closed_frame": 1,
+      "open_frame": 30,
+      "opens_to": "exterior"
+    },
+    "stall_1": {
+      "node": "DOOR_STALL_1_HINGE",
+      "trigger": "TRIGGER_STALL_1",
+      "closed_frame": 1,
+      "open_frame": 30,
+      "opens_to": "exterior"
+    },
+    "stall_2": {
+      "node": "DOOR_STALL_2_HINGE",
+      "trigger": "TRIGGER_STALL_2",
+      "closed_frame": 1,
+      "open_frame": 30,
+      "opens_to": "exterior"
+    },
+    "stall_3": {
+      "node": "DOOR_STALL_3_HINGE",
+      "trigger": "TRIGGER_STALL_3",
+      "closed_frame": 1,
+      "open_frame": 30,
+      "opens_to": "exterior"
+    },
+    "stall_4": {
+      "node": "DOOR_STALL_4_HINGE",
+      "trigger": "TRIGGER_STALL_4",
+      "closed_frame": 1,
+      "open_frame": 30,
+      "opens_to": "exterior"
+    }
+  },
+  "walkable_interior": {
+    "enabled": false,
+    "replacement": "separate Phaser interior map"
+  },
+  "visibility_controls": {
+    "main_roof_property": "roof_removable",
+    "cutaway_property": "cutaway_near_wall",
+    "floor_property": "floor_level"
+  },
+  "horse_parking": {
+    "independent_game_entities_required": true,
+    "baked_horses": false,
+    "slots": [
+      {
+        "stall_id": "stall_1",
+        "gate_key": "stall_1",
+        "approach_marker": "APPROACH_STALL_1",
+        "parking_marker": "PARK_STALL_1",
+        "head_marker": "HEAD_STALL_1",
+        "horse_variant": "arbeit_fuchs",
+        "head_visible_over_gate": true,
+        "minimum_gate_open": 0.82,
+        "forward_blender_xy": [
+          0,
+          -1
+        ]
+      },
+      {
+        "stall_id": "stall_2",
+        "gate_key": "stall_2",
+        "approach_marker": "APPROACH_STALL_2",
+        "parking_marker": "PARK_STALL_2",
+        "head_marker": "HEAD_STALL_2",
+        "horse_variant": "arbeit_dunkelbraun",
+        "head_visible_over_gate": true,
+        "minimum_gate_open": 0.82,
+        "forward_blender_xy": [
+          0,
+          -1
+        ]
+      },
+      {
+        "stall_id": "stall_3",
+        "gate_key": "stall_3",
+        "approach_marker": "APPROACH_STALL_3",
+        "parking_marker": "PARK_STALL_3",
+        "head_marker": "HEAD_STALL_3",
+        "horse_variant": "arbeit_schwarzbraun",
+        "head_visible_over_gate": true,
+        "minimum_gate_open": 0.82,
+        "forward_blender_xy": [
+          0,
+          -1
+        ]
+      },
+      {
+        "stall_id": "stall_4",
+        "gate_key": "stall_4",
+        "approach_marker": "APPROACH_STALL_4",
+        "parking_marker": "PARK_STALL_4",
+        "head_marker": "HEAD_STALL_4",
+        "horse_variant": "reiten_braun",
+        "head_visible_over_gate": true,
+        "minimum_gate_open": 0.82,
+        "forward_blender_xy": [
+          0,
+          -1
+        ]
+      }
+    ]
+  },
+  "horse_roster": {
+    "ownership": "Ravensmoor manor/community work pool",
+    "variants": [
+      {
+        "id": "arbeit_fuchs",
+        "role": "work",
+        "display_name": "Arbeitspferd Fuchs",
+        "multiply_tint": "0xb66f45",
+        "scale": 1.0
+      },
+      {
+        "id": "arbeit_dunkelbraun",
+        "role": "work",
+        "display_name": "Arbeitspferd Dunkelbraun",
+        "multiply_tint": "0x76533d",
+        "scale": 1.03
+      },
+      {
+        "id": "arbeit_schwarzbraun",
+        "role": "work",
+        "display_name": "Arbeitspferd Schwarzbraun",
+        "multiply_tint": "0x51463d",
+        "scale": 1.02
+      },
+      {
+        "id": "reiten_braun",
+        "role": "riding",
+        "display_name": "Reit- und Botenpferd",
+        "multiply_tint": "0x9a7658",
+        "scale": 0.96
+      }
+    ],
+    "schedule": "future gameplay task"
+  },
+  "node_groups": {
+    "transparent_windows": [
+      "BATCH_019_exterior_GROUND"
+    ],
+    "horses": [],
+    "batched_runtime_meshes": [],
+    "batched_roof_meshes": [
+      "BATCH_005_gable_LOFT",
+      "BATCH_006_exterior_ROOF",
+      "BATCH_007_exterior_LOFT",
+      "BATCH_008_main_roof_ROOF",
+      "BATCH_017_exterior_LOFT",
+      "BATCH_018_exterior_LOFT",
+      "BATCH_043_main_roof_ROOF",
+      "BATCH_044_main_roof_ROOF",
+      "BATCH_045_main_roof_ROOF"
+    ]
+  },
+  "animations": [
+    {
+      "name": "DOOR_STABLE_MAIN_HINGEAction",
+      "frame_range": [
+        1.0,
+        30.0
+      ]
+    },
+    {
+      "name": "DOOR_STALL_1_HINGEAction",
+      "frame_range": [
+        1.0,
+        30.0
+      ]
+    },
+    {
+      "name": "DOOR_STALL_2_HINGEAction",
+      "frame_range": [
+        1.0,
+        30.0
+      ]
+    },
+    {
+      "name": "DOOR_STALL_3_HINGEAction",
+      "frame_range": [
+        1.0,
+        30.0
+      ]
+    },
+    {
+      "name": "DOOR_STALL_4_HINGEAction",
+      "frame_range": [
+        1.0,
+        30.0
+      ]
+    }
+  ],
+  "collision_guides": [
+    {
+      "name": "NAV_FRONT_APPROACH",
+      "kind": "walk",
+      "role": "horse_approach",
+      "floor": "EXTERIOR",
+      "center_blender_xyz": [
+        0.35,
+        -3.72,
+        0.08
+      ],
+      "size_blender_xyz": [
+        9.45,
+        1.05,
+        0.06
+      ]
+    },
+    {
+      "name": "TRIGGER_STABLE_MAIN",
+      "kind": "transition",
+      "role": "enter_stable",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -4.2,
+        -3.02,
+        1.35
+      ],
+      "size_blender_xyz": [
+        1.25,
+        1.0,
+        2.45
+      ]
+    },
+    {
+      "name": "TRIGGER_STALL_1",
+      "kind": "transition",
+      "role": "park_horse",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -2.45,
+        -3.02,
+        1.1
+      ],
+      "size_blender_xyz": [
+        1.66,
+        1.25,
+        2.0
+      ]
+    },
+    {
+      "name": "TRIGGER_STALL_2",
+      "kind": "transition",
+      "role": "park_horse",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        -0.45,
+        -3.02,
+        1.1
+      ],
+      "size_blender_xyz": [
+        1.66,
+        1.25,
+        2.0
+      ]
+    },
+    {
+      "name": "TRIGGER_STALL_3",
+      "kind": "transition",
+      "role": "park_horse",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        1.55,
+        -3.02,
+        1.1
+      ],
+      "size_blender_xyz": [
+        1.66,
+        1.25,
+        2.0
+      ]
+    },
+    {
+      "name": "TRIGGER_STALL_4",
+      "kind": "transition",
+      "role": "park_horse",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        3.55,
+        -3.02,
+        1.1
+      ],
+      "size_blender_xyz": [
+        1.66,
+        1.25,
+        2.0
+      ]
+    },
+    {
+      "name": "COLLISION_EXTERIOR_FOOTPRINT_0",
+      "kind": "block",
+      "role": "solid_building",
+      "floor": "GROUND",
+      "center_blender_xyz": [
+        0.0,
+        0.0,
+        1.55
+      ],
+      "size_blender_xyz": [
+        9.78,
+        5.58,
+        3.1
+      ]
+    }
+  ],
+  "markers": [
+    {
+      "name": "SPAWN_EXTERIOR_MAIN",
+      "role": "spawn_exterior",
+      "floor": "EXTERIOR",
+      "blender_xyz": [
+        -4.2,
+        -3.8,
+        0.08
+      ]
+    },
+    {
+      "name": "APPROACH_STALL_1",
+      "role": "horse_approach",
+      "floor": "EXTERIOR",
+      "blender_xyz": [
+        -2.45,
+        -3.82,
+        0.08
+      ],
+      "stall_index": 1
+    },
+    {
+      "name": "APPROACH_STALL_2",
+      "role": "horse_approach",
+      "floor": "EXTERIOR",
+      "blender_xyz": [
+        -0.45,
+        -3.82,
+        0.08
+      ],
+      "stall_index": 2
+    },
+    {
+      "name": "APPROACH_STALL_3",
+      "role": "horse_approach",
+      "floor": "EXTERIOR",
+      "blender_xyz": [
+        1.55,
+        -3.82,
+        0.08
+      ],
+      "stall_index": 3
+    },
+    {
+      "name": "APPROACH_STALL_4",
+      "role": "horse_approach",
+      "floor": "EXTERIOR",
+      "blender_xyz": [
+        3.55,
+        -3.82,
+        0.08
+      ],
+      "stall_index": 4
+    }
+  ],
+  "counts": {
+    "runtime_objects": 44,
+    "materials": 15,
+    "windows": 1,
+    "doors": 5,
+    "collisions": 7,
+    "batched_roof_shingles": 765,
+    "removed_interior_objects": 2,
+    "merged_static_objects": 0
+  },
+  "integration_contract": {
+    "load_with": "Three.js GLTFLoader",
+    "rotate": "STABLE_HOUSE_ROTATION_PIVOT around Three.js Y",
+    "collisions": "build from JSON and transform with building",
+    "doors": "play named animations; all five doors swing outward; a horse may cross only when the matching gate is at least 82 percent open",
+    "parking": "move the existing horse entity from approach_marker to parking_marker and align its head with head_marker",
+    "forbidden": [
+      "PNG replacement",
+      "building material tinting",
+      "baking horses into the stable",
+      "visible collision meshes"
+    ]
+  },
+  "construction_contract": {
+    "embedded_interior_fitout": false,
+    "separate_interior_map_ready": true
+  }
+}

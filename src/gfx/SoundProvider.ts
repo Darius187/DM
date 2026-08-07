@@ -1,0 +1,293 @@
+// Zentrale Sound-Schicht: echte Dateien aus assets/sounds/ wenn vorhanden,
+// sonst WebAudio-Synthese (Masterprompt 3.3 / Teil 9).
+// Lautstärke getrennt: Effekte / Atmosphäre.
+
+import Phaser from 'phaser';
+import { getSettings } from '../logic/settings';
+import { raeumlichesAudio, type RaumKlang } from '../logic/audioRaum';
+import { AudioBus } from './audioBus';
+
+interface SynthStep { freq: number; dur: number; type: OscillatorType; vol: number; delay?: number }
+
+// Synth-Rezepte je Soundname (an die Referenz-Beeps angelehnt)
+const SYNTH: Record<string, SynthStep[]> = {
+  schwert_swing: [{ freq: 220, dur: 0.08, type: 'sawtooth', vol: 0.045 }],
+  schwert_finisher: [{ freq: 170, dur: 0.08, type: 'sawtooth', vol: 0.05 }],
+  axt_swing: [{ freq: 130, dur: 0.12, type: 'sawtooth', vol: 0.055 }],
+  hellebarde_stoss: [{ freq: 300, dur: 0.14, type: 'sine', vol: 0.05 }],
+  hammer_schlag: [{ freq: 70, dur: 0.22, type: 'sawtooth', vol: 0.07 }],
+  bogen_spannen: [{ freq: 180, dur: 0.25, type: 'triangle', vol: 0.03 }],
+  pfeil_schuss: [{ freq: 600, dur: 0.07, type: 'square', vol: 0.04 }],
+  pfeil_einschlag: [{ freq: 240, dur: 0.06, type: 'square', vol: 0.05 }],
+  treffer_fleisch: [{ freq: 140, dur: 0.07, type: 'square', vol: 0.05 }],
+  treffer_knochen: [{ freq: 110, dur: 0.07, type: 'square', vol: 0.05 }],
+  block: [{ freq: 420, dur: 0.06, type: 'square', vol: 0.05 }],
+  parade: [{ freq: 900, dur: 0.08, type: 'triangle', vol: 0.07 }, { freq: 1350, dur: 0.06, type: 'sine', vol: 0.05, delay: 0.02 }],
+  rolle: [{ freq: 260, dur: 0.06, type: 'sine', vol: 0.04 }],
+  skelett_klappern: [{ freq: 480, dur: 0.05, type: 'square', vol: 0.025 }, { freq: 520, dur: 0.05, type: 'square', vol: 0.02, delay: 0.07 }],
+  pest_stoehnen: [{ freq: 90, dur: 0.4, type: 'triangle', vol: 0.03 }],
+  schatten_fluestern: [{ freq: 1200, dur: 0.3, type: 'sine', vol: 0.012 }],
+  templer_stimme: [{ freq: 60, dur: 0.6, type: 'sawtooth', vol: 0.04 }],
+  schritte_gras: [{ freq: 160, dur: 0.03, type: 'triangle', vol: 0.015 }],
+  schritte_stein: [{ freq: 200, dur: 0.03, type: 'square', vol: 0.015 }],
+  // R113 Matsch: nasses, doppeltes Schmatzen (tief + kurzer Nachzieher)
+  schritte_matsch: [{ freq: 95, dur: 0.05, type: 'triangle', vol: 0.028 }, { freq: 70, dur: 0.07, type: 'sawtooth', vol: 0.018, delay: 0.04 }],
+  // R113 Donner: tiefes, mehrstufiges Grollen (bis der Autor donner.mp3 liefert)
+  donner: [
+    { freq: 52, dur: 0.5, type: 'sawtooth', vol: 0.07 },
+    { freq: 38, dur: 0.9, type: 'sawtooth', vol: 0.06, delay: 0.12 },
+    { freq: 30, dur: 1.4, type: 'triangle', vol: 0.05, delay: 0.3 },
+    { freq: 46, dur: 0.6, type: 'sawtooth', vol: 0.03, delay: 0.9 },
+  ],
+  // R126 Höhle: einzelner Wassertropfen ("plip" - heller Anschlag, tieferer
+  // Nachklang; durch den AudioBus bekommt er Höhlen-Hall + Position)
+  wasser_tropfen: [{ freq: 1500, dur: 0.025, type: 'sine', vol: 0.05 }, { freq: 860, dur: 0.07, type: 'sine', vol: 0.035, delay: 0.025 }],
+  tuer: [{ freq: 170, dur: 0.25, type: 'triangle', vol: 0.05 }],
+  truhe: [{ freq: 300, dur: 0.12, type: 'triangle', vol: 0.06 }, { freq: 520, dur: 0.15, type: 'sine', vol: 0.05, delay: 0.1 }],
+  muenzen: [{ freq: 880, dur: 0.05, type: 'sine', vol: 0.04 }],
+  trank: [{ freq: 520, dur: 0.12, type: 'sine', vol: 0.06 }],
+  holz_hacken: [{ freq: 150, dur: 0.09, type: 'square', vol: 0.06 }],
+  // M2 Dorfwirtschaft: dumpfer Schlag eines fallenden Stamms (Holzfaeller-Takt)
+  baum_faellt: [{ freq: 70, dur: 0.35, type: 'triangle', vol: 0.07 }, { freq: 55, dur: 0.25, type: 'sine', vol: 0.05, delay: 0.12 }],
+  stein_hacken: [{ freq: 220, dur: 0.07, type: 'square', vol: 0.06 }],
+  feuer_knistern: [{ freq: 90, dur: 0.15, type: 'sawtooth', vol: 0.02 }],
+  muehle: [{ freq: 75, dur: 0.5, type: 'triangle', vol: 0.02 }],
+  // M1 Dorfwirtschaft: die Glocke von St. Marien (Kuester laeutet morgens/abends).
+  // Zwei tiefe Sinus-Schlaege mit Nachklang; echte Datei snd_kirchenglocke gewinnt.
+  kirchenglocke: [
+    { freq: 196, dur: 1.4, type: 'sine', vol: 0.07 }, { freq: 392, dur: 0.9, type: 'sine', vol: 0.03 },
+    { freq: 196, dur: 1.6, type: 'sine', vol: 0.07, delay: 1.7 }, { freq: 392, dur: 1.0, type: 'sine', vol: 0.03, delay: 1.7 },
+  ],
+  schmiede_hammer: [{ freq: 520, dur: 0.1, type: 'square', vol: 0.05 }],
+  huhn: [{ freq: 700, dur: 0.08, type: 'square', vol: 0.025 }, { freq: 900, dur: 0.06, type: 'square', vol: 0.02, delay: 0.1 }],
+  schwein: [{ freq: 160, dur: 0.12, type: 'sawtooth', vol: 0.03 }],
+  kuh: [{ freq: 110, dur: 0.5, type: 'triangle', vol: 0.03 }],
+  hund: [{ freq: 340, dur: 0.1, type: 'square', vol: 0.035 }],
+  kraehen: [{ freq: 500, dur: 0.12, type: 'sawtooth', vol: 0.025 }],
+  // Heiseres "kraa-kraa" des Raben (Runde 45); echte Datei snd_rabenruf gewinnt
+  rabenruf: [{ freq: 360, dur: 0.16, type: 'sawtooth', vol: 0.032 }, { freq: 300, dur: 0.17, type: 'sawtooth', vol: 0.03, delay: 0.2 }],
+  klick: [{ freq: 500, dur: 0.05, type: 'sine', vol: 0.04 }],
+  item_episch: [{ freq: 520, dur: 0.12, type: 'sine', vol: 0.05 }, { freq: 780, dur: 0.14, type: 'sine', vol: 0.05, delay: 0.1 }, { freq: 1040, dur: 0.2, type: 'sine', vol: 0.05, delay: 0.22 }],
+  levelup: [{ freq: 440, dur: 0.15, type: 'triangle', vol: 0.06 }, { freq: 660, dur: 0.22, type: 'triangle', vol: 0.05, delay: 0.1 }],
+  fertigkeit_neu: [{ freq: 660, dur: 0.12, type: 'sine', vol: 0.05 }, { freq: 880, dur: 0.18, type: 'sine', vol: 0.05, delay: 0.1 }],
+  gebietswechsel: [{ freq: 170, dur: 0.25, type: 'triangle', vol: 0.05 }],
+  tod: [{ freq: 90, dur: 0.12, type: 'sawtooth', vol: 0.05 }],
+  fehler: [{ freq: 110, dur: 0.12, type: 'square', vol: 0.05 }],
+  heilung: [{ freq: 600, dur: 0.15, type: 'sine', vol: 0.06 }],
+  feuerball: [{ freq: 330, dur: 0.1, type: 'sawtooth', vol: 0.05 }],
+  heiliges_licht: [{ freq: 520, dur: 0.2, type: 'triangle', vol: 0.06 }, { freq: 780, dur: 0.25, type: 'sine', vol: 0.05, delay: 0.05 }],
+  edelstein_fassen: [{ freq: 880, dur: 0.1, type: 'sine', vol: 0.06 }, { freq: 1320, dur: 0.12, type: 'sine', vol: 0.05, delay: 0.08 }],
+  aufheben: [{ freq: 700, dur: 0.07, type: 'sine', vol: 0.05 }],
+  telegraph: [{ freq: 180, dur: 0.05, type: 'square', vol: 0.03 }],
+  boss_slam: [{ freq: 70, dur: 0.25, type: 'sawtooth', vol: 0.08 }],
+  fass_bruch: [{ freq: 120, dur: 0.1, type: 'square', vol: 0.06 }, { freq: 90, dur: 0.12, type: 'sawtooth', vol: 0.04, delay: 0.05 }],
+};
+
+export class SoundProvider {
+  private ac: AudioContext | null = null;
+  private loops = new Map<string, Phaser.Sound.BaseSound>();
+  // R108: Effektkette (Hall/Tiefpass/HRTF) für positionale Klänge.
+  private bus: AudioBus | null = null;
+
+  constructor(private scene: Phaser.Scene) {
+    // Beim Verlassen der Szene alle eigenen Loops/Musik stoppen (Runde 41):
+    // sonst lief die Prolog-Atmosphäre (krypta_droehnen) nach dem Übergang zur
+    // Boss-Arena weiter UND die Bossmusik dazu - es klang nach "doppelter Musik".
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.stopLoops(); this.stopMusic(); });
+    try { const b = new AudioBus(scene.sound); if (b.bereit) this.bus = b; } catch { this.bus = null; }
+  }
+
+  // R108: Umgebung setzen (0 = offenes Feld, 1 = enger Steinraum) - steuert den Hall.
+  setzeUmgebung(basis: number): void { this.bus?.setUmgebung(basis); }
+
+  // Effekt abspielen: Datei falls vorhanden, sonst Synthese. pan in [-1,1]
+  // (links/rechts) - Stereo (Runde 45).
+  play(name: string, volMult = 1, pan = 0): void {
+    // Block-Klang: die zwei Autor-Varianten abwechselnd (Held UND Gegner)
+    if (name === 'block' && this.playAbwechselnd('block', 2, volMult)) return;
+    const s = getSettings();
+    const vol = (s.volEffekte / 100) * volMult;
+    if (vol <= 0.01) return;
+    if (this.scene.cache.audio.exists(`snd_${name}`)) {
+      this.scene.sound.play(`snd_${name}`, { volume: vol, pan });
+      return;
+    }
+    const steps = SYNTH[name];
+    if (!steps) return;
+    for (const st of steps) this.beep(st, vol, pan);
+  }
+
+  // Räumlicher Effekt (Runde 45): an einer WELT-Position abgespielt - pannt
+  // links/rechts und wird mit der Entfernung zur Bildmitte leiser. So hört man
+  // z. B. den Feuerball/Pfeil über den Monitor huschen und Tiere nur in der Nähe.
+  playAt(name: string, x: number, y: number, volMult = 1): void {
+    const cam = this.scene.cameras?.main;
+    if (!cam) { this.play(name, volMult); return; }
+    const v = cam.worldView;
+    const r = raeumlichesAudio(v.centerX, v.centerY, v.width / 2, v.height / 2, x, y);
+    if (r.vol <= 0.02) return;
+    this.spielePositional(name, r, volMult);
+  }
+
+  // R108: positionalen Klang durch die Effektkette schicken (Hall/Tiefpass/HRTF).
+  // Ohne Bus (kein WebAudio) auf den einfachen Stereo-Weg zurückfallen.
+  private spielePositional(name: string, r: RaumKlang, volMult: number): void {
+    if (name === 'block' && this.playAbwechselnd('block', 2, volMult, r.pan)) return;
+    const s = getSettings();
+    const vol = (s.volEffekte / 100) * volMult * r.vol;
+    if (vol <= 0.01) return;
+    if (this.bus) {
+      this.bus.setRegler(s.hall, s.distanzDaempfung, s.raumklang);
+      const buf = this.scene.cache.audio.exists(`snd_${name}`) ? this.scene.cache.audio.get(`snd_${name}`) : null;
+      if (buf instanceof AudioBuffer) { this.bus.spieleBuffer(buf, { vol, pan: r.pan, dist01: r.dist01 }); return; }
+      const steps = SYNTH[name];
+      if (steps) { this.bus.spieleSynth(steps, { vol, pan: r.pan, dist01: r.dist01 }); return; }
+      return;
+    }
+    this.play(name, volMult * r.vol, r.pan);
+  }
+
+  // Atmosphären-Loop starten/stoppen (eigener Lautstärkeregler)
+  startLoop(name: string): void {
+    const s = getSettings();
+    if (this.loops.has(name)) return;
+    if (this.scene.cache.audio.exists(`snd_${name}`)) {
+      const snd = this.scene.sound.add(`snd_${name}`, { loop: true, volume: s.volAtmosphaere / 100 });
+      snd.play();
+      this.loops.set(name, snd);
+    }
+    // Kein Synth-Loop: Dauer-Piepen wäre schlimmer als Stille
+  }
+
+  // Gibt es diesen Klang als echte Datei? (für Sound-Schemata mit Fallback)
+  has(name: string): boolean {
+    return this.scene.cache.audio.exists(`snd_${name}`);
+  }
+
+  // Spielt abwechselnd eine der vorhandenen Varianten (swoosh1, swoosh2 ...)
+  private wechselZaehler = new Map<string, number>();
+
+  playAbwechselnd(basis: string, anzahl: number, volMult = 1, pan = 0): boolean {
+    const da: string[] = [];
+    for (let i = 1; i <= anzahl; i++) if (this.has(`${basis}${i}`)) da.push(`${basis}${i}`);
+    if (!da.length) return false;
+    const n = (this.wechselZaehler.get(basis) ?? 0) % da.length;
+    this.wechselZaehler.set(basis, n + 1);
+    this.play(da[n], volMult, pan);
+    return true;
+  }
+
+  // Räumlich abwechselnd (Runde 45): wie playAbwechselnd, aber an einer Welt-
+  // Position (pannt + wird mit Entfernung leiser). Zu weit weg = still (gilt als
+  // behandelt, damit kein Synth-Fallback dazwischenfunkt).
+  playAtAbwechselnd(basis: string, anzahl: number, x: number, y: number, volMult = 1): boolean {
+    const cam = this.scene.cameras?.main;
+    if (!cam) return this.playAbwechselnd(basis, anzahl, volMult);
+    const v = cam.worldView;
+    const r = raeumlichesAudio(v.centerX, v.centerY, v.width / 2, v.height / 2, x, y);
+    if (r.vol <= 0.02) return true;
+    // vorhandene Variante wählen; ohne Bus den einfachen Weg, sonst durch die Kette.
+    const da: string[] = [];
+    for (let i = 1; i <= anzahl; i++) if (this.has(`${basis}${i}`)) da.push(`${basis}${i}`);
+    if (!da.length) return false;
+    const n = (this.wechselZaehler.get(basis) ?? 0) % da.length;
+    this.wechselZaehler.set(basis, n + 1);
+    if (this.bus) this.spielePositional(da[n], r, volMult);
+    else this.play(da[n], volMult * r.vol, r.pan);
+    return true;
+  }
+
+  stopLoop(name: string): void {
+    const snd = this.loops.get(name);
+    if (snd) {
+      snd.stop();
+      this.loops.delete(name);
+    }
+  }
+
+  stopLoops(): void {
+    for (const snd of this.loops.values()) snd.stop();
+    this.loops.clear();
+  }
+
+  // --- Musik-Kanal (Runde 12): genau ein Stück gleichzeitig -------------------
+  private musik: Phaser.Sound.BaseSound | null = null;
+  private musikName = '';
+
+  playMusic(name: string, opts: { loop?: boolean; onComplete?: () => void } = {}): void {
+    // Schon DIESES Stück angefordert? Dann nichts tun - auch wenn es gerade noch
+    // lädt/dekodiert (isPlaying kurz false). Autorbug "Musik-Bug": vorher lieferte
+    // aktuelleMusik() in diesem Lade-Fenster '' zurück, worauf die Pro-Frame-Logik
+    // (Nacht-/Gebietsmusik) ein ZWEITES Stück startete -> doppelte Musik.
+    if (this.musikName === name) return;
+    this.stopMusic();
+    if (!this.scene.cache.audio.exists(`snd_${name}`)) return;
+    const s = getSettings();
+    this.musik = this.scene.sound.add(`snd_${name}`, { loop: opts.loop ?? false, volume: s.volMusik / 100 });
+    this.musikName = name;
+    // Wenn ein (nicht geloopter) Titel ausläuft, den Kanal freigeben, damit
+    // aktuelleMusik() wieder '' meldet und ein neues Stück starten kann.
+    this.musik.once('complete', () => {
+      if (this.musikName === name) { this.musikName = ''; this.musik = null; }
+      opts.onComplete?.();
+    });
+    this.musik.play();
+  }
+
+  stopMusic(): void {
+    this.musik?.stop();
+    this.musik?.destroy();
+    this.musik = null;
+    this.musikName = '';
+  }
+
+  aktuelleMusik(): string {
+    // Das ANGEFORDERTE Stück (auch während es noch lädt) - nicht erst wenn
+    // isPlaying true ist; sonst entsteht im Lade-Fenster Doppelmusik. Beim
+    // Auslaufen/Stoppen wird musikName geleert, dann meldet es korrekt ''.
+    return this.musikName;
+  }
+
+  // Aufgenommene Erzähler-Stimme (Runde 51): spielt assets/sounds/<key>.ogg, wenn
+  // vorhanden (kein TTS). Für Intro-/Ankunfts-Zeilen außerhalb des Dialogs.
+  private stimmeSnd: Phaser.Sound.BaseSound | null = null;
+  spieleStimme(key: string): boolean {
+    this.stoppeStimme();
+    if (!this.scene.cache.audio.exists(`snd_${key}`)) return false;
+    try {
+      const vol = Math.max(0.6, getSettings().volMusik / 100);
+      this.stimmeSnd = this.scene.sound.add(`snd_${key}`, { volume: vol });
+      this.stimmeSnd.play();
+    } catch { return false; }
+    return true;
+  }
+  stoppeStimme(): void {
+    try { this.stimmeSnd?.stop(); this.stimmeSnd?.destroy(); } catch { /* still */ }
+    this.stimmeSnd = null;
+  }
+
+  private beep(st: SynthStep, vol: number, pan = 0): void {
+    try {
+      if (!this.ac) this.ac = new AudioContext();
+      const t0 = this.ac.currentTime + (st.delay ?? 0);
+      const o = this.ac.createOscillator();
+      const g = this.ac.createGain();
+      o.type = st.type;
+      o.frequency.value = st.freq;
+      g.gain.setValueAtTime(st.vol * vol * 1.6, t0);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + st.dur);
+      o.connect(g);
+      // Stereo-Pan (Runde 45): links/rechts je nach Position
+      if (pan !== 0 && this.ac.createStereoPanner) {
+        const p = this.ac.createStereoPanner();
+        p.pan.value = Math.max(-1, Math.min(1, pan));
+        g.connect(p);
+        p.connect(this.ac.destination);
+      } else {
+        g.connect(this.ac.destination);
+      }
+      o.start(t0);
+      o.stop(t0 + st.dur);
+    } catch { /* Audio gesperrt (Autoplay-Policy) - still bleiben */ }
+  }
+}

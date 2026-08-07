@@ -1,0 +1,68 @@
+{
+  "schema": "ravensmoor.horse-roster.v1",
+  "stable": {
+    "area": "stadt",
+    "building_box": "S2",
+    "building_manifest": "houses/stable/medieval_stable_house_3d_runtime.json"
+  },
+  "shared_model": {
+    "atlas_image": "horse/ravensmoor-horse.png",
+    "atlas_json": "horse/ravensmoor-horse.json",
+    "fast_atlas_image": "horse/ravensmoor-horse-fast.png",
+    "fast_atlas_json": "horse/ravensmoor-horse-fast.json",
+    "duplicate_textures_per_variant": false
+  },
+  "horses": [
+    {
+      "id": "arbeit_fuchs",
+      "role": "work",
+      "display_name": "Fuchsstute",
+      "stall_id": "stall_1",
+      "multiply_tint": "0x9a674f",
+      "scale": 1.035,
+      "width_scale": 1.08,
+      "height_scale": 1.015,
+      "npc_id": "stallknecht"
+    },
+    {
+      "id": "arbeit_dunkelbraun",
+      "role": "work",
+      "display_name": "Dunkelbrauner Wallach",
+      "stall_id": "stall_2",
+      "multiply_tint": "0x5c4c3c",
+      "scale": 1.055,
+      "width_scale": 1.11,
+      "height_scale": 1.02,
+      "npc_id": "stallknecht"
+    },
+    {
+      "id": "arbeit_braun",
+      "role": "work",
+      "display_name": "Braune Arbeitspferdstute",
+      "stall_id": "stall_3",
+      "multiply_tint": "0x735443",
+      "scale": 1.045,
+      "width_scale": 1.095,
+      "height_scale": 1.015,
+      "npc_id": "stallknecht"
+    },
+    {
+      "id": "held_schwarz",
+      "role": "hero",
+      "display_name": "Schwarzes Reitpferd",
+      "stall_id": "stall_4",
+      "multiply_tint": "0x403b38",
+      "scale": 0.985,
+      "width_scale": 1.0,
+      "height_scale": 1.0
+    }
+  ],
+  "runtime_rules": {
+    "entities_are_independent": true,
+    "use_existing_horse_animation_model": true,
+    "park_only_when_matching_gate_open": 0.82,
+    "head_display_marker_required": true,
+    "npc_schedule": "work horses follow stallknecht around the stable; hero horse waits when unmounted",
+    "all_horses_rideable": true
+  }
+}

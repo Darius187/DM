@@ -1,0 +1,248 @@
+{
+  "asset": "medieval_rest_tent_3d_runtime",
+  "label_de": "Kleines Ruhe- und Pflegezelt",
+  "glb": "medieval_rest_tent_3d_runtime.glb",
+  "runtime_mode": "static_exterior_prop",
+  "root_node": "REST_TENT_ROTATION_PIVOT",
+  "editable_blend": "C:\\Obsidian\\DM\\camp-props\\rest_tent\\medieval_rest_tent_3d_runtime.blend",
+  "original_blend_preserved": null,
+  "meters_per_blender_unit": 1.0,
+  "placement": {
+    "front_axis": "-Y",
+    "ground_z": 0.0,
+    "continuous_yaw_degrees": "0..360",
+    "no_global_ground_plate": true,
+    "world_placement": "open"
+  },
+  "bounds_m": {
+    "min": [
+      -3.075,
+      -2.594,
+      -0.12
+    ],
+    "max": [
+      3.07,
+      2.594,
+      3.07
+    ],
+    "size": [
+      6.145,
+      5.187,
+      3.19
+    ]
+  },
+  "runtime": {
+    "visible_objects": 16,
+    "triangles": 32968,
+    "embedded_textured_materials": 16,
+    "static_material_batches": [
+      "REST_TENT_CLOTH_REST_ROOF_-1",
+      "REST_TENT_CLOTH_REST_ROOF_1",
+      "REST_TENT_CLOTH_REST_REAR",
+      "REST_TENT_CLOTH_REST_SIDE_-1",
+      "REST_TENT_CLOTH_REST_FRONT_WING_-1",
+      "REST_TENT_CLOTH_REST_SIDE_1",
+      "REST_TENT_CLOTH_REST_FRONT_WING_1",
+      "REST_TENT_WOOD_DARK_BATCH",
+      "REST_TENT_WOOD_MID_BATCH",
+      "REST_TENT_ROPE_BATCH",
+      "REST_TENT_CANVAS_DARK_BATCH",
+      "REST_TENT_IRON_BATCH",
+      "REST_TENT_MEDICAL_LINEN_BATCH",
+      "REST_TENT_CERAMIC_BATCH",
+      "REST_TENT_MEDICINE_GLASS_BATCH",
+      "REST_TENT_WAX_BATCH"
+    ],
+    "baked_cloth_panels": [
+      {
+        "panel": "REST_ROOF_-1",
+        "frames": 68,
+        "quad_grid": [
+          30,
+          34
+        ],
+        "source_quads": 1020,
+        "average_edge_m": 0.0959,
+        "pinned_vertices": 168,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.0943,
+        "average_displacement_m": 0.04194,
+        "maximum_displacement_m": 0.08,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      },
+      {
+        "panel": "REST_ROOF_1",
+        "frames": 68,
+        "quad_grid": [
+          30,
+          34
+        ],
+        "source_quads": 1020,
+        "average_edge_m": 0.0959,
+        "pinned_vertices": 168,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.0943,
+        "average_displacement_m": 0.04194,
+        "maximum_displacement_m": 0.08,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      },
+      {
+        "panel": "REST_REAR",
+        "frames": 70,
+        "quad_grid": [
+          38,
+          30
+        ],
+        "source_quads": 1140,
+        "average_edge_m": 0.1028,
+        "pinned_vertices": 165,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.01221,
+        "average_displacement_m": 0.00138,
+        "maximum_displacement_m": 0.01221,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      },
+      {
+        "panel": "REST_SIDE_-1",
+        "frames": 70,
+        "quad_grid": [
+          30,
+          24
+        ],
+        "source_quads": 720,
+        "average_edge_m": 0.1002,
+        "pinned_vertices": 141,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.0106,
+        "average_displacement_m": 0.00089,
+        "maximum_displacement_m": 0.0106,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      },
+      {
+        "panel": "REST_FRONT_WING_-1",
+        "frames": 68,
+        "quad_grid": [
+          22,
+          30
+        ],
+        "source_quads": 660,
+        "average_edge_m": 0.072,
+        "pinned_vertices": 69,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 1.75672,
+        "average_displacement_m": 0.07342,
+        "maximum_displacement_m": 0.08,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      },
+      {
+        "panel": "REST_SIDE_1",
+        "frames": 70,
+        "quad_grid": [
+          30,
+          24
+        ],
+        "source_quads": 720,
+        "average_edge_m": 0.1002,
+        "pinned_vertices": 141,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 0.0106,
+        "average_displacement_m": 0.00089,
+        "maximum_displacement_m": 0.0106,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      },
+      {
+        "panel": "REST_FRONT_WING_1",
+        "frames": 68,
+        "quad_grid": [
+          22,
+          30
+        ],
+        "source_quads": 660,
+        "average_edge_m": 0.072,
+        "pinned_vertices": 69,
+        "pin_weights": [
+          0.3,
+          0.7,
+          1.0
+        ],
+        "raw_maximum_displacement_m": 2.6385,
+        "average_displacement_m": 0.06987,
+        "maximum_displacement_m": 0.08,
+        "solidify_m": 0.003,
+        "runtime_cloth_modifier": false
+      }
+    ],
+    "active_runtime_cloth_simulations": 0
+  },
+  "collision_guide": {
+    "shape": "box",
+    "size": [
+      4.7,
+      3.75
+    ],
+    "center": [
+      0,
+      0
+    ],
+    "front_open": true,
+    "walkable_entry_width_m": 2.6
+  },
+  "content": {
+    "open_front": true,
+    "ridge_roof": true,
+    "single_cot": true,
+    "small_table": true,
+    "lantern": true,
+    "bucket": true,
+    "cloth_simulation": "baked_static_mesh",
+    "cloth_panels": 7,
+    "cloth_material": "MAT_MEDICAL_TENT_CANVAS"
+  },
+  "interactions": [
+    {
+      "id": "rest_anchor",
+      "position": [
+        -0.62,
+        0.22,
+        0.8
+      ]
+    }
+  ],
+  "notes": [
+    "Eigenstaendiges Asset; nicht mit anderen Lager-Assets verschmelzen.",
+    "Keine Bodenplatte im GLB. Weltboden und Platzierung kommen aus Phaser.",
+    "Material-Farbtexturen sind im GLB eingebettet.",
+    "Blender-Cloth wurde 72 bis 80 Frames mit weichen CLOTH_PIN-Gewichten berechnet und als statisches Runtime-Mesh gebacken; Phaser braucht keine Cloth-Physik.",
+    "Neu aufgebautes Cloth-Asset; BACKUP_ORIGINAL_TENTS bleibt als leere, ausgeblendete Sicherungs-Collection fuer spaetere Revisionen erhalten."
+  ]
+}

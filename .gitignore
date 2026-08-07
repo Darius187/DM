@@ -1,0 +1,18 @@
+node_modules/
+dist/
+.vite/
+
+# Temporäre WIP-Gerüste (Pferd-Render-Probe, Runde 66) - werden nach Abschluss entfernt
+pferdtest.html
+scripts/_grab_tmp.mjs
+scripts/_grab_world.mjs
+scripts/_grab_tile.mjs
+scripts/_grab*.mjs
+src/gfx/_kandidat.ts
+src/gfx/_pferdprobe.ts
+
+# Temporaere Workflow-/Debug-Artefakte (nicht committen)
+scratch_*
+.horse-frames/
+scripts/__pycache__/
+.codex-tools/
