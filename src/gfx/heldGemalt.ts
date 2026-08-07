@@ -38,6 +38,19 @@ export function gemalteZeile(dir8: number): number {
   return ((Math.round(dir8) % GEMALT_ZEILEN) + GEMALT_ZEILEN) % GEMALT_ZEILEN;
 }
 
+export function naechsteGemalteGehphase(opts: {
+  phase: number;
+  distanzPx: number;
+  laeuft: boolean;
+  warAmLaufen: boolean;
+  pxProFrame: number;
+}): number {
+  if (!opts.laeuft || !opts.warAmLaufen) return 0;
+  const distanz = Number.isFinite(opts.distanzPx) ? Math.max(0, opts.distanzPx) : 0;
+  const pxProFrame = Math.max(0.001, opts.pxProFrame);
+  return (opts.phase + distanz / pxProFrame) % GEMALT_SPALTE.gehen.length;
+}
+
 function schlagSpalte(fortschritt: number): number {
   const gesamt = GEMALT_SCHLAG_DAUERN.reduce((summe, dauer) => summe + dauer, 0);
   const zeit = Math.min(0.999999, Math.max(0, fortschritt)) * gesamt;

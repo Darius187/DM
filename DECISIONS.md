@@ -4067,3 +4067,11 @@ URSACHEN (erst gesucht, dann gefixt - Autor-Order "sag mir erst warum"):
 - OpenCV Headless ist nur Build-Werkzeug fuer die Sprite-Erzeugung, nie
   Spiel-Runtime-Abhaengigkeit. Version und Installation stehen in
   `scripts/requirements-painted-hero.txt`; der fertige PNG-Atlas bleibt im Repo.
+
+## R253 - Gemalter Gang folgt der wirklich gelaufenen Strecke
+- Die Painted-Gehphase wird nicht mehr aus der globalen Szenenzeit berechnet.
+  Sie startet beim Losgehen auf Phase 0 und schreitet pro 3,2 tatsaechlich
+  gelaufenen Weltpixeln um ein Bild weiter. Blocken, schwere Angriffe und
+  Tempo-Einstellungen verlangsamen damit Beine und Bewegung gemeinsam.
+- Positionsspruenge ueber 12 Pixel pro Renderbild gelten als Kartenwechsel oder
+  Teleport und setzen den Gang zurueck, statt zufaellig durch den Zyklus zu springen.

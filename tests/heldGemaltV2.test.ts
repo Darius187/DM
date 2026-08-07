@@ -5,6 +5,7 @@ vi.mock('phaser', () => ({
 }));
 import {
   GEMALT_SPALTEN,
+  naechsteGemalteGehphase,
   gemalteSpalte,
   gemalteZeile,
   gemalterFrame,
@@ -25,6 +26,30 @@ describe('Aldric Painted V2', () => {
       schlagFortschritt: null,
     }));
     expect(spalten).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 1, 2]);
+  });
+
+  it('startet den Gang beim Losgehen auf Phase null und koppelt ihn an die Strecke', () => {
+    expect(naechsteGemalteGehphase({
+      phase: 17,
+      distanzPx: 7,
+      laeuft: true,
+      warAmLaufen: false,
+      pxProFrame: 3.5,
+    })).toBe(0);
+    expect(naechsteGemalteGehphase({
+      phase: 0,
+      distanzPx: 7,
+      laeuft: true,
+      warAmLaufen: true,
+      pxProFrame: 3.5,
+    })).toBe(2);
+    expect(naechsteGemalteGehphase({
+      phase: 9,
+      distanzPx: 0,
+      laeuft: false,
+      warAmLaufen: true,
+      pxProFrame: 3.5,
+    })).toBe(0);
   });
 
   it('zeigt die sechs unterschiedlich langen Hiebphasen und danach Block', () => {

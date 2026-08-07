@@ -14,6 +14,7 @@ import { Enemy, angleToDir, angleToDir8, type EnemyHost } from './Enemy';
 import { SCHLAG_FRAME, SCHLAG_PHASEN, HELD_FELD } from '../gfx/heldArt';
 import {
   GEMALT_SHEETS, gemalteZeile, gemalteSpalte, gemalterFrame, gemaltBereit,
+  naechsteGemalteGehphase,
   ladeGemalteHeldSheets, type GemaltVariante,
 } from '../gfx/heldGemalt';
 import { HELD_GEMALT } from '../data/heldGemalt';
@@ -3970,6 +3971,26 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
 
   /** Läuft der Held gerade? Wird in renderEntities gesetzt (dort ist es bekannt). */
   protected heldLaeuft = false;
+  private heldGehPhase = 0;
+  private heldGehX = Number.NaN;
+  private heldGehY = Number.NaN;
+  private heldWarAmLaufen = false;
+
+  private aktualisiereGemalteGehphase(laeuft: boolean): void {
+    const hatVorposition = Number.isFinite(this.heldGehX) && Number.isFinite(this.heldGehY);
+    const distanz = hatVorposition ? Math.hypot(this.px - this.heldGehX, this.py - this.heldGehY) : 0;
+    const teleport = distanz > HELD_GEMALT.gehTeleportGrenzePx;
+    this.heldGehPhase = naechsteGemalteGehphase({
+      phase: this.heldGehPhase,
+      distanzPx: teleport ? 0 : distanz,
+      laeuft,
+      warAmLaufen: this.heldWarAmLaufen && !teleport,
+      pxProFrame: HELD_GEMALT.gehWeltPxProFrame,
+    });
+    this.heldGehX = this.px;
+    this.heldGehY = this.py;
+    this.heldWarAmLaufen = laeuft;
+  }
 
   /**
    * Tiefen-Ausgleich für den gemalten Helden (R247). Die Tiefensortierung
@@ -4001,7 +4022,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
     const spalte = gemalteSpalte({
       blockt: this.combat.blocking,
       laeuft: this.heldLaeuft,
-      gehFrame: Math.floor(this.time.now / HELD_GEMALT.gehFrameMs),
+      gehFrame: this.heldGehPhase,
       schlagFortschritt: this.heldSchlagT > 0
         ? 1 - this.heldSchlagT / Math.max(0.001, this.heldSchlagDauer)
         : null,
@@ -4111,6 +4132,7 @@ export abstract class CombatScene extends Phaser.Scene implements EnemyHost, Tou
         }
       }
       this.heldLaeuft = !!moving;   // R247: der gemalte Pfad braucht Stand vs. Gehen explizit
+      this.aktualisiereGemalteGehphase(this.heldLaeuft);
       this.zeichneHeld(dir, step);
       if (this.playerHitFlash > 0) this.playerSprite.setTintFill(0xffffff);
       // R113: blutgetraenkter Held - dezenter Rot-Ton statt neutral
